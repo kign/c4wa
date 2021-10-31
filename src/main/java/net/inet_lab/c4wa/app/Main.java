@@ -10,23 +10,24 @@ import net.inet_lab.c4wa.autogen.parser.c4waLexer;
 import net.inet_lab.c4wa.autogen.parser.c4waParser;
 
 import net.inet_lab.c4wa.transpile.ParserTreeVisitor;
+import net.inet_lab.c4wa.transpile.ModuleEnv;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-        System.out.println("Hey!");
+        // String programText = Files.readString(Path.of("tests/test1.c"));
+        // c4waLexer lexer = new c4waLexer(CharStreams.fromString(programText));
 
-        // c4waLexer lexer = new c4waLexer(CharStreams.fromString("1+2-5"));
-        c4waLexer lexer = new c4waLexer(CharStreams.fromFileName("tests/test1.c"));
+        c4waLexer lexer = new c4waLexer(CharStreams.fromFileName(args[0]));
 
         c4waParser parser = new c4waParser(new CommonTokenStream(lexer));
 
         ParseTree tree = parser.module();
-        System.out.println("Parser returned " + tree.toStringTree(parser));
+        // System.out.println("Parser returned " + tree.toStringTree(parser));
 
         ParserTreeVisitor v = new ParserTreeVisitor();
 
-        String result = v.visit(tree);
+        ModuleEnv result = (ModuleEnv)v.visit(tree);
 
-        System.out.println("Visitor returned " + result);
+        result.generateWat(System.out);
     }
 }

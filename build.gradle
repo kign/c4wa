@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'application'
     id 'antlr'
 }
 
@@ -20,6 +21,10 @@ generateGrammarSource {
     // must match @header param in grammar definition file
     outputDirectory = "${project.buildDir}/generated-src/antlr/main/net/inet_lab/c4wa/autogen/parser" as File
     arguments += ['-visitor', '-long-messages']
+}
+
+application {
+    mainClass = 'net.inet_lab.c4wa.app.Main'
 }
 
 test {
