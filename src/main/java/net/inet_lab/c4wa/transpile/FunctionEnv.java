@@ -30,6 +30,11 @@ public class FunctionEnv implements Partial {
         locals.put(name, type);
     }
 
+    public FunctionDecl makeDeclaration() {
+        return new FunctionDecl(name, returnType,
+                Arrays.stream(params).map(locals::get).toArray(CType[]::new), false, false);
+    }
+
     public void addInstructions(Instruction[] instructions) {
         this.instructions = instructions;
     }

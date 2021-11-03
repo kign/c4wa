@@ -17,6 +17,7 @@ public class Main {
         // String programText = Files.readString(Path.of("tests/test1.c"));
         // c4waLexer lexer = new c4waLexer(CharStreams.fromString(programText));
 
+        // System.out.println("Reading " + args[0]);
         c4waLexer lexer = new c4waLexer(CharStreams.fromFileName(args[0]));
 
         c4waParser parser = new c4waParser(new CommonTokenStream(lexer));
