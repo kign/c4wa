@@ -42,6 +42,11 @@ abstract public class CType implements Partial {
         }
 
         @Override
+        public boolean isValidRHS(CType rhs) {
+            return rhs instanceof Primitive && ((Primitive)rhs).primitiveType == primitiveType;
+        }
+
+        @Override
         public NumType asNumType() {
             if (is_i32())
                 return NumType.I32;
@@ -68,6 +73,7 @@ abstract public class CType implements Partial {
     public boolean is_i64() { return false; }
     public boolean is_f32() { return false; }
     public boolean is_f64() { return false; }
+    public boolean isValidRHS(CType rhs) { return false; }
     public boolean is_ptr() { return false; }
     abstract public NumType asNumType();
 

@@ -57,7 +57,7 @@ public class ModuleEnv implements Partial {
         if (data.length() > 0) {
             out.print("(data (i32.const " + DATA_OFFSET + ") \"");
             for (byte b : data.toString().getBytes(StandardCharsets.UTF_8)) {
-                if (0x20 <= b && b <= 0x7e)
+                if (0x20 <= b && b <= 0x7e && b != '\\')
                     out.print((char)b);
                 else
                     out.printf("\\%02X", b);

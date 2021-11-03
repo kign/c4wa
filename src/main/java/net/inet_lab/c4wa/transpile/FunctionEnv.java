@@ -9,30 +9,47 @@ import java.util.*;
 public class FunctionEnv implements Partial {
     final String name;
     final CType returnType;
-    final String[] params;
+    final List<String> params;
+    final List<String> locals;
     final boolean export;
+    int mem_offset;
 
-    final Map<String, CType> locals;
+    final Map<String, CType> varType;
     Instruction[] instructions;
 
-    public FunctionEnv (String name, CType returnType, boolean export, String[] params) {
+    public FunctionEnv (String name, CType returnType, boolean export) {
         this.name = name;
         this.returnType = returnType;
-        this.params = params;
+        this.params = new ArrayList<>();;
+        this.locals = new ArrayList<>();
         this.export = export;
+        this.mem_offset = 0;
 
-        locals = new HashMap<>();
+        varType = new HashMap<>();
     }
 
-    public void registerVar(String name, CType type) {
-        if (locals.containsKey(name))
+    public void setMemOffset(int offset) {
+        if (offset > mem_offset)
+            mem_offset = offset;
+    }
+
+    public int getMemOffset() {
+        return mem_offset;
+    }
+
+    public void registerVar(String name, CType type, boolean is_param) {
+        if (varType.containsKey(name))
             throw new RuntimeException("Variable " + name + " already defined");
-        locals.put(name, type);
+        varType.put(name, type);
+        if (is_param)
+            params.add(name);
+        else
+            locals.add(name);
     }
 
     public FunctionDecl makeDeclaration() {
         return new FunctionDecl(name, returnType,
-                Arrays.stream(params).map(locals::get).toArray(CType[]::new), false, false);
+                params.stream().map(varType::get).toArray(CType[]::new), false, false);
     }
 
     public void addInstructions(Instruction[] instructions) {
@@ -46,12 +63,15 @@ public class FunctionEnv implements Partial {
             out.print(" (export \"" + name + "\")");
 
         for (String p: params)
-            out.print(" (param " + "$" + p + " " + locals.get(p).asNumType() + ")");
+            out.print(" (param " + "$" + p + " " + varType.get(p).asNumType() + ")");
 
         if (returnType != null)
             out.print(" (result " + returnType.asNumType() + ")");
 
         out.println();
+
+        for (String v : locals)
+            out.println("(local $" + v + " " + varType.get(v).asNumType() + ")");
 
         for (Instruction e: instructions)
             out.println(e);
@@ -66,10 +86,10 @@ public class FunctionEnv implements Partial {
             b.append("export ");
 
         b.append(returnType).append(" ").append(name).append("(");
-        for (int i = 0; i < params.length; i ++) {
+        for (int i = 0; i < params.size(); i ++) {
             if (i > 0)
                 b.append(", ");
-            b.append(params[i]);
+            b.append(params.get(i));
         }
 
         b.append(")");

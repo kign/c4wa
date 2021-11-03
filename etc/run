@@ -1,0 +1,97 @@
+#! /usr/bin/env node
+'use strict';
+
+const fs = require('fs');
+const printf = require('fast-printf').printf;
+
+async function main() {
+
+    const file = process.argv[2];
+
+    //console.log("Running", file);
+
+    const wasm_bytes = new Uint8Array(fs.readFileSync(file));
+
+    let wasm_mem;
+
+    const read_i32 = function(mem, offset) {
+        let val = 0;
+        for (let i = 3; i >= 0; i --)
+            val = 256 * val + mem[offset + i];
+        return val;
+    }
+
+    const read_f64 = function(mem, offset) {
+        console.error("read_f64 not yet implemented");
+        return null;
+    }
+
+    const read_str = function(mem, offset) {
+        let res = [];
+        let i = 0;
+        while(i < 1024) {
+            const c = mem[offset + i];
+            if (c === 0)
+                return res.join('');
+            res.push(String.fromCharCode(c));
+            i ++;
+        }
+        return null;
+    }
+
+    const wasm_printf = function (offset, argc) {
+        const mem = new Uint8Array(wasm_mem.buffer);
+        //console.log(`printf(offset = ${offset}, argc = ${argc})`);
+        //console.log(mem.slice(offset, offset + 8 * argc));
+
+        const p_fmt = read_i32(mem, offset);
+        const fmt = read_str(mem, p_fmt);
+        //console.log("String address =", p_fmt);
+        //console.log("Format =", fmt);
+
+        const args = [];
+        for(let i = 0; i < fmt.length - 1; i ++ ) {
+            if (fmt[i] === '%') {
+                i ++;
+                if (fmt[i] === '%')
+                    continue;
+                while(i < fmt.length && !('a' <= fmt[i] && fmt[i] <= 'z' || 'A' <= fmt[i] && fmt[i] <= 'Z'))
+                    i ++;
+                if (i === fmt.length) {
+                    console.error("Invalid format string", fmt);
+                    return;
+                }
+
+                // TODO: ignoring LONG and FLOAT for mow
+                offset += 8;
+                if ('cdxu'.includes(fmt[i]))
+                    args.push(read_i32(mem, offset))
+                else if ('f'.includes(fmt[i]))
+                    args.push(read_f64(mem, offset))
+                else {
+                    console.error("Format '" + fmt[i] + "' not known at this time");
+                    return;
+                }
+            }
+        }
+
+        //console.log("args =", args);
+        if (args.length + 1 !== argc) {
+            console.error("Format string '" + fmt + "' expected", args.length,
+                "substitutions, passed", argc - 1, "arguments:", args);
+            return;
+        }
+
+        process.stdout.write(printf(fmt.replace('\\n', '\n'), ...args));
+    }
+
+    const wasm_instance = (await WebAssembly.instantiate(wasm_bytes, {c4wa: { printf: wasm_printf }})).instance;
+
+    wasm_mem = wasm_instance.exports.memory;
+
+    const wasm_main = wasm_instance.exports.main;
+
+    wasm_main();
+}
+
+main();

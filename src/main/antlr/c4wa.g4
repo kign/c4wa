@@ -55,11 +55,14 @@ element
 
 statement
     : variable_decl
+    | variable_init
     | simple_assignment
     | complex_assignment
     | function_call
     | return_expression
     ;
+
+variable_init : variable_decl '=' expression;
 
 return_expression : RETURN expression;
 
@@ -87,7 +90,7 @@ expression
 
 arg2 : expression;
 
-CONST : [0-9]+;
+CONST : Sign? Constant;
 BINARY_OP2 : '*'|'/'|'%';
 BINARY_OP1 : '+'|'-';
 PLUS   :  '+';
@@ -114,6 +117,52 @@ ASM    :  'asm' [ \t\n\r]* '{' .*? '}';
 
 STRING
     :   '"' SCharSequence? '"'
+    ;
+
+fragment
+Constant
+    :   DecimalConstant
+    |   DecimalFloatingConstant
+    ;
+
+fragment
+DecimalConstant
+    :   NonzeroDigit Digit*
+    ;
+
+fragment
+DecimalFloatingConstant
+    :   FractionalConstant ExponentPart?
+    |   DigitSequence ExponentPart
+    ;
+
+fragment
+NonzeroDigit
+    :   [1-9]
+    ;
+
+fragment
+Digit
+    :   [0-9]
+    ;
+
+DigitSequence
+    :   Digit+
+    ;
+
+fragment
+FractionalConstant
+    :   DigitSequence? '.' DigitSequence
+    |   DigitSequence '.'
+    ;
+
+fragment
+ExponentPart
+    :   [eE] Sign? DigitSequence
+    ;
+
+Sign
+    :   [+-]
     ;
 
 fragment

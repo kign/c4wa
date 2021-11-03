@@ -1,5 +1,6 @@
 package net.inet_lab.c4wa.wat;
 
+// add,
 abstract public class Instruction_cls2 extends Instruction {
     final public Instruction arg1;
     final public Instruction arg2;

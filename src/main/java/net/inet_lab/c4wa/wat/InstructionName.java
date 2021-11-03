@@ -4,6 +4,7 @@ public enum InstructionName implements InstructionType {
     ADD ("add"),
     SUB ("sub"),
     GET_LOCAL ("get_local"),
+    SET_LOCAL ("set_local"),
     CALL ("call"),
     STORE ("store"),
     CONST ("const"),

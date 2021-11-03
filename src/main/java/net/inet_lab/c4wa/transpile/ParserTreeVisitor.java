@@ -30,6 +30,9 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
         ParamList(VariableDecl[] paramList) {
             this.paramList = paramList;
         }
+        ParamList() {
+            this.paramList = new VariableDecl[0];
+        }
     }
 
     static class OneInstruction implements Partial {
@@ -60,9 +63,11 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
 
     static class BlockEnv {
         int offset;
+        final int start_offset;
         final List<Instruction> prefix;
-        BlockEnv () {
-            offset = 0;
+        BlockEnv (int offset) {
+            this.start_offset = offset;
+            this.offset = offset;
             prefix = new ArrayList<>();
         }
         int getOffset() {
@@ -71,10 +76,9 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
             return res;
         }
         void reset() {
-            offset = 0;
+            offset = this.start_offset;
             prefix.clear();
         }
-
     }
 
     @Override
@@ -89,13 +93,15 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
         for (var oneFunc : functions)
             moduleEnv.addDeclaration(oneFunc.func.makeDeclaration());
 
+        int mem_offset = 0;
         for (var oneFunc : functions) {
             functionEnv = oneFunc.func;
+            functionEnv.setMemOffset(mem_offset);
+
             functionEnv.addInstructions(Arrays.stream(((InstructionList) visit(oneFunc.code)).instructions).map(x -> x.instruction).toArray(Instruction[]::new));
             moduleEnv.addFunction(functionEnv);
+            mem_offset = functionEnv.getMemOffset();
         }
-
-       //   moduleEnv.addFunctions(ctx.func().stream().map(this::visit).toArray(FunctionEnv[]::new));
 
         return moduleEnv;
     }
@@ -114,13 +120,11 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public OneFunction visitFunc(c4waParser.FuncContext ctx) {
         VariableDecl funcDecl = (VariableDecl) visit(ctx.variable_decl());
-        ParamList paramList = (ParamList) visit(ctx.param_list());
+        ParamList paramList = (ctx.param_list() == null)?new ParamList(): (ParamList) visit(ctx.param_list());
 
-        functionEnv = new FunctionEnv(funcDecl.name, funcDecl.type,
-                ctx.EXTERN() != null,
-                Arrays.stream(paramList.paramList).map(x -> x.name).toArray(String[]::new));
+        functionEnv = new FunctionEnv(funcDecl.name, funcDecl.type,ctx.EXTERN() != null);
 
-        Arrays.stream(paramList.paramList).forEach(x -> functionEnv.registerVar(x.name, x.type));
+        Arrays.stream(paramList.paramList).forEach(x -> functionEnv.registerVar(x.name, x.type, true));
 
         // moduleEnv.addDeclaration(functionEnv.makeDeclaration());
 
@@ -159,7 +163,7 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public InstructionList visitBig_block(c4waParser.Big_blockContext ctx) {
-        BlockEnv blockEnv = new BlockEnv();
+        BlockEnv blockEnv = new BlockEnv(functionEnv.getMemOffset());
         blockStack.push(blockEnv);
         List<OneInstruction> res = new ArrayList<>();
 
@@ -188,7 +192,7 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "function call", "Function '" + fname + "' not defined or declared");
 
         InstructionList args = (InstructionList) visit(ctx.arg_list());
-
+        Instruction[] call_args;
         if (decl.anytype) {
             BlockEnv blockEnv = blockStack.peek();
             int idx = 0;
@@ -200,18 +204,31 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
                     throw fail(ctx, "function call", "Argument number " + idx + " doesn't have type");
                 blockEnv.prefix.add(new Store(arg.type.asNumType(), new Const(blockEnv.getOffset()), arg.instruction));
             }
-            Instruction[] call_args = new Instruction[2];
+            functionEnv.setMemOffset(blockEnv.offset);
+            call_args = new Instruction[2];
             call_args[0] = new Const(offset);
             call_args[1] = new Const(args.instructions.length);
-            return new OneInstruction(new Call(fname, call_args), decl.returnType);
         }
         else {
             if (decl.params.length != args.instructions.length)
                 throw fail(ctx, "function call", "Function '" + fname +
                         "' expects " + decl.params.length + " arguments, provided " + args.instructions.length);
 
-            throw fail(ctx, "function call", "this is not yet implemented");
+            call_args = new Instruction[args.instructions.length];
+            for(int idx = 0; idx < decl.params.length; idx ++) {
+                if (args.instructions[idx].type == null)
+                    throw fail(ctx, "function call", "Argument number " + (idx + 1) +
+                            " of function '" + fname + "' received argument with no type");
+
+                if (!decl.params[idx].isValidRHS(args.instructions[idx].type))
+                    throw fail(ctx, "function call", "Argument number " + (idx + 1) +
+                            " of function '" + fname + "' expects type '" + decl.params[idx] +
+                            "', received type '" + args.instructions[idx].type + "'");
+
+                call_args[idx] = args.instructions[idx].instruction;
+            }
         }
+        return new OneInstruction(new Call(fname, call_args), decl.returnType);
     }
 
     @Override
@@ -223,6 +240,23 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
     public OneInstruction visitReturn_expression(c4waParser.Return_expressionContext ctx) {
         return new OneInstruction(new Return(((OneInstruction)visit(ctx.expression())).instruction), null);
     }
+
+    @Override
+    public OneInstruction visitVariable_init(c4waParser.Variable_initContext ctx) {
+        VariableDecl variableDecl = (VariableDecl) visit(ctx.variable_decl());
+        OneInstruction expression = (OneInstruction) visit(ctx.expression());
+
+        if (expression.type == null)
+            throw fail(ctx,"init", "RHS expression has no type");
+
+        if (!variableDecl.type.isValidRHS(expression.type))
+            throw fail(ctx,"init", "Expression of type " + expression.type + " cannot be assigned to variable of type " + variableDecl.type);
+
+        functionEnv.registerVar(variableDecl.name, variableDecl.type, false);
+
+        return new OneInstruction(new SetLocal(variableDecl.name, expression.instruction), null);
+    }
+
 
     @Override
     public OneInstruction visitExpression_binary_op1(c4waParser.Expression_binary_op1Context ctx) {
@@ -275,12 +309,38 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public OneInstruction visitExpression_variable(c4waParser.Expression_variableContext ctx) {
         String name = ctx.ID().getText();
-        CType type = functionEnv.locals.get(name);
+        CType type = functionEnv.varType.get(name);
         if (type == null)
             throw fail(ctx, "variable", "not defined");
 
         return new OneInstruction(new GetLocal(name), type);
     }
+
+    @Override
+    public OneInstruction visitExpression_const(c4waParser.Expression_constContext ctx) {
+        String c = ctx.CONST().getText();
+
+        try {
+            return new OneInstruction(new Const(Integer.parseInt(c)), CType.INT);
+        }
+        catch(NumberFormatException ignored) {
+        }
+
+        try {
+            return new OneInstruction(new Const(Long.parseLong(c)), CType.LONG);
+        }
+        catch(NumberFormatException ignored) {
+        }
+
+        try {
+            return new OneInstruction(new Const(Double.parseDouble(c)), CType.DOUBLE);
+        }
+        catch(NumberFormatException ignored) {
+        }
+
+        throw fail(ctx, "const", "'" + c  + "' cannot be parsed");
+    }
+
 
     @Override
     public OneInstruction visitExpression_string(c4waParser.Expression_stringContext ctx) {

@@ -1,5 +1,6 @@
 package net.inet_lab.c4wa.wat;
 
+// return
 public class Instruction_cls3 extends Instruction {
     public final Instruction arg;
 
