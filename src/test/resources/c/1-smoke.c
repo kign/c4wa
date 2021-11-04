@@ -8,3 +8,5 @@ extern void main() {
     int b = 14;
     printf("%d + %d = %d\n", a, b, add(a,b));
 }
+// a = 7, b = 14
+// 7 + 14 = 21

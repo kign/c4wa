@@ -2,15 +2,93 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 const printf = require('fast-printf').printf;
+const { spawnSync } = require("child_process");
+const colors = require('colors'); // unsafe, modifies String prototype
 
-async function main() {
+async function main () {
+    const arg = process.argv[2]; // 0 = node, 1 = script
+    if (arg === undefined)
+        console.log(`Usage: ${process.argv[1]} <all|FILE>`);
+    else if (arg === 'all')
+        await run_all_tests();
+    else if (fs.existsSync(arg) && arg.endsWith('.wasm'))
+        await run_file(arg, {stdout: true});
+    else
+        console.error("Invalid argument", arg, "must be an existing WASM file or word 'all'");
+}
 
-    const file = process.argv[2];
+async function run_all_tests () {
+    const wat_dir = path.resolve(__dirname, '..', 'tests', 'wat');
+    const wasm_dir = path.resolve(__dirname, '..', 'tests', 'wasm');
+    const c_dir = path.resolve(__dirname, '..', 'tests', 'c');
 
-    //console.log("Running", file);
+    fs.mkdirSync(wasm_dir, {recursive: true}); // option 'recursive' prevents error when directory exists
 
-    const wasm_bytes = new Uint8Array(fs.readFileSync(file));
+    const wat_files = fs.readdirSync(wat_dir);
+
+    console.log("⦿ Compilation".cyan);
+
+    const compilation = [];
+    for (const wat of wat_files) {
+        const res = spawnSync('wat2wasm',
+            [path.resolve(wat_dir, wat),
+                '-o', path.resolve(wasm_dir, wat.replace('.wat', '.wasm'))], {
+                cwd: process.cwd(),
+                env: process.env,
+                stdio: [process.stdin, process.stdout, process.stderr],
+                encoding: 'utf-8'
+            });
+        compilation.push([wat, res.status]);
+    }
+
+    for (const [wat, status] of compilation) {
+        if (status === 0)
+            process.stdout.write('✅ ' + wat.bold.green + "\n");
+        else
+            process.stdout.write('❌ ' + wat.bold.red + "\n");
+    }
+
+    console.log("\n⦿ Running".cyan);
+
+    for (const [wat, status] of compilation) {
+        const wasm = wat.replace('.wat', '.wasm');
+        const c = wat.replace('.wat', '.c');
+        if (/^[0-9]+-/.test(wat)) {
+            const lines = fs.readFileSync(path.resolve(c_dir, c), 'utf8').split("\n");
+            const expected_arr = [];
+            for(let i = lines.length - 1; i >= 0; i --) {
+                if (expected_arr.length === 0 && lines[i] === '')
+                    continue;
+                if (lines[i].startsWith('// '))
+                    expected_arr.push(lines[i].substr(3) + "\n");
+                else
+                    break;
+            }
+            const expected = expected_arr.reverse().join('');
+            const output = await run_file(path.resolve(wasm_dir, wasm), {stdout: false});
+            if (output === expected)
+                process.stdout.write('✅ ' + wasm.bold.green + "\n");
+            else
+                process.stdout.write('❌ ' + wasm.bold.red + "\n");
+
+            /*
+            console.log(wasm);
+            console.log("-----------------")
+            process.stdout.write(output);
+            console.log("-----------------")
+            process.stdout.write(expected);
+            console.log("-----------------")
+            */
+        }
+    }
+}
+
+async function run_file(fname, options) {
+    const target = options.stdout? process.stdout: [];
+
+    const wasm_bytes = new Uint8Array(fs.readFileSync(fname));
 
     let wasm_mem;
 
@@ -81,17 +159,21 @@ async function main() {
                 "substitutions, passed", argc - 1, "arguments:", args);
             return;
         }
-
-        process.stdout.write(printf(fmt.replace('\\n', '\n'), ...args));
+        const res = printf(fmt.replace('\\n', '\n'), ...args);
+        // process.stdout.write();
+        if (target.write)
+            target.write(res);
+        else if(target.push)
+            target.push(res);
     }
 
     const wasm_instance = (await WebAssembly.instantiate(wasm_bytes, {c4wa: { printf: wasm_printf }})).instance;
 
     wasm_mem = wasm_instance.exports.memory;
+    wasm_instance.exports.main ();
 
-    const wasm_main = wasm_instance.exports.main;
-
-    wasm_main();
+    if (!options.stdout)
+        return target.join('');
 }
 
 main();
