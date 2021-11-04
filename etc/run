@@ -73,14 +73,6 @@ async function run_all_tests () {
             else
                 process.stdout.write('❌ ' + wasm.bold.red + "\n");
 
-            /*
-            console.log(wasm);
-            console.log("-----------------")
-            process.stdout.write(output);
-            console.log("-----------------")
-            process.stdout.write(expected);
-            console.log("-----------------")
-            */
         }
     }
 }
@@ -94,8 +86,11 @@ async function run_file(fname, options) {
 
     const read_i32 = function(mem, offset) {
         let val = 0;
+
         for (let i = 3; i >= 0; i --)
             val = 256 * val + mem[offset + i];
+        if (mem[offset + 3] >= 128)
+            val -= 2**32;
         return val;
     }
 
@@ -105,14 +100,13 @@ async function run_file(fname, options) {
     }
 
     const read_str = function(mem, offset) {
-        let res = [];
+        const bytes = new Uint8Array(1024);
         let i = 0;
         while(i < 1024) {
             const c = mem[offset + i];
             if (c === 0)
-                return res.join('');
-            res.push(String.fromCharCode(c));
-            i ++;
+                return new TextDecoder().decode(bytes.slice(0, i));
+            bytes[i ++] = c;
         }
         return null;
     }
@@ -156,7 +150,7 @@ async function run_file(fname, options) {
         //console.log("args =", args);
         if (args.length + 1 !== argc) {
             console.error("Format string '" + fmt + "' expected", args.length,
-                "substitutions, passed", argc - 1, "arguments:", args);
+                "substitutions, passed", argc - 1, "arguments");
             return;
         }
         const res = printf(fmt.replace('\\n', '\n'), ...args);

@@ -55,12 +55,15 @@ element
 
 statement
     : variable_decl
+    | mult_variable_decl
     | variable_init
     | simple_assignment
     | complex_assignment
     | function_call
     | return_expression
     ;
+
+mult_variable_decl : variable_type ID (',' ID)* ;
 
 variable_init : variable_decl '=' expression;
 

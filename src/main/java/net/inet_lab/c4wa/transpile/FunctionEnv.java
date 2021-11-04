@@ -12,10 +12,10 @@ public class FunctionEnv implements Partial {
     final List<String> params;
     final List<String> locals;
     final boolean export;
-    int mem_offset;
-
     final Map<String, CType> varType;
+
     Instruction[] instructions;
+    int mem_offset;
 
     public FunctionEnv (String name, CType returnType, boolean export) {
         this.name = name;
@@ -24,7 +24,6 @@ public class FunctionEnv implements Partial {
         this.locals = new ArrayList<>();
         this.export = export;
         this.mem_offset = 0;
-
         varType = new HashMap<>();
     }
 

@@ -45,6 +45,9 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
         }
     }
 
+    static class NoOp implements Partial {
+    }
+
     static class InstructionList implements Partial {
         final OneInstruction[] instructions;
         InstructionList(OneInstruction[] instructions) {
@@ -126,13 +129,7 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
 
         Arrays.stream(paramList.paramList).forEach(x -> functionEnv.registerVar(x.name, x.type, true));
 
-        // moduleEnv.addDeclaration(functionEnv.makeDeclaration());
-
         return new OneFunction(functionEnv, ctx.big_block());
-        /*
-        functionEnv.addInstructions(((InstructionList)visit(ctx.big_block())).instructions);
-        return functionEnv;
-        */
     }
 
     @Override
@@ -170,13 +167,16 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
         int idx = 0;
         for (var blockElem : ctx.element()) {
             idx ++;
-            OneInstruction instruction = (OneInstruction) visit(blockElem);
-            if (instruction == null)
+            Partial parsedElem = visit(blockElem);
+            if (parsedElem == null)
                 throw fail(ctx, "block", "Instruction number " + idx + " was not parsed");
             for (var i : blockEnv.prefix)
                 res.add(new OneInstruction(i, null));
             blockEnv.reset();
-            res.add(instruction);
+            if (parsedElem instanceof OneInstruction)
+                res.add((OneInstruction) parsedElem);
+            else if (parsedElem instanceof InstructionList)
+                res.addAll(Arrays.asList(((InstructionList) parsedElem).instructions));
         }
 
         blockStack.pop();
@@ -244,19 +244,49 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public OneInstruction visitVariable_init(c4waParser.Variable_initContext ctx) {
         VariableDecl variableDecl = (VariableDecl) visit(ctx.variable_decl());
-        OneInstruction expression = (OneInstruction) visit(ctx.expression());
+        OneInstruction rhs = (OneInstruction) visit(ctx.expression());
 
-        if (expression.type == null)
+        if (rhs.type == null)
             throw fail(ctx,"init", "RHS expression has no type");
 
-        if (!variableDecl.type.isValidRHS(expression.type))
-            throw fail(ctx,"init", "Expression of type " + expression.type + " cannot be assigned to variable of type " + variableDecl.type);
+        if (!variableDecl.type.isValidRHS(rhs.type))
+            throw fail(ctx,"init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + variableDecl.type);
 
         functionEnv.registerVar(variableDecl.name, variableDecl.type, false);
 
-        return new OneInstruction(new SetLocal(variableDecl.name, expression.instruction), null);
+        return new OneInstruction(new SetLocal(variableDecl.name, rhs.instruction), null);
     }
 
+    @Override
+    public InstructionList visitSimple_assignment(c4waParser.Simple_assignmentContext ctx) {
+        OneInstruction rhs = (OneInstruction) visit(ctx.expression());
+
+        if (rhs.type == null)
+            throw fail(ctx, "assignment", "RHS expression has no type");
+
+        List<OneInstruction> assignments = new ArrayList<>();
+
+        for (var v : ctx.ID()) {
+            String name = v.getText();
+            CType type = functionEnv.varType.get(name);
+            if (type == null)
+                throw fail(ctx, "assignment", "Variable '" + name + "' is not defined");
+            if (!type.isValidRHS(rhs.type))
+                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + type);
+
+            assignments.add(new OneInstruction(new SetLocal(name, rhs.instruction), null));
+        }
+
+        return new InstructionList(assignments.toArray(OneInstruction[]::new));
+    }
+
+    @Override
+    public NoOp visitMult_variable_decl(c4waParser.Mult_variable_declContext ctx) {
+        CType type = (CType) visit(ctx.variable_type());
+        for (var v : ctx.ID())
+            functionEnv.registerVar(v.getText(), type, false);
+        return new NoOp();
+    }
 
     @Override
     public OneInstruction visitExpression_binary_op1(c4waParser.Expression_binary_op1Context ctx) {
