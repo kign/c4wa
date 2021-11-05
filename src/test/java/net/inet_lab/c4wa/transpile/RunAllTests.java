@@ -5,7 +5,8 @@ import net.inet_lab.c4wa.autogen.parser.c4waParser;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -14,14 +15,17 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class RunAllTests {
 
-    @Test
-    void generateWatFiles() throws IOException {
+    @TestFactory
+    List<DynamicTest> generateWatFiles() throws IOException {
+        List<DynamicTest> tests = new ArrayList<>();
         final String ctests = "c";
         final var loader = Thread.currentThread().getContextClassLoader();
         assertNotNull(loader);
@@ -31,16 +35,20 @@ public class RunAllTests {
         Files.createDirectories(Paths.get("tests", "wat"));
 
         while ((fileName = br.readLine()) != null) {
-            //System.out.println(fileName);
-            String programText = Files.readString(Path.of(Objects.requireNonNull(loader.getResource(ctests + "/" + fileName)).getPath()));
-            c4waLexer lexer = new c4waLexer(CharStreams.fromString(programText));
-            c4waParser parser = new c4waParser(new CommonTokenStream(lexer));
-            ParseTree tree = parser.module();
-            ParserTreeVisitor v = new ParserTreeVisitor();
-            ModuleEnv result = (ModuleEnv) v.visit(tree);
+            final String fname = fileName;
+            tests.add(DynamicTest.dynamicTest(fileName, () -> {
+                String programText = Files.readString(Path.of(Objects.requireNonNull(loader.getResource(ctests + "/" + fname)).getPath()));
+                c4waLexer lexer = new c4waLexer(CharStreams.fromString(programText));
+                c4waParser parser = new c4waParser(new CommonTokenStream(lexer));
+                ParseTree tree = parser.module();
+                ParserTreeVisitor v = new ParserTreeVisitor();
+                ModuleEnv result = (ModuleEnv) v.visit(tree);
 
-            PrintStream out = new PrintStream(Paths.get("tests", "wat", fileName.replace(".c", ".wat")).toFile());
-            result.generateWat(out);
+                PrintStream out = new PrintStream(Paths.get("tests", "wat", fname.replace(".c", ".wat")).toFile());
+                result.generateWat(out);
+            }));
         }
+
+        return tests;
     }
 }
