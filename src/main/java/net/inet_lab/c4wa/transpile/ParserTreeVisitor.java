@@ -290,10 +290,23 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitExpression_binary_op1(c4waParser.Expression_binary_op1Context ctx) {
-        OneInstruction arg1 = (OneInstruction) visit(ctx.expression());
-        OneInstruction arg2 = (OneInstruction) visit(ctx.arg2());
+        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
+        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
         String op = ctx.BINARY_OP1().getText();
 
+        return binary_op(ctx, arg1, arg2, op);
+    }
+
+    @Override
+    public OneInstruction visitExpression_binary_op2(c4waParser.Expression_binary_op2Context ctx) {
+        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
+        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+        String op = ctx.BINARY_OP2().getText();
+
+        return binary_op(ctx, arg1, arg2, op);
+    }
+
+    private OneInstruction binary_op (ParserRuleContext ctx, OneInstruction arg1, OneInstruction arg2, String op) {
         if (arg1 == null)
             throw fail(ctx, "Expression", "1-st arg not parsed");
         if (arg2 == null)
@@ -308,20 +321,16 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
         if (arg1.type.is_i32() && arg2.type.is_i32()) {
             numType = NumType.I32;
             resType = CType.INT;
-        }
-        else if (arg1.type.is_i64() && arg2.type.is_i64()) {
+        } else if (arg1.type.is_i64() && arg2.type.is_i64()) {
             numType = NumType.I64;
             resType = CType.LONG;
-        }
-        else if (arg1.type.is_f32() && arg2.type.is_f32()) {
+        } else if (arg1.type.is_f32() && arg2.type.is_f32()) {
             numType = NumType.F32;
             resType = CType.FLOAT;
-        }
-        else if (arg1.type.is_f64() && arg2.type.is_f64()) {
+        } else if (arg1.type.is_f64() && arg2.type.is_f64()) {
             numType = NumType.F64;
             resType = CType.DOUBLE;
-        }
-        else
+        } else
             throw fail(ctx, "binary operation", "Types " + arg1.type + " and " + arg2.type +
                     " are incompatible for binary operation <" + op + ">");
 
@@ -330,11 +339,14 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
             res = new Add(numType, arg1.instruction, arg2.instruction);
         else if ("-".equals(op))
             res = new Sub(numType, arg1.instruction, arg2.instruction);
+        else if ("*".equals(op))
+            res = new Mul(numType, arg1.instruction, arg2.instruction);
         else
             throw fail(ctx, "binary operation", "Instruction " + op + " not recognized");
 
         return new OneInstruction(res, resType);
     }
+
 
     @Override
     public OneInstruction visitExpression_variable(c4waParser.Expression_variableContext ctx) {

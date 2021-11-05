@@ -23,7 +23,7 @@ public class Main {
         c4waParser parser = new c4waParser(new CommonTokenStream(lexer));
 
         ParseTree tree = parser.module();
-        // System.out.println("Parser returned " + tree.toStringTree(parser));
+        //System.out.println("Parser returned \n" + tree.toStringTree(parser));
 
         ParserTreeVisitor v = new ParserTreeVisitor();
 

@@ -83,18 +83,20 @@ function_call : ID '(' arg_list? ')' ;
 arg_list: expression (',' expression)*;
 
 expression
-    : CONST                         # expression_const
+    : '-' expression # expression_unary_op
+    | expression BINARY_OP2 expression    # expression_binary_op2
+    | expression BINARY_OP1 expression    # expression_binary_op1
+    | CONST                         # expression_const
     | ID                            # expression_variable
     | STRING                        # expression_string
-    | expression BINARY_OP2 arg2    # expression_binary_op2
-    | expression BINARY_OP1 arg2    # expression_binary_op1
     | function_call                 # expression_function_call
     ;
 
-arg2 : expression;
 
 CONST : Sign? Constant;
-BINARY_OP2 : '*'|'/'|'%';
+//BINARY_OP2 : '/'|'%'|'*';
+BINARY_OP2 : Star | '/' | '%'; // somehow directly inserting * isn't working
+Star : '*';
 BINARY_OP1 : '+'|'-';
 PLUS   :  '+';
 MINUS  :  '-';

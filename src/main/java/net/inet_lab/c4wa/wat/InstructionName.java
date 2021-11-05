@@ -3,6 +3,7 @@ package net.inet_lab.c4wa.wat;
 public enum InstructionName implements InstructionType {
     ADD ("add"),
     SUB ("sub"),
+    MUL ("mul"),
     GET_LOCAL ("get_local"),
     SET_LOCAL ("set_local"),
     CALL ("call"),

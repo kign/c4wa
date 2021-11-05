@@ -147,9 +147,8 @@ async function run_file(fname, options) {
             }
         }
 
-        //console.log("args =", args);
         if (args.length + 1 !== argc) {
-            console.error("Format string '" + fmt + "' expected", args.length,
+            console.error("", "Format string '" + fmt + "' expected", args.length,
                 "substitutions, passed", argc - 1, "arguments");
             return;
         }
