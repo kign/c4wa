@@ -1,8 +1,8 @@
 void printf(...);
+const int N = 100;
 extern void main() {
     int sum = 0;
     int i = 1;
-    int N = 100;
     do {
         sum = sum + i * i;
         i = i + 1;

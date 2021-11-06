@@ -4,6 +4,7 @@ import net.inet_lab.c4wa.autogen.parser.c4waBaseVisitor;
 import net.inet_lab.c4wa.autogen.parser.c4waParser;
 import net.inet_lab.c4wa.wat.*;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.RuleContext;
 
 import java.util.*;
 
@@ -17,15 +18,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     public ParseTreeVisitor() {
         blockStack = new ArrayDeque<>();
-    }
-
-    static class VariableDecl implements Partial {
-        final CType type;
-        final String name;
-        VariableDecl(CType type, String name) {
-            this.type = type;
-            this.name = name;
-        }
     }
 
     static class ParamList implements Partial {
@@ -99,13 +91,23 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public ModuleEnv visitModule(c4waParser.ModuleContext ctx) {
         moduleEnv = new ModuleEnv();
 
-        OneFunction[] functions = ctx.func().stream().map(this::visit).toArray(OneFunction[]::new);
+        List<OneFunction> functions = new ArrayList<>();
 
-        for (var globalDecl : ctx.global_decl())
-            moduleEnv.addDeclaration((FunctionDecl) visit(globalDecl));
+        for (var g : ctx.global_decl()) {
+            Partial parseGlobalDecl = visit(g);
 
-        for (var oneFunc : functions)
-            moduleEnv.addDeclaration(oneFunc.func.makeDeclaration());
+            if (parseGlobalDecl instanceof FunctionDecl)
+                moduleEnv.addDeclaration((FunctionDecl) parseGlobalDecl);
+            else if (parseGlobalDecl instanceof OneFunction) {
+                moduleEnv.addDeclaration(((OneFunction) parseGlobalDecl).func.makeDeclaration());
+                functions.add((OneFunction) parseGlobalDecl);
+            }
+            else if (parseGlobalDecl instanceof VariableDecl) {
+                moduleEnv.addDeclaration((VariableDecl) parseGlobalDecl);
+            }
+            else
+                throw fail(g, "global item", "Unknown class " + parseGlobalDecl.getClass());
+        }
 
         int mem_offset = 0;
         for (var oneFunc : functions) {
@@ -122,18 +124,39 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
-    public FunctionDecl visitGlobal_decl_function(c4waParser.Global_decl_functionContext ctx) {
-        VariableDecl variableDecl = (VariableDecl) visit(ctx.variable_decl());
+    public VariableDecl visitGlobal_decl_variable(c4waParser.Global_decl_variableContext ctx) {
+        VariableDecl decl = (VariableDecl) visit(ctx.variable_decl());
+        decl.exported = ctx.EXTERN() != null;
+        decl.imported = ctx.STATIC() == null;
+        decl.mutable = ctx.CONST() == null;
 
-        if (ctx.ELLIPSIS() != null)
-            return new FunctionDecl(variableDecl.name, variableDecl.type, null, true, true);
-        else {
-            throw fail(ctx, "function declaration", "type list not yet implemented");
+        if (ctx.CONSTANT() == null) {
+            if (!decl.imported)
+                throw fail(ctx, "global variable", "non-imported variable must be initialized");
         }
+        else {
+            if (decl.mutable && decl.imported)
+                throw fail(ctx, "global variable","Imported global variable cannot be initialized, declare 'const' or 'static'");
+            decl.initialValue = parseConstant(ctx, decl.type, ctx.CONSTANT().getText());
+            if (!decl.mutable)
+                decl.imported = false;
+        }
+
+        return decl;
     }
 
     @Override
-    public OneFunction visitFunc(c4waParser.FuncContext ctx) {
+    public FunctionDecl visitGlobal_decl_function(c4waParser.Global_decl_functionContext ctx) {
+        VariableDecl variableDecl = (VariableDecl) visit(ctx.variable_decl());
+
+        return (ctx.ELLIPSIS() == null)
+                ? new FunctionDecl(variableDecl.name, variableDecl.type, ctx.variable_type().stream().map(this::visit).toArray(CType[]::new), false, true)
+                : new FunctionDecl(variableDecl.name, variableDecl.type, null, true, true)
+                ;
+    }
+
+    @Override
+    public OneFunction visitFunction_definition(c4waParser.Function_definitionContext ctx) {
         VariableDecl funcDecl = (VariableDecl) visit(ctx.variable_decl());
         ParamList paramList = (ctx.param_list() == null)?new ParamList(): (ParamList) visit(ctx.param_list());
 
@@ -419,37 +442,21 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public OneInstruction visitExpression_variable(c4waParser.Expression_variableContext ctx) {
         String name = ctx.ID().getText();
         CType type = functionEnv.varType.get(name);
-        if (type == null)
-            throw fail(ctx, "variable", "not defined");
+        if (type != null)
+            return new OneInstruction(new GetLocal(name), type);
 
-        return new OneInstruction(new GetLocal(name), type);
+        VariableDecl globalDecl = moduleEnv.varDecl.get(name);
+
+        if (globalDecl != null)
+            return new OneInstruction(new GetGlobal(name), globalDecl.type);
+
+        throw fail(ctx, "variable", "not defined");
     }
 
     @Override
     public OneInstruction visitExpression_const(c4waParser.Expression_constContext ctx) {
-        String c = ctx.CONST().getText();
-
-        try {
-            return new OneInstruction(new Const(Integer.parseInt(c)), CType.INT);
-        }
-        catch(NumberFormatException ignored) {
-        }
-
-        try {
-            return new OneInstruction(new Const(Long.parseLong(c)), CType.LONG);
-        }
-        catch(NumberFormatException ignored) {
-        }
-
-        try {
-            return new OneInstruction(new Const(Double.parseDouble(c)), CType.DOUBLE);
-        }
-        catch(NumberFormatException ignored) {
-        }
-
-        throw fail(ctx, "const", "'" + c  + "' cannot be parsed");
+        return parseConstant(ctx, ctx.CONSTANT().getText());
     }
-
 
     @Override
     public OneInstruction visitExpression_string(c4waParser.Expression_stringContext ctx) {
@@ -469,6 +476,41 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return CType.LONG;
         else
             throw fail(ctx, "primitive", "Type " + ctx + " not implemented");
+    }
+
+    private OneInstruction parseConstant(ParserRuleContext ctx, String textOfConstant) {
+        try {
+            return new OneInstruction(new Const(Integer.parseInt(textOfConstant)), CType.INT);
+        } catch (NumberFormatException ignored) {
+        }
+
+        try {
+            return new OneInstruction(new Const(Long.parseLong(textOfConstant)), CType.LONG);
+        } catch (NumberFormatException ignored) {
+        }
+
+        try {
+            return new OneInstruction(new Const(Double.parseDouble(textOfConstant)), CType.DOUBLE);
+        } catch (NumberFormatException ignored) {
+        }
+
+        throw fail(ctx, "const", "'" + textOfConstant + "' cannot be parsed");
+    }
+
+    private Const parseConstant(ParserRuleContext ctx, CType ctype, String textOfConstant) {
+        try {
+            if (ctype == CType.INT)
+                return new Const(Integer.parseInt(textOfConstant));
+            else if (ctype == CType.LONG)
+                return new Const(Long.parseLong(textOfConstant));
+            else if (ctype == CType.FLOAT)
+                return new Const(Float.parseFloat(textOfConstant));
+            else
+                return new Const(Double.parseDouble(textOfConstant));
+
+        } catch (NumberFormatException err) {
+            throw fail(ctx, "const", "'" + textOfConstant + "' cannot be parsed as " + ctype);
+        }
     }
 
     /*

@@ -6,12 +6,13 @@ package net.inet_lab.c4wa.autogen.parser;
 // https://github.com/antlr/grammars-v4/blob/master/c/C.g4
 
 module
-    : global_decl* func+ EOF
+    : global_decl+ EOF
     ;
 
 global_decl
-    : EXTERN? variable_decl ';'                            # global_decl_variable
-    | variable_decl '(' (type_list? | ELLIPSIS) ')' ';'    # global_decl_function
+    : (STATIC|EXTERN)? CONST? variable_decl ('=' CONSTANT)? ';'                            # global_decl_variable
+    | variable_decl '(' ((variable_type (',' variable_type))? | ELLIPSIS) ')' ';'    # global_decl_function
+    | EXTERN? variable_decl '(' param_list? ')' composite_block # function_definition
     ;
 
 variable_decl : variable_type ID;
@@ -34,11 +35,11 @@ float_primitive : DOUBLE | FLOAT;
 
 void_primitive: VOID;
 
-func : EXTERN? variable_decl '(' param_list? ')' composite_block;
+// function_definition : EXTERN? variable_decl '(' param_list? ')' composite_block;
 
 param_list : variable_decl (',' variable_decl);
 
-type_list : variable_type (',' variable_type);
+// type_list : variable_type (',' variable_type);
 
 composite_block: '{' element* '}';
 
@@ -87,14 +88,14 @@ expression
     | expression BINARY_OP2 expression    # expression_binary_op2
     | expression BINARY_OP1 expression    # expression_binary_op1
     | expression BINARY_OP0 expression    # expression_binary_op0
-    | CONST                         # expression_const
+    | CONSTANT                         # expression_const
     | ID                            # expression_variable
     | STRING                        # expression_string
     | function_call                 # expression_function_call
     ;
 
 
-CONST : Sign? Constant;
+CONSTANT : Sign? Constant;
 //BINARY_OP2 : '/'|'%'|'*';
 BINARY_OP2 : Star | '/' | '%'; // somehow directly inserting * isn't working
 Star : '*';
@@ -111,6 +112,8 @@ CHAR   :  'char';
 STRUCT :  'struct';
 RETURN :  'return';
 EXTERN :  'extern';
+STATIC :  'static';
+CONST  :  'const';
 DO     :  'do';
 WHILE  :  'while';
 IF     :  'if';

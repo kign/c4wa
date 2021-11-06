@@ -38,24 +38,4 @@ public class FunctionDecl implements Partial {
 
         return new Func(attributes);
     }
-
-    /*
-    public String wat_TBR() {
-        StringBuilder b = new StringBuilder();
-
-        b.append("(func $").append(name);
-        if (anytype) {
-            b.append(" (param i32) (param i32)");
-        }
-        else if (params != null) {
-            for (CType c : params)
-                b.append(" (param ").append(c.asNumType()).append(")");
-        }
-        if (returnType != null)
-            b.append("(result ").append(returnType.asNumType()).append(")");
-        b.append(")");
-
-        return b.toString();
-    }
-     */
 }
