@@ -12,6 +12,9 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
     private ModuleEnv moduleEnv;
     final private Deque<BlockEnv> blockStack;
 
+    final private static String CONT_SUFFIX = "_continue";
+    final private static String BREAK_SUFFIX = "_break";
+
     public ParserTreeVisitor() {
         blockStack = new ArrayDeque<>();
     }
@@ -53,12 +56,15 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
         InstructionList(OneInstruction[] instructions) {
             this.instructions = instructions;
         }
+        Instruction[] extract() {
+            return Arrays.stream(instructions).map(x -> x.instruction).toArray(Instruction[]::new);
+        }
     }
 
     static class OneFunction implements Partial {
         final FunctionEnv func;
-        final c4waParser.Big_blockContext code;
-        OneFunction(FunctionEnv func, c4waParser.Big_blockContext code) {
+        final c4waParser.Composite_blockContext code;
+        OneFunction(FunctionEnv func, c4waParser.Composite_blockContext code) {
             this.func = func;
             this.code = code;
         }
@@ -68,10 +74,12 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
         int offset;
         final int start_offset;
         final List<Instruction> prefix;
+        String block_id;
         BlockEnv (int offset) {
             this.start_offset = offset;
             this.offset = offset;
             prefix = new ArrayList<>();
+            block_id = null;
         }
         int getOffset() {
             int res = offset;
@@ -81,6 +89,9 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
         void reset() {
             offset = this.start_offset;
             prefix.clear();
+        }
+        void markAsLoop(String block_id) {
+            this.block_id = block_id;
         }
     }
 
@@ -129,7 +140,8 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
 
         Arrays.stream(paramList.paramList).forEach(x -> functionEnv.registerVar(x.name, x.type, true));
 
-        return new OneFunction(functionEnv, ctx.big_block());
+        functionEnv.close ();
+        return new OneFunction(functionEnv, ctx.composite_block());
     }
 
     @Override
@@ -149,8 +161,8 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public InstructionList visitBlock(c4waParser.BlockContext ctx) {
-        if (ctx.big_block() != null)
-            return (InstructionList) visit(ctx.big_block());
+        if (ctx.composite_block() != null)
+            return (InstructionList) visit(ctx.composite_block());
         else {
             OneInstruction[] instructions = new OneInstruction[1];
             instructions[0] = (OneInstruction) visit(ctx.element());
@@ -159,8 +171,17 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
-    public InstructionList visitBig_block(c4waParser.Big_blockContext ctx) {
+    public InstructionList visitComposite_block(c4waParser.Composite_blockContext ctx) {
         BlockEnv blockEnv = new BlockEnv(functionEnv.getMemOffset());
+
+        // A hack obviously, but that's the best way I could find to meaningfully pass the knowledge
+        // Basically we must know if this block is one associated with
+        var parent = ctx.getParent();
+        if (parent instanceof c4waParser.BlockContext)
+            parent = parent.getParent();
+        if (parent instanceof c4waParser.Element_do_whileContext)
+            blockEnv.markAsLoop(functionEnv.getBlock());
+
         blockStack.push(blockEnv);
         List<OneInstruction> res = new ArrayList<>();
 
@@ -169,7 +190,8 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
             idx ++;
             Partial parsedElem = visit(blockElem);
             if (parsedElem == null)
-                throw fail(ctx, "block", "Instruction number " + idx + " was not parsed");
+                throw fail(ctx, "block", "Instruction number " + idx + " was not parsed" +
+                        ((idx == 1)?"":" (last parsed was '" + ctx.element(idx - 2).getText() + "')"));
             for (var i : blockEnv.prefix)
                 res.add(new OneInstruction(i, null));
             blockEnv.reset();
@@ -181,6 +203,33 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
 
         blockStack.pop();
         return new InstructionList(res.toArray(OneInstruction[]::new));
+    }
+
+    @Override
+    public OneInstruction visitElement_do_while(c4waParser.Element_do_whileContext ctx) {
+        OneInstruction condition = (OneInstruction) visit(ctx.expression());
+
+        String block_id = functionEnv.pushBlock();
+        String block_id_cont = block_id + CONT_SUFFIX;
+        String block_id_break = block_id + BREAK_SUFFIX;
+
+        InstructionList body = (InstructionList) visit(ctx.block());
+        functionEnv.popBlock();
+
+        if (condition.type == null)
+            throw fail(ctx, "do_while", "Expression '" + ctx.expression().getText() + "' has no type (any time would have worked in WASM as 'boolean', but there is none)");
+
+        List<Instruction> body_elems = new ArrayList<>();
+        for(var i : body.instructions)
+            body_elems.add(i.instruction);
+
+        body_elems.add(new BrIf(block_id_cont, condition.instruction));
+        return new OneInstruction(new Loop(block_id_cont, body_elems.toArray(Instruction[]::new)), null);
+    }
+
+    @Override
+    public NoOp visitElement_empty(c4waParser.Element_emptyContext ctx) {
+        return new NoOp();
     }
 
     @Override
@@ -246,6 +295,9 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
         VariableDecl variableDecl = (VariableDecl) visit(ctx.variable_decl());
         OneInstruction rhs = (OneInstruction) visit(ctx.expression());
 
+        if (rhs == null)
+            throw fail(ctx, "init", "RHS was not parsed");
+
         if (rhs.type == null)
             throw fail(ctx,"init", "RHS expression has no type");
 
@@ -286,6 +338,15 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
         for (var v : ctx.ID())
             functionEnv.registerVar(v.getText(), type, false);
         return new NoOp();
+    }
+
+    @Override
+    public OneInstruction visitExpression_binary_op0(c4waParser.Expression_binary_op0Context ctx) {
+        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
+        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+        String op = ctx.BINARY_OP0().getText();
+
+        return binary_op(ctx, arg1, arg2, op);
     }
 
     @Override
@@ -331,8 +392,11 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
             numType = NumType.F64;
             resType = CType.DOUBLE;
         } else
-            throw fail(ctx, "binary operation", "Types " + arg1.type + " and " + arg2.type +
-                    " are incompatible for binary operation <" + op + ">");
+            throw fail(ctx, "binary operation '" + op + "' ", "Types " + arg1.type + " and " + arg2.type +
+                    " are incompatible");
+
+        if (arg1.type.is_signed() != arg2.type.is_signed())
+            throw fail(ctx, "binary operation '" + op + "'", "cannot combined signed and unsigned types");
 
         Instruction res;
         if ("+".equals(op))
@@ -341,6 +405,9 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
             res = new Sub(numType, arg1.instruction, arg2.instruction);
         else if ("*".equals(op))
             res = new Mul(numType, arg1.instruction, arg2.instruction);
+        else if (List.of("<", "<=", ">", ">=").contains(op))
+            res = new Cmp(numType, op.charAt(0) == '<', op.length() == 2, arg1.type.is_signed(),
+                    arg1.instruction, arg2.instruction);
         else
             throw fail(ctx, "binary operation", "Instruction " + op + " not recognized");
 

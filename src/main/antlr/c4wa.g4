@@ -34,21 +34,21 @@ float_primitive : DOUBLE | FLOAT;
 
 void_primitive: VOID;
 
-func : EXTERN? variable_decl '(' param_list? ')' big_block;
+func : EXTERN? variable_decl '(' param_list? ')' composite_block;
 
 param_list : variable_decl (',' variable_decl);
 
 type_list : variable_type (',' variable_type);
 
-big_block: '{' element* '}';
+composite_block: '{' element* '}';
 
-block : big_block | element;
+block : composite_block | element;
 
 element
     : ';'                                   # element_empty
     | statement ';'                         # element_statement
     | ASM                                   # element_asm
-    | DO block WHILE '(' expression ')'     # element_do_while
+    | DO block WHILE '(' expression ')' ';' # element_do_while
     | IF '(' expression ')' block           # element_if
     | IF '(' expression ')' block ELSE block # element_if_else
     ;
@@ -86,6 +86,7 @@ expression
     : '-' expression # expression_unary_op
     | expression BINARY_OP2 expression    # expression_binary_op2
     | expression BINARY_OP1 expression    # expression_binary_op1
+    | expression BINARY_OP0 expression    # expression_binary_op0
     | CONST                         # expression_const
     | ID                            # expression_variable
     | STRING                        # expression_string
@@ -98,6 +99,7 @@ CONST : Sign? Constant;
 BINARY_OP2 : Star | '/' | '%'; // somehow directly inserting * isn't working
 Star : '*';
 BINARY_OP1 : '+'|'-';
+BINARY_OP0 : '<'|'>'|'<='|'>=';
 PLUS   :  '+';
 MINUS  :  '-';
 ELLIPSIS : '...';
@@ -126,7 +128,8 @@ STRING
 
 fragment
 Constant
-    :   DecimalConstant
+    :   '0'
+    |   DecimalConstant
     |   DecimalFloatingConstant
     ;
 

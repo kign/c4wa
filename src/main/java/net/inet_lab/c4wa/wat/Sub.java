@@ -1,6 +1,6 @@
 package net.inet_lab.c4wa.wat;
 
-public class Sub extends Instruction_cls2 {
+public class Sub extends Instruction_Add {
     final public NumType numType;
 
     public Sub(NumType numType, Instruction arg1, Instruction arg2) {

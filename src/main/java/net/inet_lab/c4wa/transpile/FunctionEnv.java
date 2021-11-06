@@ -13,6 +13,7 @@ public class FunctionEnv implements Partial {
     final List<String> locals;
     final boolean export;
     final Map<String, CType> varType;
+    final Deque<Integer> blocks;
 
     Instruction[] instructions;
     int mem_offset;
@@ -25,6 +26,15 @@ public class FunctionEnv implements Partial {
         this.export = export;
         this.mem_offset = 0;
         varType = new HashMap<>();
+        blocks = new ArrayDeque<>();
+
+        blocks.push(0);
+    }
+
+    public void close () {
+        String msg = "Function " + name + " cannot be closed: ";
+        if (blocks.size() != 1)
+            throw new RuntimeException(msg + "blocks.size() = " + blocks.size());
     }
 
     public void setMemOffset(int offset) {
@@ -55,6 +65,29 @@ public class FunctionEnv implements Partial {
         this.instructions = instructions;
     }
 
+    public String pushBlock() {
+        int id = blocks.removeLast();
+        blocks.addLast(1 + id);
+        blocks.addLast(0);
+        return getBlock();
+    }
+
+    public String getBlock() {
+        StringBuilder b = new StringBuilder();
+
+        b.append("@block");
+        int idx = 0;
+        for (int x : blocks)
+            if (++ idx < blocks.size())
+                b.append('_').append(x);
+
+        return b.toString();
+    }
+
+    public void popBlock () {
+        blocks.removeLast ();
+    }
+
     public void generateWat(final PrintStream out) throws IOException {
         out.print("(func " + "$" + name);
 
@@ -77,23 +110,4 @@ public class FunctionEnv implements Partial {
 
         out.println(")");
     }
-
-    public String toString() {
-        StringBuilder b = new StringBuilder();
-
-        if (export)
-            b.append("export ");
-
-        b.append(returnType).append(" ").append(name).append("(");
-        for (int i = 0; i < params.size(); i ++) {
-            if (i > 0)
-                b.append(", ");
-            b.append(params.get(i));
-        }
-
-        b.append(")");
-
-        return b.toString();
-    }
-
 }

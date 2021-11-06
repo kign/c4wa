@@ -1,6 +1,6 @@
 package net.inet_lab.c4wa.wat;
 
-public class Mul extends Instruction_cls2 {
+public class Mul extends Instruction_Add {
     final public NumType numType;
 
     public Mul(NumType numType, Instruction arg1, Instruction arg2) {

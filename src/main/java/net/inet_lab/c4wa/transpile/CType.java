@@ -7,6 +7,10 @@ abstract public class CType implements Partial {
     static public CType SHORT = getPrimitive(PrimitiveType.SHORT);
     static public CType INT = getPrimitive(PrimitiveType.INT);
     static public CType LONG = getPrimitive(PrimitiveType.LONG);
+    static public CType UNSIGNED_CHAR = getPrimitiveUnsigned(PrimitiveType.CHAR);
+    static public CType UNSIGNED_SHORT = getPrimitiveUnsigned(PrimitiveType.SHORT);
+    static public CType UNSIGNED_INT = getPrimitiveUnsigned(PrimitiveType.INT);
+    static public CType UNSIGNED_LONG = getPrimitiveUnsigned(PrimitiveType.LONG);
     static public CType FLOAT = getPrimitive(PrimitiveType.FLOAT);
     static public CType DOUBLE = getPrimitive(PrimitiveType.DOUBLE);
 
@@ -15,11 +19,21 @@ abstract public class CType implements Partial {
     }
 
     private static CType getPrimitive(PrimitiveType primitiveType) {
-        return new Primitive(primitiveType);
+        return new Primitive(primitiveType, true);
+    }
+
+    private static CType getPrimitiveUnsigned(PrimitiveType primitiveType) {
+        return new Primitive(primitiveType, false);
     }
 
     public static class Primitive extends CType {
         final PrimitiveType primitiveType;
+        final boolean signed;
+
+        @Override
+        public boolean is_signed() {
+            return signed;
+        }
 
         @Override
         public boolean is_i32() {
@@ -43,7 +57,9 @@ abstract public class CType implements Partial {
 
         @Override
         public boolean isValidRHS(CType rhs) {
-            return rhs instanceof Primitive && ((Primitive)rhs).primitiveType == primitiveType;
+            return rhs instanceof Primitive &&
+                    ((Primitive)rhs).primitiveType == primitiveType &&
+                    ((Primitive) rhs).signed == signed;
         }
 
         @Override
@@ -60,13 +76,14 @@ abstract public class CType implements Partial {
                 throw new RuntimeException("Invalid type " + this);
         }
 
-        public Primitive(PrimitiveType primitiveType) {
+        public Primitive(PrimitiveType primitiveType, boolean signed) {
             this.primitiveType = primitiveType;
+            this.signed = signed;
         }
 
         @Override
         public String toString() {
-            return primitiveType.toString();
+            return (signed?"":"UNSIGNED ") + primitiveType.toString();
         }
     }
     public boolean is_i32() { return false; }
@@ -75,6 +92,7 @@ abstract public class CType implements Partial {
     public boolean is_f64() { return false; }
     public boolean isValidRHS(CType rhs) { return false; }
     public boolean is_ptr() { return false; }
+    public boolean is_signed() { return true; }
     abstract public NumType asNumType();
 
     abstract public String toString();

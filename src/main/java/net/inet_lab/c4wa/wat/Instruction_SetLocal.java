@@ -1,10 +1,10 @@
 package net.inet_lab.c4wa.wat;
 
-public class Instruction_cls4 extends Instruction {
+public class Instruction_SetLocal extends Instruction {
     public final String ref;
     final public Instruction arg;
 
-    public Instruction_cls4(InstructionType type, String ref, Instruction arg) {
+    public Instruction_SetLocal(InstructionType type, String ref, Instruction arg) {
         super(type);
         this.ref = ref;
         this.arg = arg;
