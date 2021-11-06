@@ -19,13 +19,29 @@ public enum InstructionName implements InstructionType {
     GET_LOCAL ("get_local"),
     SET_LOCAL ("set_local"),
     TEE_LOCAL ("tee_local"),
+    GET_GLOBAL ("global_get"),
+    SET_GLOBAL ("global_set"),
     CALL ("call"),
     STORE ("store"),
     CONST ("const"),
     LOOP ("loop"),
     BLOCK ("block"),
     BR_IF ("br_if"),
-    RETURN ("return");
+    RETURN ("return"),
+
+    EXPORT ("export"),
+    IMPORT ("import"),
+    LOCAL ("local"),
+    GLOBAL ("global"),
+    FUNC ("func"),
+    MODULE ("module"),
+    RESULT ("result"),
+    PARAM ("param"),
+    MEMORY ("memory"),
+    DATA ("data"),
+    MUT ("mut"),
+
+    SPECIAL("<special>"); // fake
 
     private final String name;
 

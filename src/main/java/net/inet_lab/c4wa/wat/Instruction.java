@@ -7,5 +7,9 @@ public abstract class Instruction {
         this.type = type;
     }
 
+    public String toStringPretty(int indent) {
+        return toString();
+    }
+
     abstract public String toString();
 }

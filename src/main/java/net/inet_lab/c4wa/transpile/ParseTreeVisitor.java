@@ -7,7 +7,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.util.*;
 
-public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
+public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     private FunctionEnv functionEnv;
     private ModuleEnv moduleEnv;
     final private Deque<BlockEnv> blockStack;
@@ -15,7 +15,7 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
     final private static String CONT_SUFFIX = "_continue";
     final private static String BREAK_SUFFIX = "_break";
 
-    public ParserTreeVisitor() {
+    public ParseTreeVisitor() {
         blockStack = new ArrayDeque<>();
     }
 
@@ -113,6 +113,7 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
             functionEnv.setMemOffset(mem_offset);
 
             functionEnv.addInstructions(Arrays.stream(((InstructionList) visit(oneFunc.code)).instructions).map(x -> x.instruction).toArray(Instruction[]::new));
+            functionEnv.close();
             moduleEnv.addFunction(functionEnv);
             mem_offset = functionEnv.getMemOffset();
         }
@@ -140,7 +141,6 @@ public class ParserTreeVisitor extends c4waBaseVisitor<Partial> {
 
         Arrays.stream(paramList.paramList).forEach(x -> functionEnv.registerVar(x.name, x.type, true));
 
-        functionEnv.close ();
         return new OneFunction(functionEnv, ctx.composite_block());
     }
 

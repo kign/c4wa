@@ -1,9 +1,8 @@
 package net.inet_lab.c4wa.wat;
 
-// get_local
-abstract public class Instruction_cls1 extends Instruction {
+abstract public class Instruction_GetLocal extends Instruction {
     public final String ref;
-    public Instruction_cls1(InstructionType type, String ref) {
+    public Instruction_GetLocal(InstructionType type, String ref) {
         super(type);
         this.ref = ref;
     }

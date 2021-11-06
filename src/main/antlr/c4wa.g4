@@ -10,8 +10,8 @@ module
     ;
 
 global_decl
-    : variable_decl ';'                                            # global_decl_variable
-    | EXTERN? variable_decl '(' (type_list? | ELLIPSIS) ')' ';'    # global_decl_function
+    : EXTERN? variable_decl ';'                            # global_decl_variable
+    | variable_decl '(' (type_list? | ELLIPSIS) ')' ';'    # global_decl_function
     ;
 
 variable_decl : variable_type ID;

@@ -1,5 +1,10 @@
 package net.inet_lab.c4wa.transpile;
 
+import net.inet_lab.c4wa.wat.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class FunctionDecl implements Partial {
     final String name;
     final CType returnType;
@@ -15,7 +20,27 @@ public class FunctionDecl implements Partial {
         this.imported = imported;
     }
 
-    public String wat() {
+    public Func wat() {
+        List<Instruction> attributes = new ArrayList<>();
+        attributes.add(new Special(name));
+
+        if (anytype) {
+            attributes.add(new Param(NumType.I32));
+            attributes.add(new Param(NumType.I32));
+        }
+        else if (params != null) {
+            for (CType c : params)
+                attributes.add(new Param(c.asNumType()));
+        }
+
+        if (returnType != null)
+            attributes.add(new Result(returnType.asNumType()));
+
+        return new Func(attributes);
+    }
+
+    /*
+    public String wat_TBR() {
         StringBuilder b = new StringBuilder();
 
         b.append("(func $").append(name);
@@ -32,4 +57,5 @@ public class FunctionDecl implements Partial {
 
         return b.toString();
     }
+     */
 }

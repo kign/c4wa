@@ -9,7 +9,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import net.inet_lab.c4wa.autogen.parser.c4waLexer;
 import net.inet_lab.c4wa.autogen.parser.c4waParser;
 
-import net.inet_lab.c4wa.transpile.ParserTreeVisitor;
+import net.inet_lab.c4wa.transpile.ParseTreeVisitor;
 import net.inet_lab.c4wa.transpile.ModuleEnv;
 
 public class Main {
@@ -25,10 +25,10 @@ public class Main {
         ParseTree tree = parser.module();
         //System.out.println("Parser returned \n" + tree.toStringTree(parser));
 
-        ParserTreeVisitor v = new ParserTreeVisitor();
+        ParseTreeVisitor v = new ParseTreeVisitor();
 
         ModuleEnv result = (ModuleEnv)v.visit(tree);
 
-        result.generateWat(System.out);
+        System.out.println(result.wat().toStringPretty(2));
     }
 }

@@ -1,7 +1,8 @@
 package net.inet_lab.c4wa.transpile;
 
-import java.io.IOException;
-import java.io.PrintStream;
+import net.inet_lab.c4wa.wat.*;
+import net.inet_lab.c4wa.wat.Module;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -62,30 +63,21 @@ public class ModuleEnv implements Partial {
         return res;
     }
 
-    public void generateWat(final PrintStream out) throws IOException {
-        out.println("(module ");
+    public Module wat () {
+        List<Instruction> elements = new ArrayList<>();
 
         for (FunctionDecl f : funcDecl.values())
             if (f.imported)
-                out.println("(import \"c4wa\" \"" + f.name + "\" " + f.wat() + ")");
+                elements.add(new Import("c4wa", f.name, f.wat()));
 
-        out.println("(memory (export \"memory\") 1)");
+        elements.add(new Memory("memory", 1));
 
-        if (data_len > 0) {
-            out.print("(data (i32.const " + DATA_OFFSET + ") \"");
-            for (int i = 0; i < data_len; i ++) {
-                byte b = data[i];
-                if (0x20 <= b && b <= 0x7e && b != '\\')
-                    out.print((char)b);
-                else
-                    out.printf("\\%02X", b);
-            }
-            out.println("\")");
-        }
+        if (data_len > 0)
+            elements.add(new Data(DATA_OFFSET, data, data_len));
 
-        for (FunctionEnv f: functions)
-            f.generateWat(out);
+        for (FunctionEnv f : functions)
+            elements.add(f.wat());
 
-        out.println(")");
+        return new Module(elements);
     }
 }

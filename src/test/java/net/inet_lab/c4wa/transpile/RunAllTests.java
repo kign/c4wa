@@ -41,11 +41,11 @@ public class RunAllTests {
                 c4waLexer lexer = new c4waLexer(CharStreams.fromString(programText));
                 c4waParser parser = new c4waParser(new CommonTokenStream(lexer));
                 ParseTree tree = parser.module();
-                ParserTreeVisitor v = new ParserTreeVisitor();
+                ParseTreeVisitor v = new ParseTreeVisitor();
                 ModuleEnv result = (ModuleEnv) v.visit(tree);
 
                 PrintStream out = new PrintStream(Paths.get("tests", "wat", fname.replace(".c", ".wat")).toFile());
-                result.generateWat(out);
+                out.println(result.wat().toStringPretty(2));
             }));
         }
 

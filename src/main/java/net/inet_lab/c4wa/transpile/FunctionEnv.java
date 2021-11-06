@@ -1,9 +1,7 @@
 package net.inet_lab.c4wa.transpile;
 
-import net.inet_lab.c4wa.wat.Instruction;
+import net.inet_lab.c4wa.wat.*;
 
-import java.io.IOException;
-import java.io.PrintStream;
 import java.util.*;
 
 public class FunctionEnv implements Partial {
@@ -21,7 +19,7 @@ public class FunctionEnv implements Partial {
     public FunctionEnv (String name, CType returnType, boolean export) {
         this.name = name;
         this.returnType = returnType;
-        this.params = new ArrayList<>();;
+        this.params = new ArrayList<>();
         this.locals = new ArrayList<>();
         this.export = export;
         this.mem_offset = 0;
@@ -29,12 +27,6 @@ public class FunctionEnv implements Partial {
         blocks = new ArrayDeque<>();
 
         blocks.push(0);
-    }
-
-    public void close () {
-        String msg = "Function " + name + " cannot be closed: ";
-        if (blocks.size() != 1)
-            throw new RuntimeException(msg + "blocks.size() = " + blocks.size());
     }
 
     public void setMemOffset(int offset) {
@@ -88,26 +80,32 @@ public class FunctionEnv implements Partial {
         blocks.removeLast ();
     }
 
-    public void generateWat(final PrintStream out) throws IOException {
-        out.print("(func " + "$" + name);
+    public void close() {
+        String msg = "Function " + name + " cannot be closed: ";
+        if (blocks.size() != 1)
+            throw new RuntimeException(msg + "blocks.size() = " + blocks.size());
+
+    }
+
+    public Func wat() {
+        List<Instruction> attributes = new ArrayList<>();
+        List<Instruction> elements = new ArrayList<>();
+
+        attributes.add(new Special(name));
 
         if (export)
-            out.print(" (export \"" + name + "\")");
+            attributes.add(new Export(name));
 
-        for (String p: params)
-            out.print(" (param " + "$" + p + " " + varType.get(p).asNumType() + ")");
+        for (String p : params)
+            attributes.add(new Param(p, varType.get(p).asNumType()));
 
         if (returnType != null)
-            out.print(" (result " + returnType.asNumType() + ")");
-
-        out.println();
+            attributes.add(new Result(returnType.asNumType()));
 
         for (String v : locals)
-            out.println("(local $" + v + " " + varType.get(v).asNumType() + ")");
+            elements.add(new Local(v, varType.get(v).asNumType()));
 
-        for (Instruction e: instructions)
-            out.println(e);
-
-        out.println(")");
+        elements.addAll(Arrays.asList(instructions));
+        return new Func(attributes, elements);
     }
 }

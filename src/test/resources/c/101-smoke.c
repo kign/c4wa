@@ -1,4 +1,4 @@
-extern void printf(...);
+void printf(...);
 extern void main() {
     int a, b, c;
     a = 29; b = 11;

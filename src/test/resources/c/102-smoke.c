@@ -1,4 +1,4 @@
-extern void printf(...);
+void printf(...);
 extern void main() {
     int sum = 0;
     int i = 1;
