@@ -35,11 +35,7 @@ float_primitive : DOUBLE | FLOAT;
 
 void_primitive: VOID;
 
-// function_definition : EXTERN? variable_decl '(' param_list? ')' composite_block;
-
-param_list : variable_decl (',' variable_decl);
-
-// type_list : variable_type (',' variable_type);
+param_list : variable_decl (',' variable_decl)*;
 
 composite_block: '{' element* '}';
 
@@ -84,19 +80,20 @@ function_call : ID '(' arg_list? ')' ;
 arg_list: expression (',' expression)*;
 
 expression
-    : '-' expression # expression_unary_op
+    : '-' expression                      # expression_unary_op
+    | '(' expression ')'                  # expression_parentheses
+    | '(' variable_type ')' expression    # expression_cast
     | expression BINARY_OP2 expression    # expression_binary_op2
     | expression BINARY_OP1 expression    # expression_binary_op1
     | expression BINARY_OP0 expression    # expression_binary_op0
-    | CONSTANT                         # expression_const
-    | ID                            # expression_variable
-    | STRING                        # expression_string
-    | function_call                 # expression_function_call
+    | CONSTANT                            # expression_const
+    | ID                                  # expression_variable
+    | STRING                              # expression_string
+    | function_call                       # expression_function_call
     ;
 
 
 CONSTANT : Sign? Constant;
-//BINARY_OP2 : '/'|'%'|'*';
 BINARY_OP2 : Star | '/' | '%'; // somehow directly inserting * isn't working
 Star : '*';
 BINARY_OP1 : '+'|'-';

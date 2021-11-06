@@ -274,8 +274,17 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 idx ++;
                 if (arg.type == null)
                     throw fail(ctx, "function call", "Argument number " + idx + " doesn't have type");
-                blockEnv.prefix.add(new Store(arg.type.asNumType(), new Const(blockEnv.getOffset()), arg.instruction));
+
+                Const constOffset = new Const(blockEnv.getOffset());
+                if (arg.type.is_32()) {
+                    NumType t64 = arg.type.is_int()? NumType.I64 : NumType.F64;
+                    blockEnv.prefix.add(new Store(t64, constOffset,
+                            new GenericCast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.instruction)));
+                }
+                else
+                    blockEnv.prefix.add(new Store(arg.type.asNumType(), constOffset, arg.instruction));
             }
+
             functionEnv.setMemOffset(blockEnv.offset);
             call_args = new Instruction[2];
             call_args[0] = new Const(offset);
@@ -310,7 +319,17 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitReturn_expression(c4waParser.Return_expressionContext ctx) {
-        return new OneInstruction(new Return(((OneInstruction)visit(ctx.expression())).instruction), null);
+        OneInstruction expression = (OneInstruction) visit(ctx.expression());
+        if (expression.type == null)
+            throw fail(ctx, "return", "expression has no type");
+        if (functionEnv.returnType == null)
+            throw fail(ctx, "return", "Function '" + functionEnv.name + "' doesn't return anything");
+
+        if (!functionEnv.returnType.isValidRHS(expression.type))
+            throw fail(ctx, "return", "Cannot return type '" + expression.type +
+                    "' from a functiоn which is expected to return '" + functionEnv.returnType + "'");
+
+        return new OneInstruction(new Return(expression.instruction), null);
     }
 
     @Override
@@ -323,6 +342,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         if (rhs.type == null)
             throw fail(ctx,"init", "RHS expression has no type");
+
+        if (variableDecl.type.is_i64() && rhs.type.is_i32() && rhs.instruction instanceof Const) {
+            rhs = new OneInstruction(new Const((((Const) rhs.instruction).longValue)), variableDecl.type);
+        }
+        else if (variableDecl.type.is_f64() && rhs.type.is_f32() && rhs.instruction instanceof Const) {
+            rhs = new OneInstruction(new Const((((Const) rhs.instruction).doubleValue)), variableDecl.type);
+        }
 
         if (!variableDecl.type.isValidRHS(rhs.type))
             throw fail(ctx,"init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + variableDecl.type);
@@ -400,6 +426,20 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (arg2.type == null)
             throw fail(ctx, "Expression", "2-nd arg has no type");
 
+
+        if (arg1.type.is_i64() && arg2.type.is_i32() && arg2.instruction instanceof Const) {
+            arg2 = new OneInstruction(new Const((((Const) arg2.instruction).longValue)), arg1.type);
+        }
+        else if (arg2.type.is_i64() && arg1.type.is_i32() && arg1.instruction instanceof Const) {
+            arg1 = new OneInstruction(new Const((((Const) arg1.instruction).longValue)), arg2.type);
+        }
+        else if (arg1.type.is_f64() && arg2.type.is_f32() && arg2.instruction instanceof Const) {
+            arg2 = new OneInstruction(new Const((((Const) arg2.instruction).doubleValue)), arg1.type);
+        }
+        else if (arg2.type.is_f64() && arg1.type.is_f32() && arg1.instruction instanceof Const) {
+            arg1 = new OneInstruction(new Const((((Const) arg1.instruction).doubleValue)), arg2.type);
+        }
+
         NumType numType;
         CType resType;
         if (arg1.type.is_i32() && arg2.type.is_i32()) {
@@ -437,6 +477,21 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return new OneInstruction(res, resType);
     }
 
+    @Override
+    public OneInstruction visitExpression_cast(c4waParser.Expression_castContext ctx) {
+        OneInstruction exp = (OneInstruction) visit(ctx.expression());
+        CType castToType = (CType) visit(ctx.variable_type());
+
+        boolean signed;
+        if (exp.type.is_int())
+            signed = exp.type.is_signed();
+        else if (castToType.is_int())
+            signed = castToType.is_signed();
+        else
+            signed = true;
+
+        return new OneInstruction(new GenericCast(exp.type.asNumType(), castToType.asNumType(), signed, exp.instruction), castToType);
+    }
 
     @Override
     public OneInstruction visitExpression_variable(c4waParser.Expression_variableContext ctx) {

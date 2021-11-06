@@ -84,13 +84,29 @@ async function run_file(fname, options) {
 
     let wasm_mem;
 
-    const read_i32 = function(mem, offset) {
+    const read_i32 = function (mem, offset) {
         let val = 0;
 
-        for (let i = 3; i >= 0; i --)
+        for (let i = 3; i >= 0; i--)
             val = 256 * val + mem[offset + i];
         if (mem[offset + 3] >= 128)
-            val -= 2**32;
+            val -= 2 ** 32;
+        return val;
+    }
+
+    const read_i64 = function (mem, offset) {
+        let val = 0n;
+
+        if (mem[offset + 7] >= 128) {
+            for (let i = 7; i >= 0; i--)
+                val = 256n * val + BigInt(255 ^ mem[offset + i]);
+            val = -val - 1n;
+        }
+        else {
+            for (let i = 7; i >= 0; i--)
+                val = 256n * val + BigInt(mem[offset + i]);
+        }
+        //console.log(offset, mem.slice(offset, offset + 7), val);
         return val;
     }
 
@@ -117,7 +133,7 @@ async function run_file(fname, options) {
         //console.log(mem.slice(offset, offset + 8 * argc));
 
         const p_fmt = read_i32(mem, offset);
-        const fmt = read_str(mem, p_fmt);
+        const fmt = read_str(mem, p_fmt).split('');
         //console.log("String address =", p_fmt);
         //console.log("Format =", fmt);
 
@@ -134,10 +150,16 @@ async function run_file(fname, options) {
                     return;
                 }
 
-                // TODO: ignoring LONG and FLOAT for mow
                 offset += 8;
-                if ('cdxu'.includes(fmt[i]))
-                    args.push(read_i32(mem, offset))
+                if ('cdxu'.includes(fmt[i])) {
+                    const r = read_i64(mem, offset);
+                    if (-(2n ** 53n) < r && r < 2n**53n)
+                        args.push(parseInt(r.toString()));
+                    else {
+                        args.push(r.toString());
+                        fmt[i] = 's';
+                    }
+                }
                 else if ('f'.includes(fmt[i]))
                     args.push(read_f64(mem, offset))
                 else {
@@ -152,7 +174,7 @@ async function run_file(fname, options) {
                 "substitutions, passed", argc - 1, "arguments");
             return;
         }
-        const res = printf(fmt.replace('\\n', '\n'), ...args);
+        const res = printf(fmt.join('').replace('\\n', '\n'), ...args);
         // process.stdout.write();
         if (target.write)
             target.write(res);

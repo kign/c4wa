@@ -1,9 +1,9 @@
 package net.inet_lab.c4wa.wat;
 
 public class Const extends Instruction {
-    final NumType numType;
-    final long longValue;
-    final double doubleValue;
+    public final NumType numType;
+    public final long longValue;
+    public final double doubleValue;
 
     public Const(int value) {
         super(new InstructionWithNumPrefix(NumType.I32, InstructionName.CONST));

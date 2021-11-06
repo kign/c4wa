@@ -88,6 +88,9 @@ abstract public class CType implements Partial {
     }
     public boolean is_i32() { return false; }
     public boolean is_i64() { return false; }
+    public boolean is_int() { return is_i32() || is_i64(); }
+    public boolean is_32()  { return is_i32() || is_f32(); }
+    public boolean is_64()  { return is_i64() || is_f64(); }
     public boolean is_f32() { return false; }
     public boolean is_f64() { return false; }
     public boolean isValidRHS(CType rhs) { return false; }
