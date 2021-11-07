@@ -5,6 +5,7 @@ import net.inet_lab.c4wa.autogen.parser.c4waParser;
 import net.inet_lab.c4wa.wat.*;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.RuleContext;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.*;
 
@@ -189,6 +190,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         else {
             OneInstruction[] instructions = new OneInstruction[1];
             instructions[0] = (OneInstruction) visit(ctx.element());
+
             return new InstructionList(instructions);
         }
     }
@@ -248,6 +250,41 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         body_elems.add(new BrIf(block_id_cont, condition.instruction));
         return new OneInstruction(new Loop(block_id_cont, body_elems.toArray(Instruction[]::new)), null);
+    }
+
+    @Override
+    public OneInstruction visitElement_if(c4waParser.Element_ifContext ctx) {
+        OneInstruction condition = (OneInstruction) visit(ctx.expression());
+        InstructionList thenList = (InstructionList) visit(ctx.block());
+
+        return if_then_else(ctx, condition, thenList, null);
+    }
+
+    @Override
+    public OneInstruction visitElement_if_else(c4waParser.Element_if_elseContext ctx) {
+        OneInstruction condition = (OneInstruction) visit(ctx.expression());
+        InstructionList thenList = (InstructionList) visit(ctx.block(0));
+        InstructionList elseList = (InstructionList) visit(ctx.block(1));
+
+        return if_then_else(ctx, condition, thenList, elseList);
+    }
+
+    private OneInstruction if_then_else(ParserRuleContext ctx, OneInstruction condition, InstructionList thenList,
+                                        InstructionList elseList) {
+        if (condition.type == null)
+            throw fail(ctx, "if...then", "condition type void isn't allowed");
+
+        CType resType = (thenList.instructions.length == 1 &&
+                            elseList != null &&
+                            elseList.instructions.length == 1 &&
+                            thenList.instructions[0].type != null &&
+                            elseList.instructions[0].type != null &&
+                            thenList.instructions[0].type.same(elseList.instructions[0].type))
+                ? thenList.instructions[0].type
+                : null;
+
+        return new OneInstruction(new IfThenElse(condition.instruction, thenList.extract(), (elseList == null)?null:elseList.extract()),
+                resType);
     }
 
     @Override
@@ -359,7 +396,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
-    public InstructionList visitSimple_assignment(c4waParser.Simple_assignmentContext ctx) {
+    public OneInstruction visitSimple_assignment(c4waParser.Simple_assignmentContext ctx) {
         OneInstruction rhs = (OneInstruction) visit(ctx.expression());
 
         if (rhs.type == null)
@@ -367,18 +404,49 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         List<OneInstruction> assignments = new ArrayList<>();
 
-        for (var v : ctx.ID()) {
-            String name = v.getText();
-            CType type = functionEnv.varType.get(name);
-            if (type == null)
-                throw fail(ctx, "assignment", "Variable '" + name + "' is not defined");
-            if (!type.isValidRHS(rhs.type))
-                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + type);
+        int iGlobal = -1;
+        String[] names = ctx.ID().stream().map(ParseTree::getText).toArray(String[]::new);
 
-            assignments.add(new OneInstruction(new SetLocal(name, rhs.instruction), null));
+        for (int i = 0; i < names.length; i ++) {
+            CType type = functionEnv.varType.get(names[i]);
+            if (type == null) {
+                VariableDecl decl = moduleEnv.varDecl.get(names[i]);
+
+                if (decl == null)
+                    throw fail(ctx, "assignment", "Variable '" + names[i] + "' is not defined");
+
+                if (!decl.mutable)
+                    throw fail(ctx, "assignment", "Global variable '" + names[i] + "' is not mutable");
+
+                if (iGlobal >= 0)
+                    throw fail(ctx, "assignment", "Can have at most one global variable in chain assignment; found at least two, '" +
+                            names[iGlobal] + "' and '" + names[i] + "'");
+
+                iGlobal = i;
+
+                type = decl.type;
+            }
+            if (type == null)
+                throw fail(ctx, "assignment", "Variable '" + names[i] + "' is not defined");
+            if (!type.isValidRHS(rhs.type))
+                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable '" + names[i] + "' of type " + type);
         }
 
-        return new InstructionList(assignments.toArray(OneInstruction[]::new));
+        Instruction res = rhs.instruction;
+        for (int i = 0; i < names.length; i++) {
+            if (i == iGlobal)
+                continue;
+
+            if (iGlobal >= 0 || i < names.length - 1)
+                res = new TeeLocal(names[i], res);
+            else
+                res = new SetLocal(names[i], res);
+        }
+
+        if (iGlobal >= 0)
+            res = new SetGlobal(names[iGlobal], res);
+
+        return new OneInstruction(res, null);
     }
 
     @Override
@@ -468,11 +536,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             res = new Sub(numType, arg1.instruction, arg2.instruction);
         else if ("*".equals(op))
             res = new Mul(numType, arg1.instruction, arg2.instruction);
+        else if ("/".equals(op))
+            res = new Div(numType, arg1.type.is_signed(), arg1.instruction, arg2.instruction);
         else if (List.of("<", "<=", ">", ">=").contains(op))
             res = new Cmp(numType, op.charAt(0) == '<', op.length() == 2, arg1.type.is_signed(),
                     arg1.instruction, arg2.instruction);
         else
-            throw fail(ctx, "binary operation", "Instruction " + op + " not recognized");
+            throw fail(ctx, "binary operation", "Instruction '" + op + "' not recognized");
 
         return new OneInstruction(res, resType);
     }
@@ -529,6 +599,16 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return CType.INT;
         else if (ctx.LONG() != null)
             return CType.LONG;
+        else
+            throw fail(ctx, "primitive", "Type " + ctx + " not implemented");
+    }
+
+    @Override
+    public CType visitFloat_primitive(c4waParser.Float_primitiveContext ctx) {
+        if (ctx.FLOAT() != null)
+            return CType.FLOAT;
+        else if (ctx.DOUBLE() != null)
+            return CType.DOUBLE;
         else
             throw fail(ctx, "primitive", "Type " + ctx + " not implemented");
     }

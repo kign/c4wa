@@ -12,6 +12,10 @@ public class GenericCast extends Instruction_Return {
             name = InstructionName.WRAP_I64;
         else if (srcType == NumType.I32 && dstType == NumType.I64)
             name = signed? InstructionName.EXTEND_I32_S: InstructionName.EXTEND_I32_U;
+        else if (srcType == NumType.I32 && (dstType == NumType.F32 || dstType == NumType.F64))
+            name = signed? InstructionName.CONVERT_I32_S: InstructionName.CONVERT_I32_U;
+        else if (srcType == NumType.I64 && (dstType == NumType.F32 || dstType == NumType.F64))
+            name = signed? InstructionName.CONVERT_I64_S: InstructionName.CONVERT_I64_U;
 
         else
             throw new RuntimeException("Cast '" + srcType + "' => '" + dstType + "'" + (signed?"":" (unsigned)") +

@@ -20,14 +20,14 @@ public class Const extends Instruction {
     }
 
     public Const(float value) {
-        super(new InstructionWithNumPrefix(NumType.I64, InstructionName.CONST));
+        super(new InstructionWithNumPrefix(NumType.F32, InstructionName.CONST));
         numType = NumType.F32;
         longValue = 0;
         doubleValue = value;
     }
 
     public Const(double value) {
-        super(new InstructionWithNumPrefix(NumType.I64, InstructionName.CONST));
+        super(new InstructionWithNumPrefix(NumType.F64, InstructionName.CONST));
         numType = NumType.F64;
         longValue = 0;
         doubleValue = value;

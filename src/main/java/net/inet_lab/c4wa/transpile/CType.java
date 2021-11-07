@@ -94,6 +94,7 @@ abstract public class CType implements Partial {
     public boolean is_f32() { return false; }
     public boolean is_f64() { return false; }
     public boolean isValidRHS(CType rhs) { return false; }
+    public boolean same(CType rhs) { return isValidRHS(rhs) && rhs.isValidRHS(this); }
     public boolean is_ptr() { return false; }
     public boolean is_signed() { return true; }
     abstract public NumType asNumType();

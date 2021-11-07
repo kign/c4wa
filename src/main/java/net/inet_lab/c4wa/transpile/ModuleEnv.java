@@ -21,6 +21,7 @@ public class ModuleEnv implements Partial {
     final static int DATA_OFFSET = 1024;
     final static int DATA_LENGTH = 1024;
     final static String GLOBAL_IMPORT_NAME = "c4wa";
+    final static String MEMORY_EXPORT_NAME = "memory";
 
     public ModuleEnv () {
         funcDecl = new HashMap<>();
@@ -80,12 +81,12 @@ public class ModuleEnv implements Partial {
 
         for (FunctionDecl f : funcDecl.values())
             if (f.imported)
-                elements.add(new Import("c4wa", f.name, f.wat()));
+                elements.add(new Import(GLOBAL_IMPORT_NAME, f.name, f.wat()));
 
         for (VariableDecl v : varDecl.values())
             elements.add(v.wat());
 
-        elements.add(new Memory("memory", 1));
+        elements.add(new Memory(MEMORY_EXPORT_NAME, 1));
 
         if (data_len > 0)
             elements.add(new Data(DATA_OFFSET, data, data_len));

@@ -111,8 +111,7 @@ async function run_file(fname, options) {
     }
 
     const read_f64 = function(mem, offset) {
-        console.error("read_f64 not yet implemented");
-        return null;
+        return new Float64Array(mem.slice(offset, offset + 8).buffer)[0];
     }
 
     const read_str = function(mem, offset) {
