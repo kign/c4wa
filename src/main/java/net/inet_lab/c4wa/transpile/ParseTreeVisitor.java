@@ -149,10 +149,14 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public FunctionDecl visitGlobal_decl_function(c4waParser.Global_decl_functionContext ctx) {
         VariableDecl variableDecl = (VariableDecl) visit(ctx.variable_decl());
+        CType[] params = ctx.variable_type().stream().map(this::visit).toArray(CType[]::new);
+        boolean anytype = params.length == 0;
+        if (params.length == 1 && params[0] == null) // no_arg_func(void)
+            params = new CType[0];
 
-        return (ctx.ELLIPSIS() == null)
-                ? new FunctionDecl(variableDecl.name, variableDecl.type, ctx.variable_type().stream().map(this::visit).toArray(CType[]::new), false, true)
-                : new FunctionDecl(variableDecl.name, variableDecl.type, null, true, true)
+        return anytype
+                ? new FunctionDecl(variableDecl.name, variableDecl.type, null, true, true)
+                : new FunctionDecl(variableDecl.name, variableDecl.type, params, false, true)
                 ;
     }
 

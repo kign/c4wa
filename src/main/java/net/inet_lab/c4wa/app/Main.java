@@ -23,12 +23,15 @@ public class Main {
         c4waParser parser = new c4waParser(new CommonTokenStream(lexer));
 
         ParseTree tree = parser.module();
-        //System.out.println("Parser returned \n" + tree.toStringTree(parser));
-
-        ParseTreeVisitor v = new ParseTreeVisitor();
-
-        ModuleEnv result = (ModuleEnv)v.visit(tree);
-
-        System.out.println(result.wat().toStringPretty(2));
+        if (parser.getNumberOfSyntaxErrors() > 0) {
+            System.err.println("Syntax errors were detected");
+            System.exit(1);
+        }
+        else {
+            //System.out.println("Parser returned \n" + tree.toStringTree(parser));
+            ParseTreeVisitor v = new ParseTreeVisitor();
+            ModuleEnv result = (ModuleEnv) v.visit(tree);
+            System.out.println(result.wat().toStringPretty(2));
+        }
     }
 }

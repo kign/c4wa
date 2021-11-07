@@ -2,10 +2,18 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const printf = require('fast-printf').printf;
 const { spawnSync } = require("child_process");
 const colors = require('colors'); // unsafe, modifies String prototype
+
+const def_arr = ["WAT file exists (created by gradlew :test) and has been modified after C file",
+    "WAT file compiled to WASM file",
+    "Extracted expected output from C file",
+    "WASM file generated expected output",
+    "C file compiled to an executable",
+    "Native executable compiled from C source generated expected output"];
 
 async function main () {
     const arg = process.argv[2]; // 0 = node, 1 = script
@@ -15,66 +23,180 @@ async function main () {
         await run_all_tests();
     else if (fs.existsSync(arg) && arg.endsWith('.wasm'))
         await run_file(arg, {stdout: true});
+    else if (!arg.includes('.') && !arg.includes('/'))
+        await run_one_test(arg, true);
     else
         console.error("Invalid argument", arg, "must be an existing WASM file or word 'all'");
 }
 
-async function run_all_tests () {
-    const wat_dir = path.resolve(__dirname, '..', 'tests', 'wat');
+async function run_all_tests() {
     const wasm_dir = path.resolve(__dirname, '..', 'tests', 'wasm');
     const c_dir = path.resolve(__dirname, '..', 'tests', 'c');
 
     fs.mkdirSync(wasm_dir, {recursive: true}); // option 'recursive' prevents error when directory exists
 
-    const wat_files = fs.readdirSync(wat_dir);
+    const files = fs.readdirSync(c_dir).filter(x => x.endsWith('.c')).map(x => x.substr(0,x.length-2));
 
-    console.log("⦿ Compilation".cyan);
+    console.log("\n⦿ Legend of stages used".cyan);
 
-    const compilation = [];
-    for (const wat of wat_files) {
-        const res = spawnSync('wat2wasm',
-            [path.resolve(wat_dir, wat),
-                '-o', path.resolve(wasm_dir, wat.replace('.wat', '.wasm'))], {
-                cwd: process.cwd(),
-                env: process.env,
-                stdio: [process.stdin, process.stdout, process.stderr],
-                encoding: 'utf-8'
-            });
-        compilation.push([wat, res.status]);
+    def_arr.forEach((msg, idx) => console.log(idx + 1, msg));
+    console.log("\n" + def_arr.map((_, idx) => ` ${1 + idx} `).join(''));
+
+    for (const test of files) {
+        const results = await run_one_test(test, false);
+        console.log(results.map(x => (x === 3)?'⚠️  '.green:((x === 2)? '✅ ' : ((x === 1)? '❌ ' : ' ∅ '.grey))).join(''), test);
     }
+}
 
-    for (const [wat, status] of compilation) {
-        if (status === 0)
-            process.stdout.write('✅ ' + wat.bold.green + "\n");
-        else
-            process.stdout.write('❌ ' + wat.bold.red + "\n");
+async function run_one_test(test, verbose) {
+    const wat_dir = path.resolve(__dirname, '..', 'tests', 'wat');
+    const wasm_dir = path.resolve(__dirname, '..', 'tests', 'wasm');
+    const c_dir = path.resolve(__dirname, '..', 'tests', 'c');
+
+    const results = new Array(def_arr.length).fill(0);
+
+    // Test 1: WAT file exists
+    let tid = 0;
+    if (verbose)
+        console.log(("\n⦿ " + (tid + 1) + ". " + def_arr[tid]).cyan);
+
+    const cfile = path.resolve(c_dir, test + ".c");
+    const wat = path.resolve(wat_dir, test + ".wat");
+    results[tid] = fs.existsSync(wat) ? 2 : 1;
+    if (!fs.existsSync(wat)) {
+        results[tid] = 1;
+        if (verbose)
+            console.log("File", wat, "doesn't exist");
     }
+    else {
+        const mc = fs.statSync(cfile).mtime;
+        const mwat = fs.statSync(wat).mtime;
 
-    console.log("\n⦿ Running".cyan);
-
-    for (const [wat, status] of compilation) {
-        const wasm = wat.replace('.wat', '.wasm');
-        const c = wat.replace('.wat', '.c');
-        if (/^[0-9]+-/.test(wat)) {
-            const lines = fs.readFileSync(path.resolve(c_dir, c), 'utf8').split("\n");
-            const expected_arr = [];
-            for(let i = lines.length - 1; i >= 0; i --) {
-                if (expected_arr.length === 0 && lines[i] === '')
-                    continue;
-                if (lines[i].startsWith('// '))
-                    expected_arr.push(lines[i].substr(3) + "\n");
-                else
-                    break;
-            }
-            const expected = expected_arr.reverse().join('');
-            const output = await run_file(path.resolve(wasm_dir, wasm), {stdout: false});
-            if (output === expected)
-                process.stdout.write('✅ ' + wasm.bold.green + "\n");
-            else
-                process.stdout.write('❌ ' + wasm.bold.red + "\n");
-
+        if (mwat < mc) {
+            if (verbose)
+                process.stdout.write(mc + " " + cfile + "\n" + mwat + " " + wat + "\n");
+            results[tid] = 1;
         }
+        else
+            results[tid] = 2;
     }
+    if (verbose)
+        console.log("\n" + ((results[tid] === 2) ? "OK".bold.green : "FAILED".bold.red));
+
+    // Test 2: Compile WAT to WASM
+    tid ++;
+    if (verbose)
+        console.log(("\n⦿ " + (tid + 1) + ". " + def_arr[tid]).cyan);
+
+    const wasm = path.resolve(wasm_dir, test + ".wasm");
+    const spawn_options = {}
+    if (verbose)
+        spawn_options.stdio = 'inherit';
+
+    if (results[0] === 2) {
+        const res = spawnSync('wat2wasm', [wat, '-o', wasm], spawn_options);
+
+        results[tid] = (res.status === 0) ? 2 : 1;
+        if (verbose)
+            console.log("\n" + ((results[tid] === 2) ? "OK".bold.green : "FAILED".bold.red));
+    }
+    else if (verbose)
+        console.log("Skipping...")
+
+    // Test 3: Extract expected output
+    tid++;
+    if (verbose)
+        console.log(("\n⦿ " + (tid + 1) + ". " + def_arr[tid]).cyan);
+
+    const lines = fs.readFileSync(cfile, 'utf8').split("\n");
+    const expected_arr = [];
+    for (let i = lines.length - 1; i >= 0; i--) {
+        if (expected_arr.length === 0 && lines[i] === '')
+            continue;
+        if (lines[i].startsWith('// '))
+            expected_arr.push(lines[i].substr(3) + "\n");
+        else
+            break;
+    }
+    const expected = expected_arr.reverse().join('');
+
+    results[tid] = (expected_arr.length > 0) ? 2 : 1;
+    if (verbose)
+        console.log("\n" + ((results[tid] === 2) ? "OK".bold.green : "FAILED".bold.red));
+
+    // Test 4: running WASM file, checking output
+    tid++;
+    if (verbose)
+        console.log(("\n⦿ " + (tid + 1) + ". " + def_arr[tid]).cyan);
+
+    if (results[1] === 2 && results[2] === 2) {
+        const output = await run_file(wasm, {stdout: false});
+
+        results[tid] = (expected === output) ? 2 : 1;
+        if (verbose)
+            console.log("\n" + ((results[tid] === 2) ? "OK".bold.green : "FAILED".bold.red));
+    }
+    else if (verbose)
+        console.log("Skipping...")
+
+    // Test 5: C file compiled to an executable
+    tid++;
+    if (verbose)
+        console.log(("\n⦿ " + (tid + 1) + ". " + def_arr[tid]).cyan);
+
+    const tmp_dir = path.resolve(os.homedir(), 'temp');
+    fs.mkdirSync(tmp_dir, {recursive: true});
+    const tmp_exe = path.resolve(tmp_dir, 'tmp_exe');
+    fs.rmSync(tmp_exe, {force: true});
+
+    const res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, cfile], spawn_options);
+    if (verbose)
+        results[tid] = (res.status === 0) ? 2 : 1;
+    else
+        results[tid] = (res.status === 0) ? ((res.stderr.toString() === '') ? 2 : 3) : 1;
+    if (verbose)
+        console.log("\n" + ((results[tid] === 2) ? "OK".bold.green : "FAILED".bold.red));
+
+    // Test 6: Executable generated expected output
+    tid++;
+    if (verbose)
+        console.log(("\n⦿ " + (tid + 1) + ". " + def_arr[tid]).cyan);
+
+    if ((results[4] === 2 || results[4] === 3) && results[2] === 2) {
+        const res = spawnSync(tmp_exe);
+        const output = res.stdout.toString();
+        results[tid] = (res.status === 0 && output === expected) ? 2 : 1;
+
+        if (verbose) {
+            if (output !== expected) {
+                process.stdout.write("----------------  Expected ----------------\n");
+                process.stdout.write(expected);
+                process.stdout.write("-----------------  Actual -----------------\n");
+                process.stdout.write(output);
+                process.stdout.write("-----------------  The End ----------------\n");
+
+                let i;
+                for (i = 0; i < expected.length && i < output.length; i++)
+                    if (expected[i] !== output[i]) {
+                        console.log("Char #", i + 1, "differ: expected code", expected.charCodeAt(i), ", actual", output.charCodeAt(i));
+                        break;
+                    }
+
+                if (i === expected.length)
+                    console.log("Expected output ended after", i, "chars, actual output has", output.length, "chars, next char", output.charCodeAt(i));
+                else if (i === output.length)
+                    console.log("Actual output ended after", i, "chars, expected output has", expected.length, "chars, next char", expected.charCodeAt(i));
+            }
+            if (res.status !== 0)
+                console.log("Process returned status", res.status);
+        }
+        if (verbose)
+            console.log("\n" + ((results[tid] === 2) ? "OK".bold.green : "FAILED".bold.red));
+    }
+    else if (verbose)
+        console.log("Skipping...")
+
+    return results;
 }
 
 async function run_file(fname, options) {
@@ -149,6 +271,10 @@ async function run_file(fname, options) {
                     return;
                 }
 
+                if (fmt[i] === 'l') {
+                    fmt[i] = null;
+                    i ++;
+                }
                 offset += 8;
                 if ('cdxu'.includes(fmt[i])) {
                     const r = read_i64(mem, offset);
@@ -173,7 +299,7 @@ async function run_file(fname, options) {
                 "substitutions, passed", argc - 1, "arguments");
             return;
         }
-        const res = printf(fmt.join('').replace('\\n', '\n'), ...args);
+        const res = printf(fmt.filter(x => x !== null).join('').replace('\\n', '\n'), ...args);
         // process.stdout.write();
         if (target.write)
             target.write(res);

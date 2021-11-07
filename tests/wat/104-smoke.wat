@@ -2,7 +2,7 @@
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $precision f64 (f64.const 1.0E-9))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "\E2\88\9A%d = %f\5Cn\00")
+  (data (i32.const 1024) "\E2\88\9A%d = %.8f\5Cn\00")
   (func $sqrt (param $x f64) (result f64)
     (local $a f64)
     (local $b f64)
@@ -16,7 +16,7 @@
           (set_local $b (get_local $c)))
         (else
           (set_local $a (get_local $c))))
-      (br_if $@block_1_continue (f64.gt (f64.sub (get_local $b) (get_local $a)) (f64.const 1.0E-9))))
+      (br_if $@block_1_continue (f64.gt (f64.sub (get_local $b) (get_local $a)) (global.get $precision))))
     (return (f64.div (f64.add (get_local $a) (get_local $b)) (f64.const 2.0))))
   (func $main (export "main") (result i32)
     (local $i i32)

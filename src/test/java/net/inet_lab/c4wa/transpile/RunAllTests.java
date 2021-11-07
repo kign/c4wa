@@ -36,6 +36,8 @@ public class RunAllTests {
 
         while ((fileName = br.readLine()) != null) {
             final String fname = fileName;
+            if (!fname.endsWith(".c"))
+                continue;
             tests.add(DynamicTest.dynamicTest(fileName, () -> {
                 String programText = Files.readString(Path.of(Objects.requireNonNull(loader.getResource(ctests + "/" + fname)).getPath()));
                 c4waLexer lexer = new c4waLexer(CharStreams.fromString(programText));

@@ -1,4 +1,4 @@
-void printf(...);
+void printf();
 const int start = 25;
 const int end = 40;
 long pow2(int n) {
@@ -23,13 +23,14 @@ long pow(int base, int n) {
     return res;
 }
 
-extern void main() {
+extern int main() {
     int x = start;
     do {
-        printf("2^%d = %d, (-3)^%d = %d\n", x, pow2(x), x, pow(-3, x));
+        printf("2^%d = %ld, (-3)^%d = %ld\n", x, pow2(x), x, pow(-3, x));
         x = x + 1;
     }
     while(x <= end);
+    return 0;
 }
 // 2^25 = 33554432, (-3)^25 = -847288609443
 // 2^26 = 67108864, (-3)^26 = 2541865828329

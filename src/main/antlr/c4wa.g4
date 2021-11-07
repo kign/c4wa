@@ -11,7 +11,7 @@ module
 
 global_decl
     : (STATIC|EXTERN)? CONST? variable_decl ('=' CONSTANT)? ';'                            # global_decl_variable
-    | variable_decl '(' ((variable_type (',' variable_type))? | ELLIPSIS) ')' ';'    # global_decl_function
+    | variable_decl '(' (variable_type (',' variable_type)* )? ')' ';'    # global_decl_function
     | EXTERN? variable_decl '(' param_list? ')' composite_block # function_definition
     ;
 
@@ -100,7 +100,6 @@ BINARY_OP1 : '+'|'-';
 BINARY_OP0 : '<'|'>'|'<='|'>=';
 PLUS   :  '+';
 MINUS  :  '-';
-ELLIPSIS : '...';
 UNSIGNED : 'unsigned';
 LONG   :  'long';
 INT    :  'int';
