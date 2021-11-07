@@ -22,9 +22,9 @@ public class IfThenElse extends Instruction {
                      .append('\n');
 
         if (_then != null)
-            b.append(" ".repeat(indent + 2)).append(_then.toStringPretty(indent + 4));
+            b.append(" ".repeat(indent)).append(_then.toStringPretty(indent + 2));
         if (_else != null)
-            b.append('\n').append(" ".repeat(indent + 2)).append(_else.toStringPretty(indent + 4));
+            b.append('\n').append(" ".repeat(indent)).append(_else.toStringPretty(indent + 2));
         b.append(')');
 
         return b.toString();

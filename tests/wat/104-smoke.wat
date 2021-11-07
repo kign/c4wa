@@ -12,10 +12,10 @@
     (loop $@block_1_continue
       (set_local $c (f64.div (f64.add (get_local $a) (get_local $b)) (f64.const 2.0)))
       (if (f64.gt (f64.mul (get_local $c) (get_local $c)) (get_local $x))
-          (then
-            (set_local $b (get_local $c)))
-          (else
-            (set_local $a (get_local $c))))
+        (then
+          (set_local $b (get_local $c)))
+        (else
+          (set_local $a (get_local $c))))
       (br_if $@block_1_continue (f64.gt (f64.sub (get_local $b) (get_local $a)) (f64.const 1.0E-9))))
     (return (f64.div (f64.add (get_local $a) (get_local $b)) (f64.const 2.0))))
   (func $main (export "main") (result i32)
