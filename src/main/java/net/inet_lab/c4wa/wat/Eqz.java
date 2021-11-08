@@ -4,4 +4,9 @@ public class Eqz extends Instruction_Return {
     public Eqz(NumType numType, Instruction arg) {
         super(new InstructionWithNumPrefix(numType, InstructionName.EQZ), arg);
     }
+
+    @Override
+    public Instruction Not(NumType numType) {
+        return arg;
+    }
 }

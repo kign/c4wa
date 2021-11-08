@@ -18,7 +18,7 @@
           (set_local $d (i32.const 3))
           (loop $@block_1_1_continue
             (br_if $@block_1_1_break (i32.ge_s (i32.mul (get_local $d) (get_local $d)) (get_local $p)))
-            (if (i32.eq (i32.rem_s (get_local $p) (get_local $d)) (i32.const 0))
+            (if (i32.eqz (i32.rem_s (get_local $p) (get_local $d)))
               (then
                 (set_local $found (i32.const 1))
                 (br $@block_1_1_break)))
