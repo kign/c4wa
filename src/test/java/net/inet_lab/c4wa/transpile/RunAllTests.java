@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class RunAllTests {
@@ -43,6 +44,9 @@ public class RunAllTests {
                 c4waLexer lexer = new c4waLexer(CharStreams.fromString(programText));
                 c4waParser parser = new c4waParser(new CommonTokenStream(lexer));
                 ParseTree tree = parser.module();
+
+                assertEquals(parser.getNumberOfSyntaxErrors(), 0);
+
                 ParseTreeVisitor v = new ParseTreeVisitor();
                 ModuleEnv result = (ModuleEnv) v.visit(tree);
 

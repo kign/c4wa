@@ -3,10 +3,14 @@ package net.inet_lab.c4wa.wat;
 public enum InstructionName implements InstructionType {
     ADD ("add"),
     SUB ("sub"),
+    NEG ("neg"),
     MUL ("mul"),
     DIV ("div"),
     DIV_U ("div_u"),
     DIV_S ("div_s"),
+    REM ("rem"),
+    REM_U ("rem_u"),
+    REM_S ("rem_s"),
     LT_S ("lt_s"),
     LT_U ("lt_u"),
     LE_S ("le_s"),
@@ -19,6 +23,9 @@ public enum InstructionName implements InstructionType {
     LE ("le"),
     GT ("gt"),
     GE ("ge"),
+    EQZ ("eqz"),
+    EQ ("eq"),
+    NE ("ne"),
     GET_LOCAL ("get_local"),
     SET_LOCAL ("set_local"),
     TEE_LOCAL ("tee_local"),
@@ -30,6 +37,7 @@ public enum InstructionName implements InstructionType {
     LOOP ("loop"),
     BLOCK ("block"),
     BR_IF ("br_if"),
+    BR ("br"),
     IF ("if"),
     THEN ("then"),
     ELSE ("else"),
@@ -76,5 +84,15 @@ public enum InstructionName implements InstructionType {
     @Override
     public String getName() {
         return name;
+    }
+
+    @Override
+    public NumType getPrefix() {
+        return null;
+    }
+
+    @Override
+    public InstructionName getMain() {
+        return this;
     }
 }

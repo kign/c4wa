@@ -13,4 +13,14 @@ public class InstructionWithNumPrefix implements InstructionType {
     public String getName() {
         return numType.name + "." + main.getName();
     }
+
+    @Override
+    public NumType getPrefix() {
+        return numType;
+    }
+
+    @Override
+    public InstructionName getMain() {
+        return main;
+    }
 }

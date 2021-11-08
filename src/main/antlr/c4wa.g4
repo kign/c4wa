@@ -4,6 +4,7 @@ grammar c4wa;
 package net.inet_lab.c4wa.autogen.parser;
 }
 // https://github.com/antlr/grammars-v4/blob/master/c/C.g4
+// Also good reference: https://github.com/bkiers/Mu/blob/master/src/main/antlr4/mu/Mu.g4
 
 module
     : global_decl+ EOF
@@ -46,6 +47,9 @@ element
     | statement ';'                         # element_statement
     | ASM                                   # element_asm
     | DO block WHILE '(' expression ')' ';' # element_do_while
+    | FOR '(' statement ';' expression ';' statement ')' block  # element_for
+    | IF '(' statement ')' (BREAK|CONTINUE) ';' # element_break_continue_if
+    | (BREAK|CONTINUE) ';'                  # element_break_continue
     | IF '(' expression ')' block           # element_if
     | IF '(' expression ')' block ELSE block # element_if_else
     ;
@@ -80,7 +84,7 @@ function_call : ID '(' arg_list? ')' ;
 arg_list: expression (',' expression)*;
 
 expression
-    : '-' expression                      # expression_unary_op
+    : UNARY_OP expression                 # expression_unary_op
     | '(' expression ')'                  # expression_parentheses
     | '(' variable_type ')' expression    # expression_cast
     | expression BINARY_OP2 expression    # expression_binary_op2
@@ -94,10 +98,11 @@ expression
 
 
 CONSTANT : Sign? Constant;
+UNARY_OP: '!';
 BINARY_OP2 : Star | '/' | '%'; // somehow directly inserting * isn't working
 Star : '*';
 BINARY_OP1 : '+'|'-';
-BINARY_OP0 : '<'|'>'|'<='|'>=';
+BINARY_OP0 : '<'|'>'|'<='|'>='|'=='|'!=';
 PLUS   :  '+';
 MINUS  :  '-';
 UNSIGNED : 'unsigned';
@@ -112,6 +117,9 @@ STATIC :  'static';
 CONST  :  'const';
 DO     :  'do';
 WHILE  :  'while';
+FOR    :  'for';
+BREAK  :  'break';
+CONTINUE : 'continue';
 IF     :  'if';
 ELSE   :  'else';
 DOUBLE :  'double';

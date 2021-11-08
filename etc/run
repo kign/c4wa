@@ -22,7 +22,9 @@ async function main () {
     else if (arg === 'all')
         await run_all_tests();
     else if (fs.existsSync(arg) && arg.endsWith('.wasm'))
-        await run_file(arg, {stdout: true});
+        await run_wasm_file(arg, {stdout: true});
+    else if (fs.existsSync(arg) && arg.endsWith('.c'))
+        await run_c_file(arg);
     else if (!arg.includes('.') && !arg.includes('/'))
         await run_one_test(arg, true);
     else
@@ -121,8 +123,12 @@ async function run_one_test(test, verbose) {
     const expected = expected_arr.reverse().join('');
 
     results[tid] = (expected_arr.length > 0) ? 2 : 1;
-    if (verbose)
+    if (verbose) {
+        if (results[tid] !== 2)
+            console.log(`Generate results by running ${process.argv[1]} ${wasm}`);
+
         console.log("\n" + ((results[tid] === 2) ? "OK".bold.green : "FAILED".bold.red));
+    }
 
     // Test 4: running WASM file, checking output
     tid++;
@@ -130,7 +136,7 @@ async function run_one_test(test, verbose) {
         console.log(("\n⦿ " + (tid + 1) + ". " + def_arr[tid]).cyan);
 
     if (results[1] === 2 && results[2] === 2) {
-        const output = await run_file(wasm, {stdout: false});
+        const output = await run_wasm_file(wasm, {stdout: false});
 
         results[tid] = (expected === output) ? 2 : 1;
         if (verbose)
@@ -164,7 +170,7 @@ async function run_one_test(test, verbose) {
 
     if ((results[4] === 2 || results[4] === 3) && results[2] === 2) {
         const res = spawnSync(tmp_exe);
-        const output = res.stdout.toString();
+        const output = (res.stdout === null)? '' : res.stdout.toString();
         results[tid] = (res.status === 0 && output === expected) ? 2 : 1;
 
         if (verbose) {
@@ -194,12 +200,72 @@ async function run_one_test(test, verbose) {
             console.log("\n" + ((results[tid] === 2) ? "OK".bold.green : "FAILED".bold.red));
     }
     else if (verbose)
-        console.log("Skipping...")
+        console.log("Skipping...");
+
+    fs.rmSync(tmp_exe, {force: true});
 
     return results;
 }
 
-async function run_file(fname, options) {
+async function run_c_file(cfile) {
+    const tmp_dir = path.resolve(os.homedir(), 'temp');
+    fs.mkdirSync(tmp_dir, {recursive: true});
+    const tmp_exe = path.resolve(tmp_dir, 'tmp_exe');
+    fs.rmSync(tmp_exe, {force: true});
+    const wat = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wat'));
+    const wasm = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wasm'));
+    const gradlew = path.resolve(__dirname, '..', 'gradlew');
+
+    let res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, cfile]);
+
+    if (res.status !== 0) {
+        console.error("GCC compilation failed, not proceeding");
+        process.exit(1);
+    }
+
+    console.log('✅ Compiled into native executable');
+
+    res = spawnSync(tmp_exe);
+
+    if (res.status !== 0) {
+        console.error("Native execution failed, not proceeding");
+        process.exit(1);
+    }
+    const c_output = (res.stdout === null) ? '' : res.stdout.toString();
+    console.log('✅ Saved output (', c_output.length, "bytes)");
+
+    fs.rmSync(tmp_exe, {force: true});
+
+    res = spawnSync(gradlew, ['run',  '-q',  `--args=${cfile}`]);
+
+    if (res.status !== 0) {
+        console.error("c4wa compilation failed, not proceeding");
+        process.exit(1);
+    }
+    fs.writeFileSync(wat, res.stdout);
+    console.log('✅ Transpiled into WAT file');
+
+    res = spawnSync('wat2wasm', [wat, '-o', wasm]);
+
+    if (res.status !== 0) {
+        console.error("❌ wat2wasm compilation", wat, "to", wasm, "failed with status", res.status, ";", "not proceeding");
+        process.exit(1);
+    }
+
+    console.log('✅ Compiled WAT into WASM file');
+
+    const wasm_output = await run_wasm_file(wasm, {stdout: false});
+
+    console.log('✅ Executed WASM files');
+
+    if (wasm_output === c_output) {
+        process.stdout.write("✅ Output identical\n-------------------------------------\n" +
+            wasm_output + "-------------------------------------\n");
+    }
+
+}
+
+async function run_wasm_file(fname, options) {
     const target = options.stdout? process.stdout: [];
 
     const wasm_bytes = new Uint8Array(fs.readFileSync(fname));
