@@ -20,6 +20,23 @@ public class FunctionDecl implements Partial {
         this.imported = imported;
     }
 
+    public String signature () {
+        StringBuilder b = new StringBuilder();
+
+        b.append(returnType).append(" ").append(name).append('(');
+        for(int i = 0; i < params.length; i ++) {
+            if (i > 0)
+                b.append(", ");
+            b.append(params[i]);
+        }
+        b.append(')');
+        return b.toString();
+    }
+
+    public boolean equals(FunctionDecl o) {
+        return o.signature().equals(signature());
+    }
+
     public Func wat() {
         List<Instruction> attributes = new ArrayList<>();
         attributes.add(new Special(name));

@@ -216,10 +216,10 @@ async function run_c_file(cfile) {
     const wasm = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wasm'));
     const gradlew = path.resolve(__dirname, '..', 'gradlew');
 
-    let res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, cfile]);
+    let res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, cfile], {stdio: 'inherit'});
 
     if (res.status !== 0) {
-        console.error("GCC compilation failed, not proceeding");
+        console.error("❌ GCC compilation failed, not proceeding");
         process.exit(1);
     }
 
@@ -228,7 +228,7 @@ async function run_c_file(cfile) {
     res = spawnSync(tmp_exe);
 
     if (res.status !== 0) {
-        console.error("Native execution failed, not proceeding");
+        console.error("❌ Native execution failed, not proceeding");
         process.exit(1);
     }
     const c_output = (res.stdout === null) ? '' : res.stdout.toString();
@@ -239,7 +239,8 @@ async function run_c_file(cfile) {
     res = spawnSync(gradlew, ['run',  '-q',  `--args=${cfile}`]);
 
     if (res.status !== 0) {
-        console.error("c4wa compilation failed, not proceeding");
+        console.error("❌ c4wa compilation failed, not proceeding");
+        process.stdout.write(res.stderr);
         process.exit(1);
     }
     fs.writeFileSync(wat, res.stdout);
@@ -261,6 +262,15 @@ async function run_c_file(cfile) {
     if (wasm_output === c_output) {
         process.stdout.write("✅ Output identical\n-------------------------------------\n" +
             wasm_output + "-------------------------------------\n");
+    }
+    else {
+        process.stdout.write("----------------  C output ----------------\n");
+        process.stdout.write(c_output);
+        process.stdout.write("-----------------  WASM output -----------------\n");
+        process.stdout.write(wasm_output);
+        process.stdout.write("-----------------  The End ----------------\n");
+
+        console.error("❌ Output different");
     }
 
 }

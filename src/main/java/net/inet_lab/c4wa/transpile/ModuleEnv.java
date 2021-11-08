@@ -40,8 +40,13 @@ public class ModuleEnv implements Partial {
     public void addDeclaration(FunctionDecl functionDecl) {
         String name = functionDecl.name;
 
-        if (funcDecl.containsKey(name))
-            throw new RuntimeException("Function '" + name + "' already declared or defined");
+        FunctionDecl decl = funcDecl.get(name);
+
+        if (decl != null) {
+            if (!decl.equals(functionDecl))
+                throw new RuntimeException("Inconsistent declaration of function '" + name + "'; was " +
+                        decl.signature() + ", now " + functionDecl.signature());
+        }
 
         funcDecl.put(name, functionDecl);
     }

@@ -26,6 +26,8 @@ public enum InstructionName implements InstructionType {
     EQZ ("eqz"),
     EQ ("eq"),
     NE ("ne"),
+    AND ("and"),
+    OR ("or"),
     GET_LOCAL ("get_local"),
     SET_LOCAL ("set_local"),
     TEE_LOCAL ("tee_local"),

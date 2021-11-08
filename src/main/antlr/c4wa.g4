@@ -12,7 +12,7 @@ module
 
 global_decl
     : (STATIC|EXTERN)? CONST? variable_decl ('=' CONSTANT)? ';'                            # global_decl_variable
-    | variable_decl '(' (variable_type (',' variable_type)* )? ')' ';'    # global_decl_function
+    | STATIC? variable_decl '(' (variable_type (',' variable_type)* )? ')' ';'    # global_decl_function
     | EXTERN? variable_decl '(' param_list? ')' composite_block # function_definition
     ;
 
@@ -47,7 +47,7 @@ element
     | statement ';'                         # element_statement
     | ASM                                   # element_asm
     | DO block WHILE '(' expression ')' ';' # element_do_while
-    | FOR '(' statement ';' expression ';' statement ')' block  # element_for
+    | FOR '(' pre=statement? ';' expression? ';' post=statement? ')' block  # element_for
     | IF '(' statement ')' (BREAK|CONTINUE) ';' # element_break_continue_if
     | (BREAK|CONTINUE) ';'                  # element_break_continue
     | IF '(' expression ')' block           # element_if
@@ -55,8 +55,7 @@ element
     ;
 
 statement
-    : variable_decl
-    | mult_variable_decl
+    : mult_variable_decl
     | variable_init
     | simple_assignment
     | complex_assignment
@@ -88,8 +87,10 @@ expression
     | '(' expression ')'                  # expression_parentheses
     | '(' variable_type ')' expression    # expression_cast
     | expression op=(MULT | DIV | MOD) expression    # expression_binary_mult
-    | expression op=(PLUS | MINUS) expression    # expression_binary_add
+    | expression op=(PLUS | MINUS) expression                        # expression_binary_add
     | expression op=(LTEQ | GTEQ | LT | GT | EQ | NEQ) expression    # expression_binary_cmp
+    | expression op=AND expression           # expression_binary_and
+    | expression op=OR expression            # expression_binary_or
     | CONSTANT                            # expression_const
     | ID                                  # expression_variable
     | STRING                              # expression_string

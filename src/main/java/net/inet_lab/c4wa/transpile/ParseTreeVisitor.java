@@ -4,6 +4,7 @@ import net.inet_lab.c4wa.autogen.parser.c4waBaseVisitor;
 import net.inet_lab.c4wa.autogen.parser.c4waParser;
 import net.inet_lab.c4wa.wat.*;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.RuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.*;
@@ -46,6 +47,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     static class InstructionList implements Partial {
         final OneInstruction[] instructions;
         boolean need_block;
+        InstructionList() {
+            this.instructions = new OneInstruction[0];
+            need_block = false;
+        }
         InstructionList(OneInstruction[] instructions) {
             this.instructions = instructions;
             need_block = false;
@@ -289,14 +294,14 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitElement_for(c4waParser.Element_forContext ctx) {
-        OneInstruction prestat = (OneInstruction) visit(ctx.statement(0));
+        OneInstruction prestat = (OneInstruction) visit(ctx.pre);
 
         OneInstruction condition = (OneInstruction) visit(ctx.expression());
-        if (condition.type == null)
+        if (condition != null && condition.type == null)
             throw fail(ctx, "for", "Expression '" + ctx.expression().getText() +
                     "' has no type (any type would have worked in WASM as 'boolean', but there is none)");
 
-        OneInstruction poststat = (OneInstruction) visit(ctx.statement(1));
+        OneInstruction poststat = (OneInstruction) visit(ctx.post);
 
         String block_id = functionEnv.pushBlock();
         String block_id_cont = block_id + CONT_SUFFIX;
@@ -305,17 +310,22 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         InstructionList body = (InstructionList) visit(ctx.block());
         functionEnv.popBlock();
 
-        List<Instruction> body_elems = new ArrayList<>();
-        body_elems.add(new BrIf(block_id_break, condition.instruction.Not(condition.type.asNumType())));
+        List<Instruction> loop_elems = new ArrayList<>();
+        if (condition != null)
+            loop_elems.add(new BrIf(block_id_break, condition.instruction.Not(condition.type.asNumType())));
         for (var i : body.instructions)
-            body_elems.add(i.instruction);
-        body_elems.add(poststat.instruction);
-        body_elems.add(new Br(block_id_cont));
+            loop_elems.add(i.instruction);
+        if (poststat != null)
+            loop_elems.add(poststat.instruction);
+        loop_elems.add(new Br(block_id_cont));
+
+        List<Instruction> block_elems = new ArrayList<>();
+        if (prestat != null)
+            block_elems.add(prestat.instruction);
+        block_elems.add(new Loop(block_id_cont, loop_elems.toArray(Instruction[]::new)));
 
         return new OneInstruction(
-                new Block(block_id_break, new Instruction[]{
-                        prestat.instruction,
-                        new Loop(block_id_cont, body_elems.toArray(Instruction[]::new))}),
+                new Block(block_id_break, block_elems.toArray(Instruction[]::new)),
                 null);
     }
 
@@ -392,7 +402,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (decl == null)
             throw fail(ctx, "function call", "Function '" + fname + "' not defined or declared");
 
-        InstructionList args = (InstructionList) visit(ctx.arg_list());
+        InstructionList args = (ctx.arg_list() == null)?(new InstructionList()):(InstructionList) visit(ctx.arg_list());
         Instruction[] call_args;
         if (decl.anytype) {
             BlockEnv blockEnv = blockStack.peek();
@@ -576,6 +586,26 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return binary_op(ctx, arg1, arg2, op);
     }
 
+    @Override
+    public OneInstruction visitExpression_binary_or(c4waParser.Expression_binary_orContext ctx) {
+        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
+        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+
+        String op = ctx.op.getText();
+
+        return binary_op(ctx, arg1, arg2, op);
+    }
+
+    @Override
+    public OneInstruction visitExpression_binary_and(c4waParser.Expression_binary_andContext ctx) {
+        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
+        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+
+        String op = ctx.op.getText();
+
+        return binary_op(ctx, arg1, arg2, op);
+    }
+
     private OneInstruction binary_op (ParserRuleContext ctx, OneInstruction arg1, OneInstruction arg2, String op) {
         if (arg1 == null)
             throw fail(ctx, "Expression", "1-st arg not parsed");
@@ -585,7 +615,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "Expression", "1-st arg has no type");
         if (arg2.type == null)
             throw fail(ctx, "Expression", "2-nd arg has no type");
-
 
         if (arg1.type.is_i64() && arg2.type.is_i32() && arg2.instruction instanceof Const) {
             arg2 = new OneInstruction(new Const((((Const) arg2.instruction).longValue)), arg1.type);
@@ -641,6 +670,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             res = new Eqz(numType, arg1.instruction);
         else if (List.of("==", "!=").contains(op))
             res = new Cmp(numType, op.charAt(0) == '=', arg1.instruction, arg2.instruction);
+        else if ("&&".equals(op))
+            res = new And(numType, arg1.instruction, arg2.instruction);
+        else if ("||".equals(op))
+            res = new Or(numType, arg1.instruction, arg2.instruction);
         else
             throw fail(ctx, "binary operation", "Instruction '" + op + "' not recognized");
 
@@ -769,6 +802,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
     }
 
+    private Partial visit(ParserRuleContext ctx) {
+        if (ctx == null)
+            return null;
+        return super.visit(ctx);
+    }
     /*
     Default implementation always returns last result, even if null
     Change it to return first not-null
