@@ -1,6 +1,7 @@
 void printf();
 const int start = 25;
 const int end = 40;
+const int base = 3;
 long pow2(int n) {
     long res = 1;
     do {
@@ -26,7 +27,7 @@ long pow(int base, int n) {
 extern int main() {
     int x = start;
     do {
-        printf("2^%d = %ld, (-3)^%d = %ld\n", x, pow2(x), x, pow(-3, x));
+        printf("2^%d = %ld, (%d)^%d = %ld\n", x, pow2(x), -base, x, pow(-base, x));
         x = x + 1;
     }
     while(x <= end);

@@ -84,12 +84,12 @@ function_call : ID '(' arg_list? ')' ;
 arg_list: expression (',' expression)*;
 
 expression
-    : UNARY_OP expression                 # expression_unary_op
+    : op=(NOT|MINUS) expression                 # expression_unary_op
     | '(' expression ')'                  # expression_parentheses
     | '(' variable_type ')' expression    # expression_cast
-    | expression BINARY_OP2 expression    # expression_binary_op2
-    | expression BINARY_OP1 expression    # expression_binary_op1
-    | expression BINARY_OP0 expression    # expression_binary_op0
+    | expression op=(MULT | DIV | MOD) expression    # expression_binary_mult
+    | expression op=(PLUS | MINUS) expression    # expression_binary_add
+    | expression op=(LTEQ | GTEQ | LT | GT | EQ | NEQ) expression    # expression_binary_cmp
     | CONSTANT                            # expression_const
     | ID                                  # expression_variable
     | STRING                              # expression_string
@@ -97,14 +97,45 @@ expression
     ;
 
 
-CONSTANT : Sign? Constant;
-UNARY_OP: '!';
-BINARY_OP2 : Star | '/' | '%'; // somehow directly inserting * isn't working
-Star : '*';
-BINARY_OP1 : '+'|'-';
-BINARY_OP0 : '<'|'>'|'<='|'>='|'=='|'!=';
-PLUS   :  '+';
-MINUS  :  '-';
+OR : '||';
+AND : '&&';
+EQ : '==';
+NEQ : '!=';
+GT : '>';
+LT : '<';
+GTEQ : '>=';
+LTEQ : '<=';
+PLUS : '+';
+MINUS : '-';
+MULT : '*';
+DIV : '/';
+MOD : '%';
+POW : '^';
+NOT : '!';
+
+SCOL : ';';
+ASSIGN : '=';
+OPAR : '(';
+CPAR : ')';
+OBRACE : '{';
+CBRACE : '}';
+
+TRUE : 'true';
+FALSE : 'false';
+NIL : 'nil';
+IF : 'if';
+ELSE : 'else';
+WHILE : 'while';
+
+//MULT : '*';
+//DIV : '/';
+//MOD : '%';
+// BINARY_OP2 : Star | '/' | '%'; // somehow directly inserting * isn't working
+// Star : '*';
+// BINARY_OP1 : '+'|'-';
+//BINARY_OP0 : '<'|'>'|'<='|'>='|'=='|'!=';
+//PLUS   :  '+';
+// MINUS  :  '-';
 UNSIGNED : 'unsigned';
 LONG   :  'long';
 INT    :  'int';
@@ -116,18 +147,20 @@ EXTERN :  'extern';
 STATIC :  'static';
 CONST  :  'const';
 DO     :  'do';
-WHILE  :  'while';
+//WHILE  :  'while';
 FOR    :  'for';
 BREAK  :  'break';
 CONTINUE : 'continue';
-IF     :  'if';
-ELSE   :  'else';
+//IF     :  'if';
+//ELSE   :  'else';
 DOUBLE :  'double';
 FLOAT  :  'float';
 VOID   :  'void';
 
 ID     :  [a-zA-Z_][a-zA-Z0-9_]*;
 ASM    :  'asm' [ \t\n\r]* '{' .*? '}';
+
+CONSTANT : Sign? Constant;
 
 STRING
     :   '"' SCharSequence? '"'

@@ -550,28 +550,28 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
-    public OneInstruction visitExpression_binary_op0(c4waParser.Expression_binary_op0Context ctx) {
+    public OneInstruction visitExpression_binary_cmp(c4waParser.Expression_binary_cmpContext ctx) {
         OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
         OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
-        String op = ctx.BINARY_OP0().getText();
+        String op = ctx.op.getText();
 
         return binary_op(ctx, arg1, arg2, op);
     }
 
     @Override
-    public OneInstruction visitExpression_binary_op1(c4waParser.Expression_binary_op1Context ctx) {
+    public OneInstruction visitExpression_binary_add(c4waParser.Expression_binary_addContext ctx) {
         OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
         OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
-        String op = ctx.BINARY_OP1().getText();
+        String op = ctx.op.getText();
 
         return binary_op(ctx, arg1, arg2, op);
     }
 
     @Override
-    public OneInstruction visitExpression_binary_op2(c4waParser.Expression_binary_op2Context ctx) {
+    public OneInstruction visitExpression_binary_mult(c4waParser.Expression_binary_multContext ctx) {
         OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
         OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
-        String op = ctx.BINARY_OP2().getText();
+        String op = ctx.op.getText();
 
         return binary_op(ctx, arg1, arg2, op);
     }
@@ -649,7 +649,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitExpression_unary_op(c4waParser.Expression_unary_opContext ctx) {
-        String op = ctx.UNARY_OP().getText();
+        String op = ctx.op.getText();
         OneInstruction exp = (OneInstruction) visit(ctx.expression());
 
         if (exp.type == null)
