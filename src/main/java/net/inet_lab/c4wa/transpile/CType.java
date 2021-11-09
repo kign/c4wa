@@ -2,6 +2,8 @@ package net.inet_lab.c4wa.transpile;
 
 import net.inet_lab.c4wa.wat.NumType;
 
+import java.nio.file.ClosedDirectoryStreamException;
+
 abstract public class CType implements Partial {
     static public CType CHAR = getPrimitive(PrimitiveType.CHAR);
     static public CType SHORT = getPrimitive(PrimitiveType.SHORT);
@@ -24,6 +26,39 @@ abstract public class CType implements Partial {
 
     private static CType getPrimitiveUnsigned(PrimitiveType primitiveType) {
         return new Primitive(primitiveType, false);
+    }
+
+    public static class Pointer extends CType {
+        final CType base;
+
+        public Pointer(CType base) {
+            this.base = base;
+        }
+
+        @Override
+        public boolean isValidRHS(CType rhs) {
+            return rhs instanceof Pointer && base.isValidRHS(((Pointer)rhs).base);
+        }
+
+        @Override
+        public CType deref() {
+            return base;
+        }
+
+        @Override
+        public NumType asNumType() {
+            return NumType.I32;
+        }
+
+        @Override
+        public int size() {
+            return 4;
+        }
+
+        @Override
+        public String toString() {
+            return base + "*";
+        }
     }
 
     public static class Primitive extends CType {
@@ -76,6 +111,24 @@ abstract public class CType implements Partial {
                 throw new RuntimeException("Invalid type " + this);
         }
 
+        @Override
+        public int size() {
+            if (primitiveType == PrimitiveType.CHAR)
+                return 1;
+            if (primitiveType == PrimitiveType.SHORT)
+                return 2;
+            if (primitiveType == PrimitiveType.INT)
+                return 4;
+            if (primitiveType == PrimitiveType.LONG)
+                return 8;
+            if (primitiveType == PrimitiveType.FLOAT)
+                return 4;
+            if (primitiveType == PrimitiveType.DOUBLE)
+                return 8;
+
+            throw new RuntimeException("size(" + primitiveType + ") is not defined");
+        }
+
         public Primitive(PrimitiveType primitiveType, boolean signed) {
             this.primitiveType = primitiveType;
             this.signed = signed;
@@ -95,9 +148,11 @@ abstract public class CType implements Partial {
     public boolean is_f64() { return false; }
     public boolean isValidRHS(CType rhs) { return false; }
     public boolean same(CType rhs) { return isValidRHS(rhs) && rhs.isValidRHS(this); }
-    public boolean is_ptr() { return false; }
+    public CType deref() { return null; }
     public boolean is_signed() { return true; }
+    public CType make_pointer_to() { return new Pointer(this); }
     abstract public NumType asNumType();
+    abstract public int size();
 
     abstract public String toString();
 }

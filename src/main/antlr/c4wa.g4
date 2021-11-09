@@ -20,8 +20,8 @@ variable_decl : variable_type ID;
 
 variable_type
     : primitive          # type_primitive
-    | primitive '*'      # type_pointer_to_primitive
-    | STRUCT '*'         # type_pointer_to_struct
+    | variable_type '*'      # type_pointer
+    | STRUCT ID          # type_struct
     ;
 
 primitive
@@ -74,8 +74,9 @@ simple_assignment : (ID '=')+ expression;
 complex_assignment: lhs '=' expression;
 
 lhs
-    : expression '->' ID
-    | expression '[' expression ']'
+    : expression '->' ID                      # lhs_struct_member
+    | ptr=expression '[' idx=expression ']'   # lhs_index
+    | '*' expression                          # lhs_dereference
     ;
 
 function_call : ID '(' arg_list? ')' ;
@@ -83,7 +84,9 @@ function_call : ID '(' arg_list? ')' ;
 arg_list: expression (',' expression)*;
 
 expression
-    : op=(NOT|MINUS) expression                 # expression_unary_op
+    : op=(NOT|MINUS|MULT) expression                 # expression_unary_op
+    | SIZEOF variable_type                 # expression_sizeof
+    | ptr=expression '[' idx=expression ']'        # expression_index
     | '(' expression ')'                  # expression_parentheses
     | '(' variable_type ')' expression    # expression_cast
     | expression op=(MULT | DIV | MOD) expression    # expression_binary_mult
@@ -94,6 +97,7 @@ expression
     | CONSTANT                            # expression_const
     | ID                                  # expression_variable
     | STRING                              # expression_string
+    | ALLOC '(' memptr=expression ',' count=expression ',' variable_type ')' # expression_alloc
     | function_call                       # expression_function_call
     ;
 
@@ -127,16 +131,6 @@ NIL : 'nil';
 IF : 'if';
 ELSE : 'else';
 WHILE : 'while';
-
-//MULT : '*';
-//DIV : '/';
-//MOD : '%';
-// BINARY_OP2 : Star | '/' | '%'; // somehow directly inserting * isn't working
-// Star : '*';
-// BINARY_OP1 : '+'|'-';
-//BINARY_OP0 : '<'|'>'|'<='|'>='|'=='|'!=';
-//PLUS   :  '+';
-// MINUS  :  '-';
 UNSIGNED : 'unsigned';
 LONG   :  'long';
 INT    :  'int';
@@ -157,6 +151,9 @@ CONTINUE : 'continue';
 DOUBLE :  'double';
 FLOAT  :  'float';
 VOID   :  'void';
+SIZEOF :  'sizeof';
+
+ALLOC  :  'alloc';
 
 ID     :  [a-zA-Z_][a-zA-Z0-9_]*;
 ASM    :  'asm' [ \t\n\r]* '{' .*? '}';

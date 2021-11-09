@@ -15,6 +15,10 @@ const def_arr = ["WAT file exists (created by gradlew :test) and has been modifi
     "C file compiled to an executable",
     "Native executable compiled from C source generated expected output"];
 
+const c_prefix = `void * malloc();
+#define alloc(ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
+`;
+
 async function main () {
     const arg = process.argv[2]; // 0 = node, 1 = script
     if (arg === undefined)
@@ -154,8 +158,10 @@ async function run_one_test(test, verbose) {
     fs.mkdirSync(tmp_dir, {recursive: true});
     const tmp_exe = path.resolve(tmp_dir, 'tmp_exe');
     fs.rmSync(tmp_exe, {force: true});
+    const tmp_c = path.resolve(tmp_dir, 'tmp.c');
+    fs.writeFileSync(tmp_c,c_prefix + fs.readFileSync(cfile, 'utf8'));
 
-    const res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, cfile], spawn_options);
+    const res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c], spawn_options);
     if (verbose)
         results[tid] = (res.status === 0) ? 2 : 1;
     else
@@ -215,8 +221,10 @@ async function run_c_file(cfile) {
     const wat = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wat'));
     const wasm = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wasm'));
     const gradlew = path.resolve(__dirname, '..', 'gradlew');
+    const tmp_c = path.resolve(tmp_dir, 'tmp.c');
+    fs.writeFileSync(tmp_c, c_prefix + fs.readFileSync(cfile, 'utf8'));
 
-    let res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, cfile], {stdio: 'inherit'});
+    let res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c], {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ GCC compilation failed, not proceeding");
@@ -241,12 +249,16 @@ async function run_c_file(cfile) {
     if (res.status !== 0) {
         console.error("❌ c4wa compilation failed, not proceeding");
         process.stdout.write(res.stderr);
+        process.stdout.write("\n----------------  C output ----------------\n");
+        process.stdout.write(c_output);
+        process.stdout.write("-----------------  The End ----------------\n");
+
         process.exit(1);
     }
     fs.writeFileSync(wat, res.stdout);
     console.log('✅ Transpiled into WAT file');
 
-    res = spawnSync('wat2wasm', [wat, '-o', wasm]);
+    res = spawnSync('wat2wasm', [wat, '-o', wasm], {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ wat2wasm compilation", wat, "to", wasm, "failed with status", res.status, ";", "not proceeding");
