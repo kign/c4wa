@@ -33,6 +33,13 @@ public class Const extends Instruction {
         doubleValue = value;
     }
 
+    public Const(NumType numType, int value) {
+        super(new InstructionWithNumPrefix(numType, InstructionName.CONST));
+        this.numType = numType;
+        longValue = (numType == NumType.I32 || numType == NumType.I64) ? value : 0;
+        doubleValue = (numType == NumType.I32 || numType == NumType.I64)? 0 : value;
+    }
+
     @Override
     public String toString() {
         if (numType == NumType.I32 || numType == NumType.I64)

@@ -22,7 +22,7 @@ extern int main() {
     int i = 2;
     do {
         printf("√%d = %.8f\n", i, sqrt((double)i));
-        i = i + 1;
+        i ++;
     }
     while(i <= 10);
     return 0;

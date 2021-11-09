@@ -506,13 +506,59 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
+    public OneInstruction visitSimple_increment(c4waParser.Simple_incrementContext ctx) {
+        String name = ctx.ID().getText();
+
+        CType type = functionEnv.varType.get(name);
+        boolean is_global = type == null;
+        if (is_global) {
+            VariableDecl decl = moduleEnv.varDecl.get(name);
+
+            if (decl == null)
+                throw fail(ctx, "assignment", "Variable '" + name + "' is not defined");
+
+            if (!decl.mutable)
+                throw fail(ctx, "assignment", "Global variable '" + name + "' is not mutable");
+
+            type = decl.type;
+        }
+
+        String op;
+        OneInstruction rhs;
+
+        if (ctx.PLUSPLUS() != null) {
+            op = "+";
+            rhs = new OneInstruction(new Const(type.asNumType(), 1), type);
+        }
+        else if (ctx.MINUSMINUS() != null) {
+            op = "-";
+            rhs = new OneInstruction(new Const(type.asNumType(), 1), type);
+        }
+        else {
+            op = ctx.op.getText().substring(0, ctx.op.getText().length() - 1);
+            rhs = (OneInstruction) visit(ctx.expression());
+        }
+
+        OneInstruction binaryOp = binary_op(ctx, accessVariable(ctx, name), rhs, op);
+
+        if (functionEnv.varType.containsKey(name))
+            return new OneInstruction(new SetLocal(name, binaryOp.instruction), null);
+        else {
+            VariableDecl decl = moduleEnv.varDecl.get(name);
+
+            if (!decl.mutable)
+                throw fail(ctx, "assignment", "Global variable '" + name + "' is not mutable");
+
+            return new OneInstruction(new SetGlobal(name, binaryOp.instruction), null);
+        }
+    }
+
+    @Override
     public OneInstruction visitSimple_assignment(c4waParser.Simple_assignmentContext ctx) {
         OneInstruction rhs = (OneInstruction) visit(ctx.expression());
 
         if (rhs.type == null)
             throw fail(ctx, "assignment", "RHS expression has no type");
-
-        List<OneInstruction> assignments = new ArrayList<>();
 
         int iGlobal = -1;
         String[] names = ctx.ID().stream().map(ParseTree::getText).toArray(String[]::new);
@@ -557,6 +603,15 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             res = new SetGlobal(names[iGlobal], res);
 
         return new OneInstruction(res, null);
+    }
+
+    @Override
+    public OneInstruction visitComplex_increment(c4waParser.Complex_incrementContext ctx) {
+        String op = ctx.op.getText().substring(0, ctx.op.getText().length() - 1);
+        OneInstruction rhs = (OneInstruction) visit(ctx.expression());
+        OneInstruction lhs = (OneInstruction) visit(ctx.lhs());
+
+        throw fail(ctx, "increment", "complex increment not yet implemented");
     }
 
     @Override
@@ -854,7 +909,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitExpression_variable(c4waParser.Expression_variableContext ctx) {
-        String name = ctx.ID().getText();
+        return accessVariable(ctx, ctx.ID().getText());
+    }
+
+    private OneInstruction accessVariable(ParserRuleContext ctx, String name) {
         CType type = functionEnv.varType.get(name);
         if (type != null)
             return new OneInstruction(new GetLocal(name), type);

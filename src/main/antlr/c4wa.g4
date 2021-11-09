@@ -59,6 +59,8 @@ statement
     | variable_init
     | simple_assignment
     | complex_assignment
+    | simple_increment
+    | complex_increment
     | function_call
     | return_expression
     ;
@@ -70,6 +72,10 @@ variable_init : variable_decl '=' expression;
 return_expression : RETURN expression;
 
 simple_assignment : (ID '=')+ expression;
+
+simple_increment: ID (op=(ASOR|ASAND|ASPLUS|ASMINUS|ASMULT|ASDIV|ASMOD) expression|PLUSPLUS|MINUSMINUS) ;
+
+complex_increment: lhs op=(ASOR|ASAND|ASPLUS|ASMINUS|ASMULT|ASDIV|ASMOD) expression ;
 
 complex_assignment: lhs '=' expression;
 
@@ -104,17 +110,27 @@ expression
 
 OR : '||';
 AND : '&&';
+PLUS : '+';
+MINUS : '-';
+MULT : '*';
+DIV : '/';
+MOD : '%';
+ASOR : '||=';
+ASAND : '&&=';
+ASPLUS : '+=';
+ASMINUS : '-=';
+ASMULT : '*=';
+ASDIV : '/=';
+ASMOD : '%=';
+PLUSPLUS : '++';
+MINUSMINUS: '--';
+
 EQ : '==';
 NEQ : '!=';
 GT : '>';
 LT : '<';
 GTEQ : '>=';
 LTEQ : '<=';
-PLUS : '+';
-MINUS : '-';
-MULT : '*';
-DIV : '/';
-MOD : '%';
 POW : '^';
 NOT : '!';
 
