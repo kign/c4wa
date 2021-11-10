@@ -48,7 +48,7 @@ element
     | ASM                                   # element_asm
     | DO block WHILE '(' expression ')' ';' # element_do_while
     | FOR '(' pre=statement? ';' expression? ';' post=statement? ')' block  # element_for
-    | IF '(' statement ')' (BREAK|CONTINUE) ';' # element_break_continue_if
+    | IF '(' expression ')' (BREAK|CONTINUE) ';' # element_break_continue_if
     | (BREAK|CONTINUE) ';'                  # element_break_continue
     | IF '(' expression ')' block           # element_if
     | IF '(' expression ')' block ELSE block # element_if_else
@@ -89,6 +89,7 @@ function_call : ID '(' arg_list? ')' ;
 
 arg_list: expression (',' expression)*;
 
+// cmp. Operators Precedence in C: https://www.tutorialspoint.com/Operators-Precedence-in-Cplusplus
 expression
     : op=(NOT|MINUS|MULT) expression                 # expression_unary_op
     | SIZEOF variable_type                 # expression_sizeof
@@ -100,6 +101,7 @@ expression
     | expression op=(LTEQ | GTEQ | LT | GT | EQ | NEQ) expression    # expression_binary_cmp
     | expression op=AND expression           # expression_binary_and
     | expression op=OR expression            # expression_binary_or
+    | expression '?' expression ':' expression # expression_if_else
     | CONSTANT                            # expression_const
     | ID                                  # expression_variable
     | STRING                              # expression_string
@@ -134,6 +136,8 @@ LTEQ : '<=';
 POW : '^';
 NOT : '!';
 
+Q: '?';
+COL: ':';
 SCOL : ';';
 ASSIGN : '=';
 OPAR : '(';

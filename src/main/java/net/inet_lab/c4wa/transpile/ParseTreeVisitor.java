@@ -339,27 +339,41 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitElement_break_continue_if(c4waParser.Element_break_continue_ifContext ctx) {
-        throw fail(ctx, "break if", "not implemented");
+        boolean is_break = ctx.BREAK() != null;
+        OneInstruction condition = (OneInstruction) visit(ctx.expression());
+
+        if (condition.type == null)
+            throw fail(ctx, "break if", "condition of type void");
+
+        return break_if(ctx, is_break, condition);
     }
 
     @Override
     public OneInstruction visitElement_break_continue(c4waParser.Element_break_continueContext ctx) {
         boolean is_break = ctx.BREAK() != null;
+
+        return break_if(ctx, is_break, null);
+    }
+
+    private OneInstruction break_if(ParserRuleContext ctx, boolean is_break, OneInstruction condition) {
         BlockEnv blockEnv = null;
-        for (var b: blockStack)
+        for (var b : blockStack)
             if (b.block_id != null) {
                 blockEnv = b;
                 break;
             }
 
         if (blockEnv == null)
-            throw fail(ctx, is_break?"break":"continue", "cannot find eligible block");
+            throw fail(ctx, is_break ? "break" : "continue", "cannot find eligible block");
 
-        String ref = blockEnv.block_id + (is_break?BREAK_SUFFIX:CONT_SUFFIX);
+        String ref = blockEnv.block_id + (is_break ? BREAK_SUFFIX : CONT_SUFFIX);
         if (is_break)
             blockEnv.need_block = true;
 
-        return new OneInstruction(new Br(ref),null);
+        if (condition == null)
+            return new OneInstruction(new Br(ref), null);
+        else
+            return new OneInstruction(new BrIf(ref, condition.instruction), null);
     }
 
     @Override
@@ -379,6 +393,29 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return if_then_else(ctx, condition, thenList, elseList);
     }
 
+    @Override
+    public OneInstruction visitExpression_if_else(c4waParser.Expression_if_elseContext ctx) {
+        OneInstruction condition = (OneInstruction) visit(ctx.expression(0));
+        OneInstruction thenExp = (OneInstruction) visit(ctx.expression(1));
+        OneInstruction elseExp = (OneInstruction) visit(ctx.expression(2));
+
+        if (condition.type == null)
+            throw fail(ctx, "ternary", "condition type void isn't allowed");
+
+        if (thenExp.type == null)
+            throw fail(ctx, "ternary", "first argument type void isn't allowed");
+
+        if (elseExp.type == null)
+            throw fail(ctx, "ternary", "second argument type void isn't allowed");
+
+        if (!thenExp.type.same(elseExp.type))
+            throw fail(ctx, "ternary", "argument types '" + thenExp.type +
+                    "' and '" + elseExp.type + "' are incompatible");
+
+        return new OneInstruction(new IfThenElse(condition.instruction, thenExp.type.asNumType(), new Instruction[]{ thenExp.instruction },
+                new Instruction[]{ elseExp.instruction }), thenExp.type);
+    }
+
     private OneInstruction if_then_else(ParserRuleContext ctx, OneInstruction condition, InstructionList thenList,
                                         InstructionList elseList) {
         if (condition.type == null)
@@ -393,7 +430,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 ? thenList.instructions[0].type
                 : null;
 
-        return new OneInstruction(new IfThenElse(condition.instruction, thenList.extract(), (elseList == null)?null:elseList.extract()),
+        return new OneInstruction(new IfThenElse(condition.instruction,
+                (resType == null)?null:resType.asNumType(),
+                thenList.extract(), (elseList == null)?null:elseList.extract()),
                 resType);
     }
 
