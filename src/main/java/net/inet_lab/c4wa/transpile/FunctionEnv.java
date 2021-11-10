@@ -11,7 +11,7 @@ public class FunctionEnv implements Partial {
     final List<String> locals;
     final boolean export;
     final Map<String, CType> varType;
-    final Deque<Integer> blocks;
+    final Deque<Block> blocks;
 
     Instruction[] instructions;
     int mem_offset;
@@ -26,7 +26,7 @@ public class FunctionEnv implements Partial {
         varType = new HashMap<>();
         blocks = new ArrayDeque<>();
 
-        blocks.push(0);
+        blocks.push(new Block());
     }
 
     public void setMemOffset(int offset) {
@@ -57,23 +57,34 @@ public class FunctionEnv implements Partial {
         this.instructions = instructions;
     }
 
-    public String pushBlock() {
-        int id = blocks.removeLast();
-        blocks.addLast(1 + id);
-        blocks.addLast(0);
-        return getBlock();
+    public String pushBlock(Instruction postfix) {
+        Block last = blocks.removeLast();
+        blocks.addLast(new Block(postfix, last.index + 1));
+        blocks.addLast(new Block());
+        return getBlockId();
     }
 
-    public String getBlock() {
+    public String getBlockId () {
         StringBuilder b = new StringBuilder();
 
         b.append("@block");
-        int idx = 0;
-        for (int x : blocks)
-            if (++ idx < blocks.size())
-                b.append('_').append(x);
+        int idx = 1;
+        for (Block block : blocks) {
+            b.append('_').append(block.index);
+            if (++ idx >= blocks.size())
+                break;
+        }
 
         return b.toString();
+    }
+
+    public Instruction getBlockPostfix () {
+        int idx = 1;
+        for (Block block : blocks) {
+            if (++ idx >= blocks.size())
+                return block.postfix;
+        }
+        return null;
     }
 
     public void popBlock () {
@@ -107,5 +118,20 @@ public class FunctionEnv implements Partial {
 
         elements.addAll(Arrays.asList(instructions));
         return new Func(attributes, elements);
+    }
+
+    static class Block {
+        final Instruction postfix;
+        final int index;
+
+        Block(Instruction postfix, int index) {
+            this.postfix = postfix;
+            this.index = index;
+        }
+
+        Block() {
+            this.postfix = null;
+            this.index = 0;
+        }
     }
 }

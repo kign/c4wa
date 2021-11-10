@@ -26,23 +26,19 @@ int gen2(int * primes) {
     primes[0] = 2;
     int i;
     int n = 1;
-    for (int p = 3; p < N; /* p += 2 */) {
+    for (int p = 3; p < N; p += 2) {
         int d = 0;
         for(i = 1; i < n; i ++) {
             d = primes[i];
             if (d * d >= p || p % d == 0)
                 break;
         }
-        if (d > 0) {
-            if (d < p && p % d == 0) {
-                p += 2; // temp
+        if (d > 0)
+            if (d < p && p % d == 0)
                 continue;
-            }
-        }
 
         primes[n] = p;
         n ++;
-        p += 2; // temp
     }
     return n;
 }

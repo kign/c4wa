@@ -3,9 +3,7 @@ package net.inet_lab.c4wa.transpile;
 import net.inet_lab.c4wa.autogen.parser.c4waBaseVisitor;
 import net.inet_lab.c4wa.autogen.parser.c4waParser;
 import net.inet_lab.c4wa.wat.*;
-import net.inet_lab.c4wa.wat.Module;
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.RuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.*;
@@ -79,6 +77,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         final int start_offset;
         final List<Instruction> prefix;
         String block_id;
+        Instruction block_postfix;
         boolean need_block;
         BlockEnv (int offset) {
             this.start_offset = offset;
@@ -95,8 +94,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             offset = this.start_offset;
             prefix.clear();
         }
-        void markAsLoop(String block_id) {
+        void markAsLoop(String block_id, Instruction block_postfix) {
             this.block_id = block_id;
+            this.block_postfix = block_postfix;
             need_block = false;
         }
     }
@@ -216,7 +216,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             var parent = ctx.getParent();
             if (parent instanceof c4waParser.Element_do_whileContext ||
                     parent instanceof c4waParser.Element_forContext)
-                blockEnv.markAsLoop(functionEnv.getBlock());
+                blockEnv.markAsLoop(functionEnv.getBlockId(), functionEnv.getBlockPostfix());
 
             List<OneInstruction> res = new ArrayList<>();
 
@@ -246,7 +246,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             parent = parent.getParent();
         if (parent instanceof c4waParser.Element_do_whileContext ||
                 parent instanceof c4waParser.Element_forContext)
-            blockEnv.markAsLoop(functionEnv.getBlock());
+            blockEnv.markAsLoop(functionEnv.getBlockId(), functionEnv.getBlockPostfix());
 
         blockStack.push(blockEnv);
         List<OneInstruction> res = new ArrayList<>();
@@ -275,7 +275,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public OneInstruction visitElement_do_while(c4waParser.Element_do_whileContext ctx) {
         OneInstruction condition = (OneInstruction) visit(ctx.expression());
 
-        String block_id = functionEnv.pushBlock();
+        String block_id = functionEnv.pushBlock(null);
         String block_id_cont = block_id + CONT_SUFFIX;
         String block_id_break = block_id + BREAK_SUFFIX;
 
@@ -311,7 +311,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         OneInstruction poststat = (OneInstruction) visit(ctx.post);
 
-        String block_id = functionEnv.pushBlock();
+        String block_id = functionEnv.pushBlock(poststat == null?null:poststat.instruction);
         String block_id_cont = block_id + CONT_SUFFIX;
         String block_id_break = block_id + BREAK_SUFFIX;
 
@@ -338,7 +338,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
-    public OneInstruction visitElement_break_continue_if(c4waParser.Element_break_continue_ifContext ctx) {
+    public Partial visitElement_break_continue_if(c4waParser.Element_break_continue_ifContext ctx) {
         boolean is_break = ctx.BREAK() != null;
         OneInstruction condition = (OneInstruction) visit(ctx.expression());
 
@@ -349,13 +349,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
-    public OneInstruction visitElement_break_continue(c4waParser.Element_break_continueContext ctx) {
+    public Partial visitElement_break_continue(c4waParser.Element_break_continueContext ctx) {
         boolean is_break = ctx.BREAK() != null;
 
         return break_if(ctx, is_break, null);
     }
 
-    private OneInstruction break_if(ParserRuleContext ctx, boolean is_break, OneInstruction condition) {
+    private Partial break_if(ParserRuleContext ctx, boolean is_break, OneInstruction condition) {
         BlockEnv blockEnv = null;
         for (var b : blockStack)
             if (b.block_id != null) {
@@ -370,10 +370,23 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (is_break)
             blockEnv.need_block = true;
 
-        if (condition == null)
-            return new OneInstruction(new Br(ref), null);
-        else
-            return new OneInstruction(new BrIf(ref, condition.instruction), null);
+        if (blockEnv.block_postfix == null || is_break) {
+            if (condition == null)
+                return new OneInstruction(new Br(ref), null);
+            else
+                return new OneInstruction(new BrIf(ref, condition.instruction), null);
+        }
+        else {
+            if (condition == null)
+                return new InstructionList(new OneInstruction[]{new OneInstruction(blockEnv.block_postfix, null),
+                new OneInstruction(new Br(ref), null)});
+            else
+                return new OneInstruction(
+                        new IfThenElse(condition.instruction,
+                        null,
+                        new Instruction[]{blockEnv.block_postfix, new Br(ref)},
+                        null), null);
+        }
     }
 
     @Override
