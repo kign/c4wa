@@ -30,7 +30,7 @@ abstract public class Instruction_list extends Instruction {
             for (Instruction attribute : attributes)
                 b.append(' ').append(attribute);
         }
-        if (elements == null)
+        if (elements == null || elements.length == 0)
             b.append(')');
         else {
             b.append('\n');

@@ -1,5 +1,8 @@
 void printf();
 
+void do_nothing (int ignore_me) {
+}
+
 extern int main () {
     char a = 'a';
     char Z = '\x5a';

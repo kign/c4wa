@@ -2,6 +2,7 @@
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (memory (export "memory") 1)
   (data (i32.const 1024) "a = %c, %d; Z = %c, %d; m = %c, %d; _0 = %c, %d;%c\00")
+  (func $do_nothing (param $ignore_me i32))
   (func $main (export "main") (result i32)
     (local $a i32)
     (local $Z i32)
