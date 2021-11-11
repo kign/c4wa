@@ -14,13 +14,15 @@ extern int main () {
     B = alloc(M, 1, struct Point);
     B = alloc(2*M, 1, struct Point);
 
-    A->x = (float) 1.0;
-    A->y = (float) -2.0;
-    A->z = (float) 3.0;
+    // constants are automatically cast to LHS type, or it makes no difference whether we write it like that ...
+    A->x = 1;
+    A->y = -2;
+    A->z = 3;
 
-    B->x = (float) 4.0;
-    B->y = (float) 5.0;
-    B->z = (float) -6.0;
+    // or like this
+    B->x = 4.0;
+    B->y = 5.0;
+    B->z = -6.0;
 
     printf("A = %.6f, %.6f, %.6f\n", A->x, A->y, A->z);
     printf("B = %.6f, %.6f, %.6f\n", B->x, B->y, B->z);

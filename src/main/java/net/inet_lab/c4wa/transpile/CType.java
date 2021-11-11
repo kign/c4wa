@@ -71,6 +71,11 @@ abstract public class CType implements Partial {
         }
 
         @Override
+        public boolean is_primitive() {
+            return true;
+        }
+
+        @Override
         public boolean is_i32() {
             return primitiveType == PrimitiveType.CHAR || primitiveType == PrimitiveType.SHORT || primitiveType == PrimitiveType.INT;
         }
@@ -150,6 +155,7 @@ abstract public class CType implements Partial {
     public boolean same(CType rhs) { return isValidRHS(rhs) && rhs.isValidRHS(this); }
     public CType deref() { return null; }
     public boolean is_ptr() { return deref() != null; }
+    public boolean is_primitive() { return false; }
     public boolean is_signed() { return true; }
     public CType make_pointer_to() { return new Pointer(this); }
     abstract public NumType asNumType();

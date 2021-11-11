@@ -590,15 +590,12 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (rhs.type == null)
             throw fail(ctx,"init", "RHS expression has no type");
 
-        if (variableDecl.type.is_i64() && rhs.type.is_i32() && rhs.instruction instanceof Const) {
-            rhs = new OneInstruction(new Const((((Const) rhs.instruction).longValue)), variableDecl.type);
+        if (!variableDecl.type.isValidRHS(rhs.type)) {
+            if (rhs.instruction instanceof Const && variableDecl.type.is_primitive())
+                rhs = new OneInstruction(new Const(variableDecl.type.asNumType(), (Const) rhs.instruction), variableDecl.type);
+            else
+                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + variableDecl.type);
         }
-        else if (variableDecl.type.is_f64() && rhs.type.is_f32() && rhs.instruction instanceof Const) {
-            rhs = new OneInstruction(new Const((((Const) rhs.instruction).doubleValue)), variableDecl.type);
-        }
-
-        if (!variableDecl.type.isValidRHS(rhs.type))
-            throw fail(ctx,"init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + variableDecl.type);
 
         functionEnv.registerVar(variableDecl.name, variableDecl.type, false);
 
@@ -615,10 +612,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             VariableDecl decl = moduleEnv.varDecl.get(name);
 
             if (decl == null)
-                throw fail(ctx, "assignment", "Variable '" + name + "' is not defined");
+                throw fail(ctx, "increment", "Variable '" + name + "' is not defined");
 
             if (!decl.mutable)
-                throw fail(ctx, "assignment", "Global variable '" + name + "' is not mutable");
+                throw fail(ctx, "increment", "Global variable '" + name + "' is not mutable");
 
             type = decl.type;
         }
@@ -650,7 +647,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             VariableDecl decl = moduleEnv.varDecl.get(name);
 
             if (!decl.mutable)
-                throw fail(ctx, "assignment", "Global variable '" + name + "' is not mutable");
+                throw fail(ctx, "increment", "Global variable '" + name + "' is not mutable");
 
             return new OneInstruction(new SetGlobal(name, binaryOp.instruction), null);
         }
@@ -727,8 +724,12 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (rhs.type == null)
             throw fail(ctx, "assign", "RHS has no type");
 
-        if (!lhs.type.isValidRHS(rhs.type))
-            throw fail(ctx, "assign", "Expression of type " + rhs.type + " cannot be assigned to '" + lhs.type + "'");
+        if (!lhs.type.isValidRHS(rhs.type)) {
+            if (rhs.instruction instanceof Const && lhs.type.is_primitive())
+                rhs = new OneInstruction(new Const(lhs.type.asNumType(), (Const) rhs.instruction), lhs.type);
+            else
+                throw fail(ctx, "assign", "Expression of type " + rhs.type + " cannot be assigned to '" + lhs.type + "'");
+        }
 
         if (lhs.type.same(CType.CHAR))
             return new OneInstruction(new Store(lhs.type.asNumType(), 8, lhs.instruction, rhs.instruction), null);
