@@ -22,11 +22,31 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     static class ParamList implements Partial {
         final VariableDecl[] paramList;
+        final String struct_name;
+        ParamList(VariableDecl[] paramList, String struct_name) {
+            this.paramList = paramList;
+            this.struct_name = struct_name;
+        }
         ParamList(VariableDecl[] paramList) {
             this.paramList = paramList;
+            this.struct_name = null;
         }
         ParamList() {
             this.paramList = new VariableDecl[0];
+            this.struct_name = null;
+        }
+    }
+
+    static class VariableWrapper implements Partial {
+        final String name;
+        final int ref_level;
+        VariableWrapper(String name) {
+            this.name = name;
+            this.ref_level = 0;
+        }
+        VariableWrapper(VariableWrapper w) {
+            this.name = w.name;
+            this.ref_level = w.ref_level + 1;
         }
     }
 
@@ -119,6 +139,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             else if (parseGlobalDecl instanceof VariableDecl) {
                 moduleEnv.addDeclaration((VariableDecl) parseGlobalDecl);
             }
+            else if (parseGlobalDecl instanceof ParamList) {
+                String name = ((ParamList) parseGlobalDecl).struct_name;
+                moduleEnv.addStruct(name, new Struct(name, ((ParamList)parseGlobalDecl).paramList));
+            }
             else
                 throw fail(g, "global item", "Unknown class " + parseGlobalDecl.getClass());
         }
@@ -135,6 +159,12 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
 
         return moduleEnv;
+    }
+
+    @Override
+    public ParamList visitStruct_definition(c4waParser.Struct_definitionContext ctx) {
+        return new ParamList(ctx.variable_decl().stream().map(this::visit).toArray(VariableDecl[]::new),
+                ctx.ID().getText());
     }
 
     @Override
@@ -192,19 +222,37 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public VariableDecl visitVariable_decl(c4waParser.Variable_declContext ctx) {
-        return new VariableDecl((CType) visit(ctx.variable_type()), ctx.ID().getText());
+        VariableWrapper variableWrapper = (VariableWrapper) visit(ctx.variable_with_modifiers());
+        CType type = (CType) visit(ctx.primitive());
+
+        for (int i = 0; i < variableWrapper.ref_level; i ++)
+            type = type.make_pointer_to();
+        return new VariableDecl(type, variableWrapper.name);
     }
 
     @Override
-    public CType visitType_primitive(c4waParser.Type_primitiveContext ctx) {
-        return (CType) visit(ctx.primitive());
+    public VariableWrapper visitVariable_with_modifiers_array(c4waParser.Variable_with_modifiers_arrayContext ctx) {
+        return new VariableWrapper((VariableWrapper) visit(ctx.variable_with_modifiers()));
     }
 
     @Override
-    public CType visitType_pointer(c4waParser.Type_pointerContext ctx) {
-        CType type = (CType) visit(ctx.variable_type());
+    public VariableWrapper visitVariable_with_modifiers_name(c4waParser.Variable_with_modifiers_nameContext ctx) {
+        return new VariableWrapper(ctx.ID().getText());
+    }
 
-        return type.make_pointer_to();
+    @Override
+    public VariableWrapper visitVariable_with_modifiers_pointer(c4waParser.Variable_with_modifiers_pointerContext ctx) {
+        return new VariableWrapper((VariableWrapper) visit(ctx.variable_with_modifiers()));
+    }
+
+    @Override
+    public CType visitVariable_type(c4waParser.Variable_typeContext ctx) {
+        CType type = (CType) visit(ctx.primitive());
+
+        for (int i = 0; i < ctx.MULT().size(); i++)
+            type = type.make_pointer_to();
+
+        return type;
     }
 
     @Override
@@ -689,10 +737,28 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public NoOp visitMult_variable_decl(c4waParser.Mult_variable_declContext ctx) {
-        CType type = (CType) visit(ctx.variable_type());
-        for (var v : ctx.ID())
-            functionEnv.registerVar(v.getText(), type, false);
+        for (var v : ctx.variable_with_modifiers()) {
+            VariableWrapper variableWrapper = (VariableWrapper) visit(v);
+            CType type = (CType) visit(ctx.primitive());
+
+            for (int i = 0; i < variableWrapper.ref_level; i++)
+                type = type.make_pointer_to();
+            functionEnv.registerVar(variableWrapper.name, type, false);
+        }
         return new NoOp();
+    }
+
+    @Override
+    public OneInstruction visitExpression_sizeof_type(c4waParser.Expression_sizeof_typeContext ctx) {
+        CType type = (CType) visit(ctx.variable_type());
+        return new OneInstruction(new Const(type.size()), CType.INT);
+    }
+
+    @Override
+    public OneInstruction visitExpression_sizeof_exp(c4waParser.Expression_sizeof_expContext ctx) {
+        OneInstruction e = (OneInstruction) visit(ctx.expression());
+
+        return new OneInstruction(new Const(e.type.size()), CType.INT);
     }
 
     @Override
@@ -708,6 +774,49 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "dereference", "trying to dereference '" + ptr.type + "' which is not a reference");
 
         return new OneInstruction(ptr.instruction, type);
+    }
+
+    @Override
+    public OneInstruction visitExpression_struct_member(c4waParser.Expression_struct_memberContext ctx) {
+        OneInstruction ptr = (OneInstruction) visit(ctx.expression());
+
+        if (ptr.type == null || ptr.type.deref() == null || !(ptr.type.deref() instanceof Struct))
+            throw fail(ctx, "struct_member", "'" + ptr.type + "' is not a structure pointer");
+
+        String mem = ctx.ID().getText();
+        Struct c_struct = (Struct) ptr.type.deref();
+        Struct.Var mInfo = c_struct.m.get(mem);
+
+        if (mInfo == null)
+            throw fail(ctx, "struct_member", "No member '" + mem + "' in " + c_struct);
+
+        CType type = mInfo.type;
+
+        Instruction memAddress = new Add(NumType.I32, ptr.instruction, new Const(mInfo.offset));
+
+        if (type.same(CType.CHAR))
+            return new OneInstruction(new Load(type.asNumType(), 8, type.is_signed(), memAddress), type);
+        else if (type.same(CType.SHORT))
+            return new OneInstruction(new Load(type.asNumType(), 16, type.is_signed(), memAddress), type);
+        else
+            return new OneInstruction(new Load(type.asNumType(), memAddress), type);
+    }
+
+    @Override
+    public OneInstruction visitLhs_struct_member(c4waParser.Lhs_struct_memberContext ctx) {
+        OneInstruction ptr = (OneInstruction) visit(ctx.expression());
+
+        if (ptr.type == null || ptr.type.deref() == null || !(ptr.type.deref() instanceof Struct))
+            throw fail(ctx, "struct_member", "'" + ptr.type + "' is not a structure pointer");
+
+        String mem = ctx.ID().getText();
+        Struct c_struct = (Struct) ptr.type.deref();
+        Struct.Var mInfo = c_struct.m.get(mem);
+
+        if (mInfo == null)
+            throw fail(ctx, "struct_member", "No member '" + mem + "' in " + c_struct);
+
+        return new OneInstruction(new Add(NumType.I32, ptr.instruction, new Const(mInfo.offset)), mInfo.type);
     }
 
     @Override
@@ -1010,6 +1119,18 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return CType.DOUBLE;
         else
             throw fail(ctx, "primitive", "Type " + ctx + " not implemented");
+    }
+
+    @Override
+    public CType visitStruct_primitive(c4waParser.Struct_primitiveContext ctx) {
+        String name = ctx.ID().getText();
+
+        Struct c_struct = moduleEnv.structs.get(name);
+
+        if (c_struct == null)
+            throw fail(ctx, "struct", "No structure name '" + name + "'");
+
+        return c_struct;
     }
 
     private OneInstruction parseConstant(ParserRuleContext ctx, String textOfConstant) {

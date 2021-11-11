@@ -11,30 +11,29 @@ module
     ;
 
 global_decl
-    : (STATIC|EXTERN)? CONST? variable_decl ('=' CONSTANT)? ';'                            # global_decl_variable
+    : (STATIC|EXTERN)? CONST? variable_decl ('=' CONSTANT)? ';'                   # global_decl_variable
     | STATIC? variable_decl '(' (variable_type (',' variable_type)* )? ')' ';'    # global_decl_function
-    | EXTERN? variable_decl '(' param_list? ')' composite_block # function_definition
+    | EXTERN? variable_decl '(' param_list? ')' composite_block                   # function_definition
+    | STRUCT ID '{' (variable_decl ';')+ '}'  ';'                                 # struct_definition
     ;
 
-variable_decl : variable_type ID;
+variable_decl : primitive variable_with_modifiers;
 
-variable_type
-    : primitive          # type_primitive
-    | variable_type '*'      # type_pointer
-    | STRUCT ID          # type_struct
+variable_with_modifiers
+    : ID                                 # variable_with_modifiers_name
+    | '(' variable_with_modifiers ')'    # variable_with_modifiers_paren
+    | variable_with_modifiers '[' ']'    # variable_with_modifiers_array
+    | '*' variable_with_modifiers        # variable_with_modifiers_pointer
     ;
+
+variable_type : primitive '*'* ;
 
 primitive
-    : integer_primitive
-    | float_primitive
-    | void_primitive
+    : UNSIGNED? (LONG | INT | SHORT | CHAR)     # integer_primitive
+    | (DOUBLE | FLOAT)                          # float_primitive
+    | VOID                                      # void_primitive
+    | STRUCT ID                                 # struct_primitive
     ;
-
-integer_primitive : UNSIGNED? (LONG | INT | SHORT | CHAR);
-
-float_primitive : DOUBLE | FLOAT;
-
-void_primitive: VOID;
 
 param_list : variable_decl (',' variable_decl)*;
 
@@ -65,7 +64,7 @@ statement
     | return_expression
     ;
 
-mult_variable_decl : variable_type ID (',' ID)* ;
+mult_variable_decl : primitive variable_with_modifiers (',' variable_with_modifiers)* ;
 
 variable_init : variable_decl '=' expression;
 
@@ -92,7 +91,9 @@ arg_list: expression (',' expression)*;
 // cmp. Operators Precedence in C: https://www.tutorialspoint.com/Operators-Precedence-in-Cplusplus
 expression
     : op=(NOT|MINUS|MULT) expression                 # expression_unary_op
-    | SIZEOF variable_type                 # expression_sizeof
+    | expression '->' ID                      # expression_struct_member
+    | SIZEOF '(' variable_type ')'                 # expression_sizeof_type
+    | SIZEOF expression                 # expression_sizeof_exp
     | ptr=expression '[' idx=expression ']'        # expression_index
     | '(' expression ')'                  # expression_parentheses
     | '(' variable_type ')' expression    # expression_cast
@@ -135,6 +136,7 @@ GTEQ : '>=';
 LTEQ : '<=';
 POW : '^';
 NOT : '!';
+MEMB : '->';
 
 Q: '?';
 COL: ':';
@@ -144,6 +146,8 @@ OPAR : '(';
 CPAR : ')';
 OBRACE : '{';
 CBRACE : '}';
+OBRAKET : '[';
+CBRACKET : ']';
 
 TRUE : 'true';
 FALSE : 'false';

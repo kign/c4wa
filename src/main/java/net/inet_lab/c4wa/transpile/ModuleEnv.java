@@ -14,6 +14,7 @@ public class ModuleEnv implements Partial {
     final Map<String, FunctionDecl> funcDecl;
     final Map<String, VariableDecl> varDecl;
     final Map<String,Integer> strings;
+    final Map<String,Struct> structs;
 
     final byte[] data;
     int data_len;
@@ -28,9 +29,16 @@ public class ModuleEnv implements Partial {
         varDecl = new HashMap<>();
         functions = new ArrayList<>();
         strings = new HashMap<>();
+        structs = new HashMap<>();
 
         data = new byte[DATA_LENGTH];
         data_len = 0;
+    }
+
+    public void addStruct(String name, Struct struct) {
+        if (structs.containsKey(name))
+            throw new RuntimeException("Struct '" + name + "' already defined");
+        structs.put(name, struct);
     }
 
     public void addFunction(FunctionEnv f) {
