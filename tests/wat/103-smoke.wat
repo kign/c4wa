@@ -25,7 +25,7 @@
     (local $x i32)
     (set_local $x (global.get $start))
     (loop $@block_1_continue
-      (i64.store (i32.const 0) (i64.extend_i32_s (i32.const 1024)))
+      (i64.store (i32.const 0) (i64.const 1024))
       (i64.store (i32.const 8) (i64.extend_i32_s (get_local $x)))
       (i64.store (i32.const 16) (call $pow2 (get_local $x)))
       (i64.store (i32.const 24) (i64.extend_i32_s (i32.sub (i32.const 0) (global.get $base))))

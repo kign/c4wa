@@ -11,7 +11,7 @@
     (i32.store (get_local $b) (i32.const 13))
     (i32.store (i32.add (get_local $a) (i32.mul (i32.const 2) (i32.const 4))) (i32.const 11))
     (i32.store (i32.add (get_local $a) (i32.mul (i32.const 3) (i32.const 4))) (i32.mul (i32.mul (i32.load (get_local $a)) (i32.load (get_local $b))) (i32.load (i32.add (get_local $a) (i32.mul (i32.const 2) (i32.const 4))))))
-    (i64.store (i32.const 0) (i64.extend_i32_s (i32.const 1024)))
+    (i64.store (i32.const 0) (i64.const 1024))
     (i64.store (i32.const 8) (i64.extend_i32_s (i32.load (i32.add (get_local $a) (i32.mul (i32.const 0) (i32.const 4))))))
     (i64.store (i32.const 16) (i64.extend_i32_s (i32.load (i32.add (get_local $a) (i32.mul (i32.const 1) (i32.const 4))))))
     (i64.store (i32.const 24) (i64.extend_i32_s (i32.load (i32.add (get_local $a) (i32.mul (i32.const 2) (i32.const 4))))))

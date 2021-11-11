@@ -13,7 +13,7 @@
     (set_local $m (i32.const 109))
     (set_local $_0 (i32.const 48))
     (set_local $cr (i32.const 10))
-    (i64.store (i32.const 0) (i64.extend_i32_s (i32.const 1024)))
+    (i64.store (i32.const 0) (i64.const 1024))
     (i64.store (i32.const 8) (i64.extend_i32_s (get_local $a)))
     (i64.store (i32.const 16) (i64.extend_i32_s (get_local $a)))
     (i64.store (i32.const 24) (i64.extend_i32_s (get_local $Z)))

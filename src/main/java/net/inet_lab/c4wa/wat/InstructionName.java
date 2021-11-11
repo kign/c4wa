@@ -42,7 +42,7 @@ public enum InstructionName implements InstructionType {
     LOAD8_U ("load8_u"),
     LOAD16_U ("load16_u"),
     LOAD32_U ("load32_u"),
-    LOAD8_S ("load8_u"),
+    LOAD8_S ("load8_s"),
     LOAD16_S ("load16_u"),
     LOAD32_S ("load32_u"),
     CONST ("const"),
@@ -68,6 +68,7 @@ public enum InstructionName implements InstructionType {
     CONVERT_I64_S ("convert_i64_s"),
     CONVERT_I32_U ("convert_i32_u"),
     CONVERT_I64_U ("convert_i64_u"),
+
     REINTERPRET_F32 ("reinterpret_f32"),
     REINTERPRET_F64 ("reinterpret_f64"),
     REINTERPRET_I32 ("reinterpret_i32"),

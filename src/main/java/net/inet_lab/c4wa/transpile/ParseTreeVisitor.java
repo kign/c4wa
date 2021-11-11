@@ -526,7 +526,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 if (arg.type.is_32() || arg.type.is_ptr()) {
                     NumType t64 = arg.type.is_int()|| arg.type.is_ptr()? NumType.I64 : NumType.F64;
                     blockEnv.prefix.add(new Store(t64, constOffset,
-                            new GenericCast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.instruction)));
+                            GenericCast.cast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.instruction)));
                 }
                 else
                     blockEnv.prefix.add(new Store(arg.type.asNumType(), constOffset, arg.instruction));
@@ -1068,7 +1068,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         else
             signed = true;
 
-        return new OneInstruction(new GenericCast(exp.type.asNumType(), castToType.asNumType(), signed, exp.instruction), castToType);
+        return new OneInstruction(GenericCast.cast(exp.type.asNumType(), castToType.asNumType(), signed, exp.instruction), castToType);
     }
 
     @Override

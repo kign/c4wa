@@ -40,6 +40,15 @@ public class Const extends Instruction {
         doubleValue = (numType == NumType.I32 || numType == NumType.I64)? 0 : value;
     }
 
+    public Const(NumType numType, Const orig) {
+        super(new InstructionWithNumPrefix(numType, InstructionName.CONST));
+        boolean s_int = orig.numType == NumType.I32 || orig.numType == NumType.I64;
+        boolean d_int = numType == NumType.I32 || numType == NumType.I64;
+        this.numType = numType;
+        longValue =  d_int? (s_int? orig.longValue : (long) orig.doubleValue) : 0;
+        doubleValue = d_int? 0 : (s_int? (double)orig.longValue : orig.doubleValue);
+    }
+
     @Override
     public String toString() {
         if (numType == NumType.I32 || numType == NumType.I64)

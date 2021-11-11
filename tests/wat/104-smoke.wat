@@ -22,7 +22,7 @@
     (local $i i32)
     (set_local $i (i32.const 2))
     (loop $@block_1_continue
-      (i64.store (i32.const 0) (i64.extend_i32_s (i32.const 1024)))
+      (i64.store (i32.const 0) (i64.const 1024))
       (i64.store (i32.const 8) (i64.extend_i32_s (get_local $i)))
       (f64.store (i32.const 16) (call $sqrt (f64.convert_i32_s (get_local $i))))
       (call $printf (i32.const 0) (i32.const 3))
