@@ -11,7 +11,7 @@ module
     ;
 
 global_decl
-    : (STATIC|EXTERN)? CONST? variable_decl ('=' CONSTANT)? ';'                   # global_decl_variable
+    : (STATIC|EXTERN)? CONST? variable_decl ('=' expression)? ';'                   # global_decl_variable
     | STATIC? variable_decl '(' (variable_type (',' variable_type)* )? ')' ';'    # global_decl_function
     | EXTERN? variable_decl '(' param_list? ')' composite_block                   # function_definition
     | STRUCT ID '{' (variable_decl ';')+ '}'  ';'                                 # struct_definition

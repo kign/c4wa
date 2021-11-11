@@ -174,14 +174,18 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         decl.imported = ctx.STATIC() == null;
         decl.mutable = ctx.CONST() == null;
 
-        if (ctx.CONSTANT() == null) {
+        if (ctx.expression() == null) {
             if (!decl.imported)
                 throw fail(ctx, "global variable", "non-imported variable must be initialized");
         }
         else {
             if (decl.mutable && decl.imported)
                 throw fail(ctx, "global variable","Imported global variable cannot be initialized, declare 'const' or 'static'");
-            decl.initialValue = parseConstant(ctx, decl.type, ctx.CONSTANT().getText());
+            OneInstruction rhs = (OneInstruction) visit(ctx.expression());
+            if (!(rhs.instruction instanceof Const))
+                throw fail(ctx, "global_variable", "RHS '" + ctx.expression().getText() + "' hasn't evaluated to a constant");
+            decl.initialValue = new Const(decl.type.asNumType(), (Const) rhs.instruction);
+            // decl.initialValue = parseConstant(ctx, decl.type, ctx.CONSTANT().getText());
             if (!decl.mutable)
                 decl.imported = false;
         }
@@ -1165,7 +1169,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         throw fail(ctx, "const", "'" + textOfConstant + "' cannot be parsed");
     }
 
-    private Const parseConstant(ParserRuleContext ctx, CType ctype, String textOfConstant) {
+    // We are now switching to compile-time evaluation, so this won't be necessary, but let's keep for now
+    private Const parseConstant_TBR(ParserRuleContext ctx, CType ctype, String textOfConstant) {
         try {
             if (ctype == CType.INT)
                 return new Const(Integer.parseInt(textOfConstant));
