@@ -523,8 +523,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     throw fail(ctx, "function call", "Argument number " + idx + " doesn't have type");
 
                 Const constOffset = new Const(blockEnv.getOffset());
-                if (arg.type.is_32()) {
-                    NumType t64 = arg.type.is_int()? NumType.I64 : NumType.F64;
+                if (arg.type.is_32() || arg.type.is_ptr()) {
+                    NumType t64 = arg.type.is_int()|| arg.type.is_ptr()? NumType.I64 : NumType.F64;
                     blockEnv.prefix.add(new Store(t64, constOffset,
                             new GenericCast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.instruction)));
                 }
@@ -622,6 +622,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
             type = decl.type;
         }
+
+        if(type.is_ptr())
+            type = CType.INT;
 
         String op;
         OneInstruction rhs;
@@ -1094,7 +1097,16 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public OneInstruction visitExpression_string(c4waParser.Expression_stringContext ctx) {
         String str = unescape(ctx.STRING().getText());
-        return new OneInstruction(new Const(moduleEnv.addString(str)), CType.INT);
+        return new OneInstruction(new Const(moduleEnv.addString(str)), CType.CHAR.make_pointer_to());
+    }
+
+    @Override
+    public OneInstruction visitExpression_character(c4waParser.Expression_characterContext ctx) {
+        String s = ctx.CHARACTER().getText();
+        Integer val = unescapeChar(s);
+        if (val == null)
+            throw fail(ctx, "character", "Invalid character definition " + s);
+        return new OneInstruction(new Const(val), CType.CHAR);
     }
 
     @Override
@@ -1186,7 +1198,54 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return nextResult;
     }
 
+    static Integer unescapeChar(String str) {
+        byte[] bytes = str.substring(1, str.length() - 1).getBytes();
+
+        if (bytes.length == 1)
+            return (int)bytes[0];
+        else if (bytes[0] != '\\')
+            return null;
+        else if (bytes[1] == 'a')
+            return 0x07;
+        else if (bytes[1] == 'b')
+            return 0x08;
+        else if (bytes[1] == 'e')
+            return 0x1B;
+        else if (bytes[1] == 'f')
+            return 0x0C;
+        else if (bytes[1] == 'n')
+            return 0x0A;
+        else if (bytes[1] == 'r')
+            return 0x0D;
+        else if (bytes[1] == 't')
+            return 0x09;
+        else if (bytes[1] == 'v')
+            return 0x0B;
+        else if (bytes[1] == '\\')
+            return 0x5C;
+        else if (bytes[1] == '\'')
+            return 0x27;
+        else if (bytes[1] == '"')
+            return 0x22;
+        else if (bytes[1] == '?')
+            return 0x3F;
+        else if ('0' <= bytes[1] && bytes[1] <= '7' && bytes.length <= 4) {
+            int res = bytes.length == 4 ? (bytes[1] - '0')*64 + (bytes[2] - '0') * 8 + (bytes[3] - '0')
+                    : (bytes.length == 3 ? (bytes[1] - '0')*8 + (bytes[2] - '0') : bytes[1] - '0');
+            if (res >= 256)
+                return null;
+            return res;
+        }
+        else if (bytes[1] == 'x' && bytes.length == 4) {
+            return Integer.parseInt(Character.toString(bytes[2]) + Character.toString(bytes[3]), 16);
+        }
+        else
+            return null;
+    }
+
     static String unescape(String str) {
+        // we process \" and \\, but the rest of escape sequences are passed as-is
+        // so "\n" is just a regular two-char sequence, <\> and <n>.
         StringBuilder b = new StringBuilder();
         int N = str.length();
         for (int i = 1; i < N - 1; i ++) {

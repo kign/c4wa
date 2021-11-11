@@ -236,7 +236,7 @@ async function run_c_file(cfile) {
     res = spawnSync(tmp_exe);
 
     if (res.status !== 0) {
-        console.error("❌ Native execution failed, not proceeding");
+        console.error("❌ Native execution failed, status", res.status, "executing", tmp_exe, ", not proceeding");
         process.exit(1);
     }
     const c_output = (res.stdout === null) ? '' : res.stdout.toString();
@@ -366,15 +366,21 @@ async function run_wasm_file(fname, options) {
                 offset += 8;
                 if ('cdxu'.includes(fmt[i])) {
                     const r = read_i64(mem, offset);
-                    if (-(2n ** 53n) < r && r < 2n**53n)
-                        args.push(parseInt(r.toString()));
+                    if (fmt[i] === 'c')
+                        args.push(String.fromCharCode(Number(r)));
+                    else if (-(2n ** 53n) < r && r < 2n**53n)
+                        args.push(Number(r));
                     else {
                         args.push(r.toString());
                         fmt[i] = 's';
                     }
                 }
-                else if ('f'.includes(fmt[i]))
-                    args.push(read_f64(mem, offset))
+                else if (fmt[i] === 'f')
+                    args.push(read_f64(mem, offset));
+                else if (fmt[i] === 's') {
+                    const s = read_str(mem, Number(read_i64(mem, offset)));
+                    args.push(s);
+                }
                 else {
                     console.error("Format '" + fmt[i] + "' not known at this time");
                     return;

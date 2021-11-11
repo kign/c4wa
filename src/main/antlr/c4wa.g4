@@ -106,6 +106,7 @@ expression
     | CONSTANT                            # expression_const
     | ID                                  # expression_variable
     | STRING                              # expression_string
+    | CHARACTER                              # expression_character
     | ALLOC '(' memptr=expression ',' count=expression ',' variable_type ')' # expression_alloc
     | function_call                       # expression_function_call
     ;
@@ -188,6 +189,8 @@ STRING
     :   '"' SCharSequence? '"'
     ;
 
+CHARACTER : '\'' SChar '\'' ;
+
 fragment
 Constant
     :   '0'
@@ -252,10 +255,12 @@ EscapeSequence
     |   OctalEscapeSequence
     |   HexadecimalEscapeSequence
     ;
+
 fragment
 SimpleEscapeSequence
     :   '\\' ['"?abfnrtv\\]
     ;
+
 fragment
 OctalEscapeSequence
     :   '\\' OctalDigit OctalDigit? OctalDigit?

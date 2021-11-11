@@ -149,6 +149,7 @@ abstract public class CType implements Partial {
     public boolean isValidRHS(CType rhs) { return false; }
     public boolean same(CType rhs) { return isValidRHS(rhs) && rhs.isValidRHS(this); }
     public CType deref() { return null; }
+    public boolean is_ptr() { return deref() != null; }
     public boolean is_signed() { return true; }
     public CType make_pointer_to() { return new Pointer(this); }
     abstract public NumType asNumType();
