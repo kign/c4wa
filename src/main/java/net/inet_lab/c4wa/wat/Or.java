@@ -1,10 +1,10 @@
 package net.inet_lab.c4wa.wat;
 
-public class Or extends Instruction_Add {
+public class Or extends Instruction_Bin {
     final public NumType numType;
 
     public Or(NumType numType, Instruction arg1, Instruction arg2) {
-        super(new InstructionWithNumPrefix(numType, InstructionName.OR), arg1, arg2);
+        super(new InstructionWithNumPrefix(numType, InstructionName.OR), arg1, arg2, (a,b)->a|b,null);
         this.numType = numType;
     }
 

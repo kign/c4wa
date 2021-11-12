@@ -33,11 +33,22 @@ public class Const extends Instruction {
         doubleValue = value;
     }
 
-    public Const(NumType numType, int value) {
+    public Const(NumType numType, long value) {
         super(new InstructionWithNumPrefix(numType, InstructionName.CONST));
         this.numType = numType;
         longValue = (numType == NumType.I32 || numType == NumType.I64) ? value : 0;
         doubleValue = (numType == NumType.I32 || numType == NumType.I64)? 0 : value;
+    }
+
+    public Const(NumType numType, double value) {
+        super(new InstructionWithNumPrefix(numType, InstructionName.CONST));
+        this.numType = numType;
+        if (numType == NumType.F32 || numType == NumType.F64) {
+            longValue = 0;
+            doubleValue = value;
+        }
+        else
+            throw new RuntimeException("You can't do it");
     }
 
     public Const(NumType numType, Const orig) {
@@ -47,6 +58,14 @@ public class Const extends Instruction {
         this.numType = numType;
         longValue =  d_int? (s_int? orig.longValue : (long) orig.doubleValue) : 0;
         doubleValue = d_int? 0 : (s_int? (double)orig.longValue : orig.doubleValue);
+    }
+
+    interface TwoArgIntOperator {
+        long op(long a, long b);
+    }
+
+    interface TwoArgFloatOperator {
+        double op(double a, double b);
     }
 
     @Override

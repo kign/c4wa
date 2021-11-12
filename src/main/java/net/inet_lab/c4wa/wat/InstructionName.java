@@ -28,6 +28,7 @@ public enum InstructionName implements InstructionType {
     NE ("ne"),
     AND ("and"),
     OR ("or"),
+    XOR ("xor"),
     GET_LOCAL ("get_local"),
     SET_LOCAL ("set_local"),
     TEE_LOCAL ("tee_local"),
@@ -73,6 +74,10 @@ public enum InstructionName implements InstructionType {
     REINTERPRET_F64 ("reinterpret_f64"),
     REINTERPRET_I32 ("reinterpret_i32"),
     REINTERPRET_I64 ("reinterpret_i64"),
+
+    MEMORY_FILL ("memory.fill"),
+    MEMORY_GROW ("memory.grow"),
+    MEMORY_SIZE ("memory.size"),
 
     EXPORT ("export"),
     IMPORT ("import"),

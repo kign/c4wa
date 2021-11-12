@@ -72,9 +72,9 @@ return_expression : RETURN expression;
 
 simple_assignment : (ID '=')+ expression;
 
-simple_increment: ID (op=(ASOR|ASAND|ASPLUS|ASMINUS|ASMULT|ASDIV|ASMOD) expression|PLUSPLUS|MINUSMINUS) ;
+simple_increment: ID  (op=(ASOR|ASAND|ASPLUS|ASMINUS|ASMULT|ASDIV|ASMOD|ASBWAND|ASBWOR|ASBWXOR) expression|PLUSPLUS|MINUSMINUS) ;
 
-complex_increment: lhs op=(ASOR|ASAND|ASPLUS|ASMINUS|ASMULT|ASDIV|ASMOD) expression ;
+complex_increment: lhs op=(ASOR|ASAND|ASPLUS|ASMINUS|ASMULT|ASDIV|ASMOD|ASBWAND|ASBWOR|ASBWXOR) expression ;
 
 complex_assignment: lhs '=' expression;
 
@@ -100,12 +100,15 @@ expression
     | expression op=(MULT | DIV | MOD) expression    # expression_binary_mult
     | expression op=(PLUS | MINUS) expression                        # expression_binary_add
     | expression op=(LTEQ | GTEQ | LT | GT | EQ | NEQ) expression    # expression_binary_cmp
+    | expression op=BWAND expression           # expression_binary_bwand
+    | expression op=BWXOR expression           # expression_binary_bwxor
+    | expression op=BWOR expression           # expression_binary_bwor
     | expression op=AND expression           # expression_binary_and
     | expression op=OR expression            # expression_binary_or
     | expression '?' expression ':' expression # expression_if_else
     | CONSTANT                            # expression_const
     | ID                                  # expression_variable
-    | STRING                              # expression_string
+    | STRING+                              # expression_string
     | CHARACTER                              # expression_character
     | ALLOC '(' memptr=expression ',' count=expression ',' variable_type ')' # expression_alloc
     | function_call                       # expression_function_call
@@ -114,6 +117,8 @@ expression
 
 OR : '||';
 AND : '&&';
+BWOR : '|';
+BWAND : '&';
 PLUS : '+';
 MINUS : '-';
 MULT : '*';
@@ -126,6 +131,10 @@ ASMINUS : '-=';
 ASMULT : '*=';
 ASDIV : '/=';
 ASMOD : '%=';
+ASBWOR : '|=';
+ASBWAND : '&=';
+ASBWXOR : '^=';
+
 PLUSPLUS : '++';
 MINUSMINUS: '--';
 
@@ -135,7 +144,7 @@ GT : '>';
 LT : '<';
 GTEQ : '>=';
 LTEQ : '<=';
-POW : '^';
+BWXOR : '^';
 NOT : '!';
 MEMB : '->';
 
@@ -183,7 +192,8 @@ ALLOC  :  'alloc';
 ID     :  [a-zA-Z_][a-zA-Z0-9_]*;
 ASM    :  'asm' [ \t\n\r]* '{' .*? '}';
 
-CONSTANT : Sign? Constant;
+// CONSTANT : Sign? Constant;
+CONSTANT : Constant;
 
 STRING
     :   '"' SCharSequence? '"'

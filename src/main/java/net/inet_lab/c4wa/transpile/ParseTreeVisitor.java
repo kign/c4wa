@@ -55,7 +55,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         final CType type;
 
         OneInstruction(Instruction instruction, CType type) {
-            this.instruction = instruction;
+            this.instruction = instruction.comptime_eval();
             this.type = type;
         }
     }
@@ -509,6 +509,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public OneInstruction visitFunction_call(c4waParser.Function_callContext ctx) {
         String fname = ctx.ID().getText();
+
         FunctionDecl decl = moduleEnv.funcDecl.get(fname);
 
         if (decl == null)
@@ -560,6 +561,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 call_args[idx] = args.instructions[idx].instruction;
             }
         }
+        // built-in functions
+        if ("memset".equals(fname))
+            return new OneInstruction(new MemoryFill(call_args[0], call_args[1], call_args[2]), null);
+
         return new OneInstruction(new Call(fname, call_args), decl.returnType);
     }
 
@@ -920,6 +925,27 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return binary_op(ctx, arg1, arg2, ctx.op.getText());
     }
 
+    @Override
+    public OneInstruction visitExpression_binary_bwxor(c4waParser.Expression_binary_bwxorContext ctx) {
+        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
+        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+        return binary_op(ctx, arg1, arg2, ctx.op.getText());
+    }
+
+    @Override
+    public OneInstruction visitExpression_binary_bwand(c4waParser.Expression_binary_bwandContext ctx) {
+        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
+        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+        return binary_op(ctx, arg1, arg2, ctx.op.getText());
+    }
+
+    @Override
+    public OneInstruction visitExpression_binary_bwor(c4waParser.Expression_binary_bworContext ctx) {
+        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
+        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+        return binary_op(ctx, arg1, arg2, ctx.op.getText());
+    }
+
     private OneInstruction binary_op (ParserRuleContext ctx, OneInstruction arg1, OneInstruction arg2, String op) {
         if (arg1 == null)
             throw fail(ctx, "Expression", "1-st arg not parsed");
@@ -960,7 +986,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     : new Add(NumType.I32, arg2.instruction, new Mul(NumType.I32, arg1.instruction, new Const(type.size()))),
                     arg2.type);
         }
-
+        else if (arg1.type.is_ptr() && arg2.type.is_ptr() && arg1.type.deref().same(arg2.type.deref()))
+            return new OneInstruction(arg1.type.deref().size() == 1
+                    ? new Sub(NumType.I32, arg1.instruction, arg2.instruction)
+                    : new Div(NumType.I32, true, new Sub(NumType.I32, arg1.instruction, arg2.instruction), new Const(arg1.type.deref().size())),
+            CType.INT);
         else if (arg1.type.is_i32() && arg2.type.is_i32()) {
             numType = NumType.I32;
             resType = CType.INT;
@@ -1001,10 +1031,12 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             res = new Eqz(numType, arg1.instruction);
         else if (List.of("==", "!=").contains(op))
             res = new Cmp(numType, op.charAt(0) == '=', arg1.instruction, arg2.instruction);
-        else if ("&&".equals(op))
+        else if ("&&".equals(op) || "&".equals(op))
             res = new And(numType, arg1.instruction, arg2.instruction);
-        else if ("||".equals(op))
+        else if ("||".equals(op) || "|".equals(op))
             res = new Or(numType, arg1.instruction, arg2.instruction);
+        else if ("^".equals(op))
+            res = new Xor(numType, arg1.instruction, arg2.instruction);
         else
             throw fail(ctx, "binary operation", "Instruction '" + op + "' not recognized");
 
@@ -1101,8 +1133,12 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitExpression_string(c4waParser.Expression_stringContext ctx) {
-        String str = unescape(ctx.STRING().getText());
-        return new OneInstruction(new Const(moduleEnv.addString(str)), CType.CHAR.make_pointer_to());
+        StringBuilder b = new StringBuilder();
+        for (var s : ctx.STRING())
+            b.append(unescape(s.getText()));
+
+        //String str = unescape(ctx.STRING().getText());
+        return new OneInstruction(new Const(moduleEnv.addString(b.toString())), CType.CHAR.make_pointer_to());
     }
 
     @Override

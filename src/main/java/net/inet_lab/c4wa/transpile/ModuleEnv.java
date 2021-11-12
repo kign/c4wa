@@ -33,6 +33,9 @@ public class ModuleEnv implements Partial {
 
         data = new byte[DATA_LENGTH];
         data_len = 0;
+
+        addDeclaration(new FunctionDecl("memset", null,
+                new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR, CType.INT}, false, false));
     }
 
     public void addStruct(String name, Struct struct) {

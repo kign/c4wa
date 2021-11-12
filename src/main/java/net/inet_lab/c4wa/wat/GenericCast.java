@@ -1,7 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
 public class GenericCast extends Instruction_Return {
-    public GenericCast(NumType srcType, NumType dstType, boolean signed, Instruction arg) {
+    private GenericCast(NumType srcType, NumType dstType, boolean signed, Instruction arg) {
         super(from_to(srcType, dstType, signed), arg);
     }
 
@@ -32,7 +32,9 @@ public class GenericCast extends Instruction_Return {
     }
 
     static public Instruction cast(NumType srcType, NumType dstType, boolean signed, Instruction arg) {
-        if (arg instanceof Const)
+        if (dstType == srcType)
+            return arg;
+        else if (arg instanceof Const)
             return new Const(dstType, (Const)arg);
         else
             return new GenericCast(srcType, dstType, signed, arg);

@@ -16,6 +16,7 @@ const def_arr = ["WAT file exists (created by gradlew :test) and has been modifi
     "Native executable compiled from C source generated expected output"];
 
 const c_prefix = `void * malloc();
+void * memset();
 #define alloc(ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
 `;
 
@@ -100,7 +101,7 @@ async function run_one_test(test, verbose) {
         spawn_options.stdio = 'inherit';
 
     if (results[0] === 2) {
-        const res = spawnSync('wat2wasm', [wat, '-o', wasm], spawn_options);
+        const res = spawnSync('wat2wasm', [wat, '--enable-bulk-memory', '-o', wasm], spawn_options);
 
         results[tid] = (res.status === 0) ? 2 : 1;
         if (verbose)
@@ -258,7 +259,7 @@ async function run_c_file(cfile) {
     fs.writeFileSync(wat, res.stdout);
     console.log('✅ Transpiled into WAT file');
 
-    res = spawnSync('wat2wasm', [wat, '-o', wasm], {stdio: 'inherit'});
+    res = spawnSync('wat2wasm', [wat, '--enable-bulk-memory', '-o', wasm], {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ wat2wasm compilation", wat, "to", wasm, "failed with status", res.status, ";", "not proceeding");

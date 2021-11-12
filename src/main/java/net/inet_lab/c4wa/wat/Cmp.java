@@ -1,17 +1,17 @@
 package net.inet_lab.c4wa.wat;
 
-public class Cmp extends Instruction_Add {
+public class Cmp extends Instruction_Bin {
     public Cmp(NumType numType, boolean bLess, boolean bEqual, boolean bSigned, Instruction lhs, Instruction rhs) {
         super(new InstructionWithNumPrefix(numType,
                 (numType == NumType.F32 || numType == NumType.F64)?(
                         bLess?(bEqual?InstructionName.LE:InstructionName.LT):(bEqual ? InstructionName.GE : InstructionName.GT)):
                         (bLess ? (bEqual ? (bSigned?InstructionName.LE_S: InstructionName.LE_U) : (bSigned?InstructionName.LT_S: InstructionName.LT_U)) :
                                         (bEqual ? (bSigned ?InstructionName.GE_S: InstructionName.GE_U) : (bSigned ?InstructionName.GT_S: InstructionName.GT_U)))),
-                lhs, rhs);
+                lhs, rhs, null, null);
     }
 
     public Cmp(NumType numType, boolean bEqual, Instruction lhs, Instruction rhs) {
-        super(new InstructionWithNumPrefix(numType, bEqual?InstructionName.EQ:InstructionName.NE), lhs, rhs);
+        super(new InstructionWithNumPrefix(numType, bEqual?InstructionName.EQ:InstructionName.NE), lhs, rhs, null, null);
     }
 
     public Cmp(Cmp o) {
@@ -35,7 +35,7 @@ public class Cmp extends Instruction_Add {
                 ((o.type.getMain() == InstructionName.NE) ? InstructionName.EQ :
 
                 null
-                )))))))))))))), o.arg1, o.arg2);
+                )))))))))))))), o.arg1, o.arg2, null, null);
     }
 
     @Override
