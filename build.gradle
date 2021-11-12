@@ -12,14 +12,31 @@ repositories {
 }
 
 dependencies {
-    antlr "org.antlr:antlr4:4.9.2"
+    antlr 'org.antlr:antlr4:4.9.3'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
 }
 
 generateGrammarSource {
-    // must match @header param in grammar definition file
-    outputDirectory = "${project.buildDir}/generated-src/antlr/main/net/inet_lab/c4wa/autogen/parser" as File
+    // Approach borrowed from:
+    // https://stackoverflow.com/questions/50568405/antlr4-generate-grammar-source-for-more-language-in-gradle
+    def target = project.hasProperty('target') ? project.property('target') : 'Java'
+
+    switch(target) {
+        case "Java" :
+            // must match @header param in grammar definition file
+            outputDirectory = "${project.buildDir}/generated-src/antlr/main/net/inet_lab/c4wa/autogen/parser" as File
+            break
+        case "JavaScript" :
+            // https://github.com/antlr/antlr4/blob/master/doc/javascript-target.md
+            // To generate JS parser:
+            // ./gradlew generateGrammarSource -Ptarget=JavaScript
+            // To run, will need antlr4 runtime: https://www.npmjs.com/package/antlr4
+            outputDirectory = "${project.buildDir}/generated-js" as File
+            arguments = ['-Dlanguage=' + target]
+            break
+    }
+
     arguments += ['-visitor', '-long-messages']
 }
 
