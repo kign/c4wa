@@ -1019,6 +1019,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (arg1.type.is_signed() != arg2.type.is_signed())
             throw fail(ctx, "binary operation '" + op + "'", "cannot combined signed and unsigned types");
 
+        resType = resType.make_signed(arg1.type.is_signed());
+
         Instruction res;
         if ("+".equals(op))
             res = new Add(numType, arg1.instruction, arg2.instruction);
@@ -1160,14 +1162,15 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public CType visitInteger_primitive(c4waParser.Integer_primitiveContext ctx) {
+        boolean u = ctx.UNSIGNED() != null;
         if (ctx.CHAR() != null)
-            return CType.CHAR;
+            return u? CType.UNSIGNED_CHAR: CType.CHAR;
         else if (ctx.SHORT() != null)
-            return CType.SHORT;
+            return u? CType.UNSIGNED_SHORT: CType.SHORT;
         else if (ctx.INT() != null)
-            return CType.INT;
+            return u? CType.UNSIGNED_INT : CType.INT;
         else if (ctx.LONG() != null)
-            return CType.LONG;
+            return u? CType.UNSIGNED_LONG : CType.LONG;
         else
             throw fail(ctx, "primitive", "Type " + ctx + " not implemented");
     }

@@ -66,6 +66,13 @@ abstract public class CType implements Partial {
         final boolean signed;
 
         @Override
+        public CType make_signed(boolean signed) {
+            if (signed == this.signed)
+                return this;
+            return new Primitive(primitiveType, signed);
+        }
+
+        @Override
         public boolean is_signed() {
             return signed;
         }
@@ -157,6 +164,11 @@ abstract public class CType implements Partial {
     public boolean is_ptr() { return deref() != null; }
     public boolean is_primitive() { return false; }
     public boolean is_signed() { return true; }
+
+    public CType make_signed(boolean signed) {
+        throw new RuntimeException("Not applicable to " + this);
+    }
+
     public CType make_pointer_to() { return new Pointer(this); }
     abstract public NumType asNumType();
     abstract public int size();

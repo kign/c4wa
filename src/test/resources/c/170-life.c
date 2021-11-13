@@ -28,7 +28,7 @@ void life_prepare(int X, int Y, char * cells) {
             int idx = X * y + x;
             if (cells[idx] == 1) {
                 cnt ++;
-                hash ^= idx * hash_rand;
+                hash ^= (unsigned int)idx * hash_rand;
                 for (int dx = -1; dx <= 1; dx ++)
                     for (int dy = -1; dy <= 1; dy ++) {
                         int didx = X * ((y + dy + Y) % Y) + ((x + dx + X) % X);
@@ -112,7 +112,7 @@ void life_step (
         if ( newv ) {
             cnt ++;
 
-            hash ^= ind * hash_rand;
+            hash ^= (unsigned int)ind * hash_rand;
 
             cellsnew[ind] = (char)newv;
             if (cellsnew[n00] != 1) cellsnew[n00] = 2;

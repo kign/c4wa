@@ -12,9 +12,9 @@
         (then
           (return (get_local $len)))
         (else
-          (if (i64.eqz (i64.rem_s (get_local $seed) (i64.const 2)))
+          (if (i64.eqz (i64.rem_u (get_local $seed) (i64.const 2)))
             (then
-              (set_local $seed (i64.div_s (get_local $seed) (i64.const 2))))
+              (set_local $seed (i64.div_u (get_local $seed) (i64.const 2))))
             (else
               (set_local $seed (i64.add (i64.mul (i64.const 3) (get_local $seed)) (i64.const 1)))))))
       (set_local $len (i32.add (get_local $len) (i32.const 1)))
