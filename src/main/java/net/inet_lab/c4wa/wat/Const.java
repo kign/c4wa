@@ -60,6 +60,12 @@ public class Const extends Instruction {
         doubleValue = d_int? 0 : (s_int? (double)orig.longValue : orig.doubleValue);
     }
 
+    public boolean isTrue() {
+        return numType == NumType.I32 || numType == NumType.I64
+                ? longValue != 0
+                : doubleValue != 0;
+    }
+
     interface TwoArgIntOperator {
         long op(long a, long b);
     }

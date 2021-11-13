@@ -175,7 +175,7 @@
             (if (i32.ne (i32.load8_s (i32.add (get_local $cellsnew) (get_local $n22))) (i32.const 1))
               (then
                 (i32.store8 (i32.add (get_local $cellsnew) (get_local $n22)) (i32.const 2))))))
-        (br_if $@block_1_continue (i32.const 1))))
+        (br $@block_1_continue)))
     (i32.store (i32.add (get_local $stat) (i32.const 4)) (get_local $cnt))
     (i32.store (i32.add (get_local $stat) (i32.const 0)) (get_local $hash)))
   (func $main (export "main") (result i32)

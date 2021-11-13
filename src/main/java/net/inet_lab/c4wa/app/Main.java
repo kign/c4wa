@@ -10,6 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import net.inet_lab.c4wa.transpile.SyntaxError;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -93,18 +94,34 @@ public class Main {
         if (!parsedArgs.containsKey("P") && hasPreprocessorDirectives(programText))
             System.err.println("WARNING: your source file contains preprocessor directives, use -P option");
 
-        ParseTree tree = buildParseTree(programText);
-        String wat = generateWAT(tree, prop);
+        try {
+            ParseTree tree = buildParseTree(programText);
+            String wat = generateWAT(tree, prop);
 
-        if (makeWasm) {
-            System.err.println("Compiling WAT to WASM is not yet implemented");
-            System.exit(1);
+            if (makeWasm) {
+                System.err.println("Compiling WAT to WASM is not yet implemented");
+                System.exit(1);
+            }
+
+            if ("-".equals(output))
+                System.out.println(wat);
+            else {
+                (new PrintStream(output)).println(wat);
+            }
         }
+        catch(SyntaxError err) {
+            if (err.line_st != err.line_en) {
+                System.err.println("Error: " + err.msg);
+                System.out.println("Error begins at line " + err.line_st + "(position " + err.pos_st + ") and ends at line " +
+                        err.line_en + "(position " + err.pos_en + "); we can't handle it yet");
+            }
+            else {
+                System.out.println(programLines.get(err.line_st - 1));
+                System.out.println(" ".repeat(err.pos_st) + "^".repeat(1 + err.pos_en - err.pos_st));
+                System.err.println("Syntax error[" + err.line_st + ":" + err.pos_st + "]: " + err.msg);
+            }
 
-        if ("-".equals(output))
-            System.out.println(wat);
-        else {
-            (new PrintStream(output)).println(wat);
+            System.exit(1);
         }
     }
 
@@ -137,7 +154,7 @@ public class Main {
                 " -P            invoke C preprocessor via GCC\n" +
                 " -Dname=value  when option -P is used, pass definition to C preprocessor\n" +
                 " -Xname=value  define compiler property (see below)\n" +
-                " -o, --output <FILE>  specify output files, either .wat or .wasm (also - for stdout)\n" +
+                " -o, --output <FILE>  specify output files, either .wat or .wasm (or - for stdout)\n" +
                 " -k, --keep    when compiling to WASM, keep intermediate WAT file\n" +
                 " -h, --help    this help screen\n" +
                 "\n" +
@@ -240,14 +257,19 @@ public class Main {
         @Override
         public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e)
                 throws ParseCancellationException {
-            throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
+            //throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
+            throw new SyntaxError(line, line, charPositionInLine, charPositionInLine, msg);
         }
     }
 
     private static ParseTree buildParseTree(String programText) {
         c4waLexer lexer = new c4waLexer(CharStreams.fromString(programText));
+        lexer.removeErrorListeners();
+        lexer.addErrorListener(ThrowingErrorListener.INSTANCE);
 
         c4waParser parser = new c4waParser(new CommonTokenStream(lexer));
+        parser.removeErrorListeners();
+        parser.addErrorListener(ThrowingErrorListener.INSTANCE);
 
         ParseTree tree = parser.module();
 

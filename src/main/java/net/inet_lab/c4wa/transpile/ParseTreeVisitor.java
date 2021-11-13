@@ -16,6 +16,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     final private static String CONT_SUFFIX = "_continue";
     final private static String BREAK_SUFFIX = "_break";
+    final private boolean print_stack_trace_on_errors = false;
 
     public ParseTreeVisitor(Properties prop) {
         blockStack = new ArrayDeque<>();
@@ -344,7 +345,12 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         for(var i : body.instructions)
             body_elems.add(i.instruction);
 
-        body_elems.add(new BrIf(block_id_cont, condition.instruction));
+        if (condition.instruction instanceof Const) {
+            if (((Const) condition.instruction).isTrue())
+                body_elems.add(new Br(block_id_cont));
+        }
+        else
+            body_elems.add(new BrIf(block_id_cont, condition.instruction));
         if (body.need_block)
             return new OneInstruction(
                     new Block(block_id_break, new Instruction[]{
@@ -1302,8 +1308,12 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     private RuntimeException fail(ParserRuleContext ctx, String desc, String error) {
-        return new RuntimeException("[" + ctx.start.getLine() + ":" +
-                ctx.start.getCharPositionInLine() + "] " + desc + " " + ctx.getText() + " : " + error);
+        if (print_stack_trace_on_errors)
+            return new RuntimeException("[" + ctx.start.getLine() + ":" +
+                    ctx.start.getCharPositionInLine() + "] " + desc + " " + ctx.getText() + " : " + error);
+        else
+            return new SyntaxError(ctx.start.getLine(), ctx.stop.getLine(), ctx.start.getCharPositionInLine(), ctx.stop.getCharPositionInLine(),
+                    error + " (" + desc + ")");
     }
 
 }
