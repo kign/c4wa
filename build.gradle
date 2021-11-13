@@ -5,14 +5,37 @@ plugins {
 }
 
 group 'net.inet_lab'
-version '1.0-SNAPSHOT'
+version '0.1-SNAPSHOT'
 
 repositories {
     mavenCentral()
 }
 
+application {
+    // ./gradlew installDist will create script
+    // -> build/install/c4wa-compile/bin/c4wa-compile <-
+    // (appName is defined in gradle.properties, which is also included in Java resources)
+    applicationName = appName
+}
+
+/* some hacks we don't need, preserving here for reference */
+/* This is how we could redirect to create JAR in /lib, not /libs
+tasks.withType(Jar) {
+    libsDirName = "${project.buildDir}/lib" as File
+}
+*/
+
+/* This is how we can copy all dependencies to /lib (basically content of distribution files)
+task copyToLib(type: Copy) {
+    into "${project.buildDir}/lib" from configurations.runtimeClasspath
+}
+
+build.dependsOn(copyToLib)
+*/
+
 dependencies {
     antlr 'org.antlr:antlr4:4.9.3'
+
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
 }

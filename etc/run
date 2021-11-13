@@ -20,6 +20,8 @@ void * memset();
 #define alloc(ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
 `;
 
+const compile = path.resolve(__dirname, '..', "build", "install", "c4wa-compile", "bin", "c4wa-compile");
+
 async function main () {
     const arg = process.argv[2]; // 0 = node, 1 = script
     if (arg === undefined)
@@ -214,6 +216,19 @@ async function run_one_test(test, verbose) {
     return results;
 }
 
+async function build() {
+    const gradlew = path.resolve(__dirname, '..', 'gradlew');
+
+    const res = spawnSync(gradlew, ['-q', 'installDist'], {stdio: 'inherit'});
+
+    if (res.status !== 0) {
+        console.error("❌ Build failed");
+        process.exit(1);
+    }
+
+    console.log('✅ Built completed');
+}
+
 async function run_c_file(cfile) {
     const tmp_dir = path.resolve(os.homedir(), 'temp');
     fs.mkdirSync(tmp_dir, {recursive: true});
@@ -221,9 +236,10 @@ async function run_c_file(cfile) {
     fs.rmSync(tmp_exe, {force: true});
     const wat = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wat'));
     const wasm = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wasm'));
-    const gradlew = path.resolve(__dirname, '..', 'gradlew');
     const tmp_c = path.resolve(tmp_dir, 'tmp.c');
     fs.writeFileSync(tmp_c, c_prefix + fs.readFileSync(cfile, 'utf8'));
+
+    await build ();
 
     let res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c], {stdio: 'inherit'});
 
@@ -245,18 +261,16 @@ async function run_c_file(cfile) {
 
     fs.rmSync(tmp_exe, {force: true});
 
-    res = spawnSync(gradlew, ['run',  '-q',  `--args=${cfile}`]);
+    res = spawnSync(compile, ['-P', cfile, '-o', wat], {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ c4wa compilation failed, not proceeding");
-        process.stdout.write(res.stderr);
         process.stdout.write("\n----------------  C output ----------------\n");
         process.stdout.write(c_output);
         process.stdout.write("-----------------  The End ----------------\n");
 
         process.exit(1);
     }
-    fs.writeFileSync(wat, res.stdout);
     console.log('✅ Transpiled into WAT file');
 
     res = spawnSync('wat2wasm', [wat, '--enable-bulk-memory', '-o', wasm], {stdio: 'inherit'});

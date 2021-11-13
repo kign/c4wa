@@ -16,7 +16,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     final private static String CONT_SUFFIX = "_continue";
     final private static String BREAK_SUFFIX = "_break";
 
-    public ParseTreeVisitor() {
+    public ParseTreeVisitor(Properties prop) {
         blockStack = new ArrayDeque<>();
     }
 
