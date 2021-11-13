@@ -19,11 +19,11 @@ class VariableDecl implements Partial {
         initialValue = null;
     }
 
-    public Global wat () {
+    public Global wat (String gobalImportName) {
         if (exported)
             return new Global(name, name, type.asNumType(), mutable, initialValue);
         else if (imported)
-            return new Global(name, ModuleEnv.GLOBAL_IMPORT_NAME, name, type.asNumType(), mutable);
+            return new Global(name, gobalImportName, name, type.asNumType(), mutable);
         else
             return new Global(name, type.asNumType(), mutable, initialValue);
     }

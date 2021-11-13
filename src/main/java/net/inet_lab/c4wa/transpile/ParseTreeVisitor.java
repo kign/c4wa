@@ -12,12 +12,14 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     private FunctionEnv functionEnv;
     private ModuleEnv moduleEnv;
     final private Deque<BlockEnv> blockStack;
+    final private Properties prop;
 
     final private static String CONT_SUFFIX = "_continue";
     final private static String BREAK_SUFFIX = "_break";
 
     public ParseTreeVisitor(Properties prop) {
         blockStack = new ArrayDeque<>();
+        this.prop = prop;
     }
 
     static class ParamList implements Partial {
@@ -123,7 +125,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public ModuleEnv visitModule(c4waParser.ModuleContext ctx) {
-        moduleEnv = new ModuleEnv();
+        moduleEnv = new ModuleEnv(prop);
 
         List<OneFunction> functions = new ArrayList<>();
 
@@ -1085,7 +1087,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (!memptr.type.is_i32())
             throw fail(ctx, "alloc", "'" + memptr.type + "' won't work for alloc, must have int");
 
-        int memOffset = ModuleEnv.DATA_OFFSET + ModuleEnv.DATA_LENGTH;
+        int memOffset = moduleEnv.DATA_OFFSET + moduleEnv.DATA_LENGTH;
         if (memptr.instruction instanceof Const)
             return new OneInstruction(new Const(memOffset + (int)((Const)memptr.instruction).longValue), type.make_pointer_to());
         else

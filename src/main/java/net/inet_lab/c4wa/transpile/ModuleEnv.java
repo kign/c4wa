@@ -4,10 +4,7 @@ import net.inet_lab.c4wa.wat.*;
 import net.inet_lab.c4wa.wat.Module;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ModuleEnv implements Partial {
     final List<FunctionEnv> functions;
@@ -19,18 +16,22 @@ public class ModuleEnv implements Partial {
     final byte[] data;
     int data_len;
 
-    final static int DATA_OFFSET = 1024;
-    final static int DATA_LENGTH = 1024;
-    final static String GLOBAL_IMPORT_NAME = "c4wa";
-    final static String MEMORY_EXPORT_NAME = "memory";
+    final int DATA_OFFSET;
+    final int DATA_LENGTH;
+    final String GLOBAL_IMPORT_NAME;
+    final String MEMORY_EXPORT_NAME;
 
-    public ModuleEnv () {
+    public ModuleEnv (Properties prop) {
         funcDecl = new HashMap<>();
         varDecl = new HashMap<>();
         functions = new ArrayList<>();
         strings = new HashMap<>();
         structs = new HashMap<>();
 
+        DATA_OFFSET = Integer.parseInt(prop.getProperty("module.dataOffset"));
+        DATA_LENGTH = Integer.parseInt(prop.getProperty("module.dataLength"));
+        GLOBAL_IMPORT_NAME = prop.getProperty("module.importName");
+        MEMORY_EXPORT_NAME = prop.getProperty("module.memoryExportName");
         data = new byte[DATA_LENGTH];
         data_len = 0;
 
@@ -100,7 +101,7 @@ public class ModuleEnv implements Partial {
                 elements.add(new Import(GLOBAL_IMPORT_NAME, f.name, f.wat()));
 
         for (VariableDecl v : varDecl.values())
-            elements.add(v.wat());
+            elements.add(v.wat(GLOBAL_IMPORT_NAME));
 
         elements.add(new Memory(MEMORY_EXPORT_NAME, 1));
 
