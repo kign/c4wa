@@ -980,21 +980,28 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         NumType numType;
         CType resType;
 
-        if (arg2.type.same(CType.INT) && arg1.type.deref() != null) {
+        if ("+".equals(op) && arg2.type.same(CType.INT) && arg1.type.deref() != null) {
             CType type = arg1.type.deref();
             return new OneInstruction((type.size() == 1)
                     ? new Add(NumType.I32, arg1.instruction, arg2.instruction)
                     : new Add(NumType.I32, arg1.instruction, new Mul(NumType.I32, arg2.instruction, new Const(type.size()))),
                     arg1.type);
         }
-        else if (arg1.type.same(CType.INT) && arg2.type.deref() != null) {
+        if ("-".equals(op) && arg2.type.same(CType.INT) && arg1.type.deref() != null) {
+            CType type = arg1.type.deref();
+            return new OneInstruction((type.size() == 1)
+                    ? new Sub(NumType.I32, arg1.instruction, arg2.instruction)
+                    : new Sub(NumType.I32, arg1.instruction, new Mul(NumType.I32, arg2.instruction, new Const(type.size()))),
+                    arg1.type);
+        }
+        else if ("+".equals(op) && arg1.type.same(CType.INT) && arg2.type.deref() != null) {
             CType type = arg2.type.deref();
             return new OneInstruction((type.size() == 1)
                     ? new Add(NumType.I32, arg2.instruction, arg1.instruction)
                     : new Add(NumType.I32, arg2.instruction, new Mul(NumType.I32, arg1.instruction, new Const(type.size()))),
                     arg2.type);
         }
-        else if (arg1.type.is_ptr() && arg2.type.is_ptr() && arg1.type.deref().same(arg2.type.deref()))
+        else if ("-".equals(op) && arg1.type.is_ptr() && arg2.type.is_ptr() && arg1.type.deref().same(arg2.type.deref()))
             return new OneInstruction(arg1.type.deref().size() == 1
                     ? new Sub(NumType.I32, arg1.instruction, arg2.instruction)
                     : new Div(NumType.I32, true, new Sub(NumType.I32, arg1.instruction, arg2.instruction), new Const(arg1.type.deref().size())),
@@ -1013,7 +1020,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             resType = CType.DOUBLE;
         }
         else
-            throw fail(ctx, "binary operation '" + op + "' ", "Types " + arg1.type + " and " + arg2.type +
+            throw fail(ctx, "binary operation '" + op + "'", "Types " + arg1.type + " and " + arg2.type +
                     " are incompatible");
 
         if (arg1.type.is_signed() != arg2.type.is_signed())
@@ -1133,7 +1140,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (globalDecl != null)
             return new OneInstruction(new GetGlobal(name), globalDecl.type);
 
-        throw fail(ctx, "variable", "not defined");
+        throw fail(ctx, "variable", "'" + name + "' not defined");
     }
 
     @Override
