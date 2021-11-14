@@ -19,7 +19,11 @@ void print(int X, int Y, char * pos, int dbg) {
 
 const unsigned int hash_rand = 179424673;
 
-void life_prepare(int X, int Y, char * cells) {
+void life_prepare (
+   char               * cells,
+   int                  X,
+   int                  Y,
+   struct Stat          * stat ) {
     int cnt = 0;
     unsigned int hash = 0;
 
@@ -37,6 +41,8 @@ void life_prepare(int X, int Y, char * cells) {
                     }
             }
         }
+    stat->count = cnt;
+    stat->hash = hash;
 }
 
 void life_step (
@@ -131,6 +137,8 @@ void life_step (
     stat->hash = hash;
 }
 
+const int N = 100;
+
 extern int main () {
     int X = 10;
     int Y = 10;
@@ -150,20 +158,29 @@ extern int main () {
     pos_0[X * Y] = 3;
     char * pos_1 = alloc(X*Y+1, X*Y, char);
     pos_1[X * Y] = 3;
+    struct Stat * stat = alloc(2*X*Y + 2, 1, struct Stat);
 
     read(X, Y, pos_0, initial_pos);
-    life_prepare(X, Y, pos_0);
-    print(X, Y, pos_0, 0);
+    life_prepare(pos_0, X, Y, stat);
+
+    for(int iter = 0; iter < N; iter ++) {
+        if (iter % 2 == 0)
+            life_step(pos_0, pos_1, X, Y, stat);
+        else
+            life_step(pos_1, pos_0, X, Y, stat);
+    }
+
+    print(X, Y, N % 2 == 0? pos_0 : pos_1, 0);
 
     return 0;
 }
 // ..........
-// ......x...
-// ....xxx...
-// .....x....
-// ..........
-// ..........
-// ..........
-// ..........
+// ..x.......
+// .x.x......
+// .x..x.x...
+// .xxxxx.x..
+// .xx..xx...
+// ....x.....
+// ....x.....
 // ..........
 // ..........

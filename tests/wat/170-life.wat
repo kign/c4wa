@@ -1,6 +1,7 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $hash_rand i32 (i32.const 179424673))
+  (global $N i32 (i32.const 100))
   (memory (export "memory") 1)
   (data (i32.const 1024) "x\002\00.\00\5Cn\00................x.......xxx........x................................................................\00")
   (func $read (param $X i32) (param $Y i32) (param $pos i32) (param $init i32)
@@ -33,7 +34,7 @@
         (call $printf (i32.const 0) (i32.const 1))
         (set_local $y (i32.add (get_local $y) (i32.const 1)))
         (br $@block_1_continue))))
-  (func $life_prepare (param $X i32) (param $Y i32) (param $cells i32)
+  (func $life_prepare (param $cells i32) (param $X i32) (param $Y i32) (param $stat i32)
     (local $cnt i32)
     (local $hash i32)
     (local $y i32)
@@ -76,7 +77,9 @@
             (set_local $x (i32.add (get_local $x) (i32.const 1)))
             (br $@block_1_1_continue)))
         (set_local $y (i32.add (get_local $y) (i32.const 1)))
-        (br $@block_1_continue))))
+        (br $@block_1_continue)))
+    (i32.store (i32.add (get_local $stat) (i32.const 4)) (get_local $cnt))
+    (i32.store (i32.add (get_local $stat) (i32.const 0)) (get_local $hash)))
   (func $life_step (param $cells i32) (param $cellsnew i32) (param $X i32) (param $Y i32) (param $stat i32)
     (local $ind i32)
     (local $x i32)
@@ -105,7 +108,7 @@
     (local $p i32)
     (set_local $cnt (i32.const 0))
     (set_local $hash (i32.const 0))
-    (set_local $p (i32.add (get_local $cells) (i32.const 1)))
+    (set_local $p (i32.sub (get_local $cells) (i32.const 1)))
     (memory.fill (get_local $cellsnew) (i32.const 0) (i32.mul (get_local $X) (get_local $Y)))
     (block $@block_1_break
       (loop $@block_1_continue
@@ -184,6 +187,8 @@
     (local $initial_pos i32)
     (local $pos_0 i32)
     (local $pos_1 i32)
+    (local $stat i32)
+    (local $iter i32)
     (set_local $X (i32.const 10))
     (set_local $Y (i32.const 10))
     (set_local $initial_pos (i32.const 1033))
@@ -191,7 +196,19 @@
     (i32.store8 (i32.add (get_local $pos_0) (i32.mul (get_local $X) (get_local $Y))) (i32.const 3))
     (set_local $pos_1 (i32.add (i32.add (i32.mul (get_local $X) (get_local $Y)) (i32.const 1)) (i32.const 2048)))
     (i32.store8 (i32.add (get_local $pos_1) (i32.mul (get_local $X) (get_local $Y))) (i32.const 3))
+    (set_local $stat (i32.add (i32.add (i32.mul (i32.mul (i32.const 2) (get_local $X)) (get_local $Y)) (i32.const 2)) (i32.const 2048)))
     (call $read (get_local $X) (get_local $Y) (get_local $pos_0) (get_local $initial_pos))
-    (call $life_prepare (get_local $X) (get_local $Y) (get_local $pos_0))
-    (call $print (get_local $X) (get_local $Y) (get_local $pos_0) (i32.const 0))
+    (call $life_prepare (get_local $pos_0) (get_local $X) (get_local $Y) (get_local $stat))
+    (block $@block_1_break
+      (set_local $iter (i32.const 0))
+      (loop $@block_1_continue
+        (br_if $@block_1_break (i32.ge_s (get_local $iter) (global.get $N)))
+        (if (i32.eqz (i32.rem_s (get_local $iter) (i32.const 2)))
+          (then
+            (call $life_step (get_local $pos_0) (get_local $pos_1) (get_local $X) (get_local $Y) (get_local $stat)))
+          (else
+            (call $life_step (get_local $pos_1) (get_local $pos_0) (get_local $X) (get_local $Y) (get_local $stat))))
+        (set_local $iter (i32.add (get_local $iter) (i32.const 1)))
+        (br $@block_1_continue)))
+    (call $print (get_local $X) (get_local $Y) (if (result i32) (i32.eqz (i32.rem_s (global.get $N) (i32.const 2))) (then (get_local $pos_0)) (else (get_local $pos_1))) (i32.const 0))
     (return (i32.const 0))))
