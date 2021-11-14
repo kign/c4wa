@@ -1,6 +1,7 @@
 void printf();
 
 struct Stat {unsigned int hash; int count; };
+#define cell_t char
 
 void read(int X, int Y, char * pos, char * init) {
     for(int i = 0; i < X * Y; i ++)
@@ -20,7 +21,7 @@ void print(int X, int Y, char * pos, int dbg) {
 const unsigned int hash_rand = 179424673;
 
 void life_prepare (
-   char               * cells,
+   cell_t               * cells,
    int                  X,
    int                  Y,
    struct Stat          * stat ) {
@@ -46,8 +47,8 @@ void life_prepare (
 }
 
 void life_step (
-    char                 * cells,
-    char                 * cellsnew,
+    cell_t                 * cells,
+    cell_t                 * cellsnew,
     int                  X,
     int                  Y,
     struct Stat          * stat
@@ -138,6 +139,7 @@ void life_step (
 }
 
 const int N = 100;
+const int M = sizeof(cell_t);
 
 extern int main () {
     int X = 10;
@@ -154,11 +156,11 @@ extern int main () {
                          ".........."
                          "..........";
 
-    char * pos_0 = alloc(0, X*Y, char);
+    char * pos_0 = alloc(0, X*Y, cell_t);
     pos_0[X * Y] = 3;
-    char * pos_1 = alloc(X*Y+1, X*Y, char);
+    char * pos_1 = alloc(M*(X*Y+1), X*Y, cell_t);
     pos_1[X * Y] = 3;
-    struct Stat * stat = alloc(2*X*Y + 2, 1, struct Stat);
+    struct Stat * stat = alloc(M*(2*X*Y + 2), 1, struct Stat);
 
     read(X, Y, pos_0, initial_pos);
     life_prepare(pos_0, X, Y, stat);

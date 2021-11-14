@@ -1,6 +1,7 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $hash_rand i32 (i32.const 179424673))
+  (global $M i32 (i32.const 1))
   (global $N i32 (i32.const 100))
   (memory (export "memory") 1)
   (data (i32.const 1024) "x\002\00.\00\5Cn\00................x.......xxx........x................................................................\00")
@@ -194,9 +195,9 @@
     (set_local $initial_pos (i32.const 1033))
     (set_local $pos_0 (i32.const 2048))
     (i32.store8 (i32.add (get_local $pos_0) (i32.mul (get_local $X) (get_local $Y))) (i32.const 3))
-    (set_local $pos_1 (i32.add (i32.add (i32.mul (get_local $X) (get_local $Y)) (i32.const 1)) (i32.const 2048)))
+    (set_local $pos_1 (i32.add (i32.mul (global.get $M) (i32.add (i32.mul (get_local $X) (get_local $Y)) (i32.const 1))) (i32.const 2048)))
     (i32.store8 (i32.add (get_local $pos_1) (i32.mul (get_local $X) (get_local $Y))) (i32.const 3))
-    (set_local $stat (i32.add (i32.add (i32.mul (i32.mul (i32.const 2) (get_local $X)) (get_local $Y)) (i32.const 2)) (i32.const 2048)))
+    (set_local $stat (i32.add (i32.mul (global.get $M) (i32.add (i32.mul (i32.mul (i32.const 2) (get_local $X)) (get_local $Y)) (i32.const 2))) (i32.const 2048)))
     (call $read (get_local $X) (get_local $Y) (get_local $pos_0) (get_local $initial_pos))
     (call $life_prepare (get_local $pos_0) (get_local $X) (get_local $Y) (get_local $stat))
     (block $@block_1_break
