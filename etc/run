@@ -226,7 +226,7 @@ async function build() {
         process.exit(1);
     }
 
-    console.log('✅ Built completed');
+    console.log('✅ Build completed');
 }
 
 async function run_c_file(cfile) {
