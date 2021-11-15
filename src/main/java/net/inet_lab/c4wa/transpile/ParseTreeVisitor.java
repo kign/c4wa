@@ -970,7 +970,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 throw fail(ctx, "AND", "Type '" + exp[i].type + "' is invalid for boolean operations");
 
             condition[i] = is_and ?
-                            new Eqz(exp[i].type.asNumType(), exp[i].instruction)
+                            exp[i].instruction.Not(exp[i].type.asNumType())
                      :( exp[i].type.is_i64() ?
                             GenericCast.cast(exp[i].type.asNumType(), NumType.I32, false, exp[i].instruction)
                     :       exp[i].instruction);
