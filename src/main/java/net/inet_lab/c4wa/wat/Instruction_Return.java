@@ -8,6 +8,10 @@ public class Instruction_Return extends Instruction {
         this.arg = arg;
     }
 
+    public String toStringPretty(int indent) {
+        return "(" + type.getName() + " " + arg.toStringPretty(indent) + ")";
+    }
+
     @Override
     public String toString() {
         return "(" + type.getName() + " " + arg + ")";

@@ -16,6 +16,14 @@ abstract public class Instruction_list extends Instruction {
         this.elements = elements;
     }
 
+    public Instruction_list(InstructionType type, String ref, Instruction[] attributes, Instruction[] elements) {
+        super(type);
+        this.attributes = new Instruction[attributes.length + 1];
+        this.attributes[0] = new Special(ref);
+        System.arraycopy(attributes, 0, this.attributes, 1, attributes.length);
+        this.elements = elements;
+    }
+
     public Instruction_list(InstructionType type, Instruction[] elements_or_attributes, boolean pElements) {
         super(type);
         this.attributes = pElements? null: elements_or_attributes;

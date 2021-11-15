@@ -25,7 +25,7 @@ public class IfThenElse extends Instruction {
 
         b.append('(').append(type.getName())
                 .append(' ')
-                .append(condition)
+                .append(condition.toStringPretty(indent+2))
                 .append('\n');
 
         if (_then != null)

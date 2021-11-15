@@ -921,16 +921,82 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitExpression_binary_or(c4waParser.Expression_binary_orContext ctx) {
-        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
-        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
-        return binary_op(ctx, arg1, arg2, ctx.op.getText());
+        List<c4waParser.ExpressionContext> components = new ArrayList<>();
+
+        do {
+            components.add(ctx.left);
+            c4waParser.ExpressionContext vctx = ctx.right;
+            if (vctx instanceof c4waParser.Expression_binary_orContext)
+                ctx = (c4waParser.Expression_binary_orContext) vctx;
+            else {
+                components.add(vctx);
+                break;
+            }
+        }
+        while(true);
+
+        return and_or_chain(components, false);
     }
 
     @Override
     public OneInstruction visitExpression_binary_and(c4waParser.Expression_binary_andContext ctx) {
-        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
-        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
-        return binary_op(ctx, arg1, arg2, ctx.op.getText());
+        List<c4waParser.ExpressionContext> components = new ArrayList<>();
+
+        do {
+            components.add(ctx.left);
+            c4waParser.ExpressionContext vctx = ctx.right;
+            if (vctx instanceof c4waParser.Expression_binary_andContext)
+                ctx = (c4waParser.Expression_binary_andContext) vctx;
+            else {
+                components.add(vctx);
+                break;
+            }
+        }
+        while (true);
+
+        return and_or_chain(components, true);
+    }
+
+    private OneInstruction and_or_chain(List<c4waParser.ExpressionContext> ctxList, boolean is_and) {
+        OneInstruction[] exp = new OneInstruction[ctxList.size()];
+        Instruction[] condition = new Instruction[exp.length];
+        int i = -1;
+        for (var ctx: ctxList) {
+            i ++;
+            exp[i] = (OneInstruction) visit(ctx);
+            if (exp[i].type == null)
+                throw fail(ctx, "AND", "Type void is invalid for boolean operations");
+            if (!exp[i].type.is_int())
+                throw fail(ctx, "AND", "Type '" + exp[i].type + "' is invalid for boolean operations");
+
+            condition[i] = is_and ?
+                            new Eqz(exp[i].type.asNumType(), exp[i].instruction)
+                     :( exp[i].type.is_i64() ?
+                            GenericCast.cast(exp[i].type.asNumType(), NumType.I32, false, exp[i].instruction)
+                    :       exp[i].instruction);
+        }
+
+        if (exp.length == 2)
+            return new OneInstruction(new IfThenElse(condition[0], NumType.I32,
+                    new Instruction[]{new Const(is_and? 0 : 1)},
+                    new Instruction[]{
+                            new Cmp(exp[1].type.asNumType(), false, exp[1].instruction,
+                                    new Const(exp[1].type.asNumType(), 0))}), CType.INT);
+
+
+        String block_id = functionEnv.pushBlock(null);
+        String block_id_break = block_id + BREAK_SUFFIX;
+
+        Instruction[] elm = new Instruction[exp.length + 1];
+
+        for (i = 0; i < exp.length; i ++)
+            elm[i] = new Drop(new BrIf(block_id_break, condition[i], new Const(is_and ? 0 : 1)));
+
+        elm[exp.length] = new Const(is_and ? 1 : 0);
+
+        functionEnv.popBlock();
+
+        return new OneInstruction(new Block(block_id_break, NumType.I32, elm), CType.INT);
     }
 
     @Override

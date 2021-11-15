@@ -12,7 +12,7 @@ void print(int X, int Y, char * pos, int dbg) {
     for(int y = 0; y < Y; y ++) {
         for(int x = 0; x < X; x ++) {
             int val = (int) pos[X * y + x];
-            printf(val == 1? "x" : ((val == 2 && dbg)?"2":"."));
+            printf(val == 1? "x" : (((val == 2) & dbg)?"2":"."));
         }
         printf("\n");
     }
@@ -80,7 +80,7 @@ void life_step (
 
         y = ind / X; x = ind - y * X;
 
-        if ( x > 0 && x < X - 1 && y > 0 && y < Y - 1 ) {
+        if ( x > 0 & x < X - 1 & y > 0 & y < Y - 1 ) {
             n00 = X * (y - 1) + (x - 1);
             n01 = n00 + 1;
             n02 = n01 + 1;
@@ -114,7 +114,7 @@ void life_step (
 
         n = v00 + v01 + v02 + v10 + v12 + v20 + v21 + v22;
 
-        newv = n == 3 || (n == 2 && v11);
+        newv = (n == 3) | ((n == 2) & v11);
 
         if ( newv ) {
             cnt ++;

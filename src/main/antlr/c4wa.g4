@@ -103,8 +103,8 @@ expression
     | expression op=BWAND expression           # expression_binary_bwand
     | expression op=BWXOR expression           # expression_binary_bwxor
     | expression op=BWOR expression           # expression_binary_bwor
-    | expression op=AND expression           # expression_binary_and
-    | expression op=OR expression            # expression_binary_or
+    | <assoc=right>left=expression AND right=expression           # expression_binary_and
+    | <assoc=right>left=expression OR right=expression            # expression_binary_or
     | expression '?' expression ':' expression # expression_if_else
     | CONSTANT                            # expression_const
     | ID                                  # expression_variable

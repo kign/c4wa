@@ -29,6 +29,11 @@ abstract public class Instruction_Bin extends Instruction {
     }
 
     @Override
+    public String toStringPretty(int indent) {
+        return "(" + type.getName() + " " + arg1.toStringPretty(indent) + " " + arg2.toStringPretty(indent) + ")";
+    }
+
+    @Override
     public String toString() {
         return "(" + type.getName() + " " + arg1 + " " + arg2 + ")";
     }

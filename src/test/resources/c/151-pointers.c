@@ -4,11 +4,6 @@ const int N = 100;
 
 int gen1(int * primes) {
     primes[0] = 2;
-    // Our logical operations are bitwise, so both ares are evaluated
-    // (When evaluating A && B, if A evaluates to 0, B is still evaluated)
-    // so unless with put this extra 1, loop below will trigger "RuntimeError: remainder by zero"
-    // This is a hack obviously, but it solves the problem.
-    primes[1] = 1;
     int i;
     int n = 1;
     for (int p = 3; p < N; p += 2) {
@@ -33,8 +28,7 @@ int gen2(int * primes) {
             if (d * d >= p || p % d == 0)
                 break;
         }
-        if (d > 0)
-            if (d < p && p % d == 0)
+        if (d > 0 && d < p && p % d == 0)
                 continue;
 
         primes[n] = p;

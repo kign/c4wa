@@ -408,7 +408,7 @@ async function run_wasm_file(fname, options) {
                 "substitutions, passed", argc - 1, "arguments");
             return;
         }
-        const res = printf(fmt.filter(x => x !== null).join('').replace('\\n', '\n'), ...args);
+        const res = printf(fmt.filter(x => x !== null).join('').replaceAll('\\n', '\n'), ...args);
         // process.stdout.write();
         if (target.write)
             target.write(res);

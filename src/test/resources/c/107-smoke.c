@@ -29,7 +29,8 @@ extern int main () {
         max = v;
         printed ++;
         start = 0;
-        if (printed < N && printed % 10 == 0) {
+        // Using bitwise AND on purpose
+        if (printed < N & printed % 10 == 0) {
             printf("\n");
             start = 1;
         }

@@ -21,7 +21,8 @@ void v2 () {
     printf("2");
     for (int p = 3; p < N; p += 2) {
         int d;
-        for (d = 3; d*d <= p && p % d != 0; d += 2);
+        // Using bitwise AND
+        for (d = 3; d*d <= p & p % d != 0; d += 2);
         if (d * d > p)
             printf(" %d", p);
     }
@@ -38,7 +39,7 @@ int test(int p) {
     if (p == 3)
         return 1;
     int d = 3;
-    for (; d*d <= p && p % d != 0; d += 2);
+    for (; d*d <= p & p % d != 0; d += 2);
     return p % d != 0;
 }
 extern int main () {

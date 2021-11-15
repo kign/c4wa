@@ -55,6 +55,7 @@ public enum InstructionName implements InstructionType {
     THEN ("then"),
     ELSE ("else"),
     RETURN ("return"),
+    DROP ("drop"),
 
     WRAP_I64 ("wrap_i64"),
     EXTEND_I32_S ("extend_i32_s"),
