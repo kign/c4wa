@@ -54,4 +54,9 @@ public class Instruction_Decl extends Instruction {
         b.append(")");
         return b.toString();
     }
+
+    @Override
+    public int complexity() {
+        return 0;
+    }
 }

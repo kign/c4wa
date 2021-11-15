@@ -13,6 +13,8 @@ public abstract class Instruction {
 
     abstract public String toString();
 
+    abstract public int complexity();
+
     public Instruction comptime_eval() {
         return this;
     }

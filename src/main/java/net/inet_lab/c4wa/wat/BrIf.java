@@ -34,4 +34,12 @@ public class BrIf extends Instruction {
     public String toString() {
         return toStringPretty(0);
     }
+
+    @Override
+    public int complexity() {
+        int ret = condition.complexity();
+        if (returnValue != null && returnValue.complexity() > ret)
+            ret = returnValue.complexity();
+        return ret;
+    }
 }

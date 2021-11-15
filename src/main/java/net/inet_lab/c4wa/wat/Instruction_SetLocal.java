@@ -14,4 +14,9 @@ public class Instruction_SetLocal extends Instruction {
     public String toString() {
         return "(" + type.getName() + " $" + ref + " " + arg +")";
     }
+
+    @Override
+    public int complexity() {
+        return 0;
+    }
 }

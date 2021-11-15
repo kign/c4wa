@@ -58,4 +58,9 @@ abstract public class Instruction_list extends Instruction {
     public String toString() {
         return toStringPretty(0);
     }
+
+    @Override
+    public int complexity() {
+        return 1000;
+    }
 }

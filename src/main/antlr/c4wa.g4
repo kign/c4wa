@@ -74,7 +74,7 @@ simple_assignment : (ID '=')+ expression;
 
 simple_increment: ID  (op=(ASOR|ASAND|ASPLUS|ASMINUS|ASMULT|ASDIV|ASMOD|ASBWAND|ASBWOR|ASBWXOR) expression|PLUSPLUS|MINUSMINUS) ;
 
-complex_increment: lhs op=(ASOR|ASAND|ASPLUS|ASMINUS|ASMULT|ASDIV|ASMOD|ASBWAND|ASBWOR|ASBWXOR) expression ;
+complex_increment: lhs (op=(ASOR|ASAND|ASPLUS|ASMINUS|ASMULT|ASDIV|ASMOD|ASBWAND|ASBWOR|ASBWXOR) expression|PLUSPLUS|MINUSMINUS) ;
 
 complex_assignment: lhs '=' expression;
 

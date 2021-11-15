@@ -16,4 +16,9 @@ public class Instruction_Return extends Instruction {
     public String toString() {
         return "(" + type.getName() + " " + arg + ")";
     }
+
+    @Override
+    public int complexity() {
+        return arg.complexity();
+    }
 }

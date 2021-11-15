@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.util.stream.IntStream;
+
 abstract public class Instruction_Bin extends Instruction {
     final public Instruction arg1;
     final public Instruction arg2;
@@ -36,5 +38,10 @@ abstract public class Instruction_Bin extends Instruction {
     @Override
     public String toString() {
         return "(" + type.getName() + " " + arg1 + " " + arg2 + ")";
+    }
+
+    @Override
+    public int complexity() {
+        return 1 + Math.max(arg1.complexity(), arg2.complexity());
     }
 }

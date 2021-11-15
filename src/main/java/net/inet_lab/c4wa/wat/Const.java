@@ -81,4 +81,9 @@ public class Const extends Instruction {
         else
             return "(" + type.getName() + " " + doubleValue + ")";
     }
+
+    @Override
+    public int complexity() {
+        return 0;
+    }
 }

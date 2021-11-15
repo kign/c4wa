@@ -70,4 +70,9 @@ public class Special extends Instruction {
         else
             return fixedInt.toString();
     }
+
+    @Override
+    public int complexity() {
+        return 0;
+    }
 }

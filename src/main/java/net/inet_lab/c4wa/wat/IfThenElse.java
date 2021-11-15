@@ -1,7 +1,5 @@
 package net.inet_lab.c4wa.wat;
 
-import java.util.Enumeration;
-
 public class IfThenElse extends Instruction {
     final Instruction condition;
     final NumType resultType;
@@ -49,6 +47,18 @@ public class IfThenElse extends Instruction {
                 ") (else " +
                 _else.elements[0] +
                 "))";
+    }
+
+    @Override
+    public int complexity() {
+        int ret = condition.complexity();
+
+        if (_then != null && _then.complexity() > ret)
+            ret = _then.complexity();
+        if (_else != null && _else.complexity() > ret)
+            ret = _else.complexity();
+
+        return ret + 1;
     }
 
     private static class Then extends Instruction_list {

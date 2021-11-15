@@ -723,12 +723,40 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
-    public OneInstruction visitComplex_increment(c4waParser.Complex_incrementContext ctx) {
-        String op = ctx.op.getText().substring(0, ctx.op.getText().length() - 1);
-        OneInstruction rhs = (OneInstruction) visit(ctx.expression());
+    public Partial visitComplex_increment(c4waParser.Complex_incrementContext ctx) {
         OneInstruction lhs = (OneInstruction) visit(ctx.lhs());
 
-        throw fail(ctx, "increment", "complex increment not yet implemented");
+        String op;
+        OneInstruction rhs;
+        CType type = lhs.type;
+
+        if (ctx.PLUSPLUS() != null) {
+            op = "+";
+            rhs = new OneInstruction(new Const(type.asNumType(), 1), type);
+        } else if (ctx.MINUSMINUS() != null) {
+            op = "-";
+            rhs = new OneInstruction(new Const(type.asNumType(), 1), type);
+        } else {
+            op = ctx.op.getText().substring(0, ctx.op.getText().length() - 1);
+            rhs = (OneInstruction) visit(ctx.expression());
+        }
+
+        if (lhs.instruction.complexity() <= 3) {
+            OneInstruction binaryOp = binary_op(ctx, new OneInstruction(memory_load(type,lhs.instruction), type), rhs, op);
+            return new OneInstruction(memory_store(lhs, binaryOp), null);
+
+        }
+        else {
+            String tempVar = functionEnv.temporaryVar(NumType.I32);
+            OneInstruction[] assignmentParts = new OneInstruction[2];
+
+            assignmentParts[0] = new OneInstruction(new SetLocal(tempVar, lhs.instruction), null);
+            OneInstruction new_lhs = new OneInstruction(new GetLocal(tempVar), type);
+            OneInstruction binaryOp = binary_op(ctx, new OneInstruction(memory_load(type, new_lhs.instruction), type), rhs, op);
+            assignmentParts[1] = new OneInstruction(memory_store(new_lhs, binaryOp), null);
+
+            return new InstructionList(assignmentParts);
+        }
     }
 
     @Override
@@ -748,13 +776,27 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 throw fail(ctx, "assign", "Expression of type " + rhs.type + " cannot be assigned to '" + lhs.type + "'");
         }
 
-        if (lhs.type.same(CType.CHAR))
-            return new OneInstruction(new Store(lhs.type.asNumType(), 8, lhs.instruction, rhs.instruction), null);
-        else if (lhs.type.same(CType.SHORT))
-            return new OneInstruction(new Store(lhs.type.asNumType(), 16, lhs.instruction, rhs.instruction), null);
-        else
-            return new OneInstruction(new Store(lhs.type.asNumType(), lhs.instruction, rhs.instruction), null);
+        return new OneInstruction(memory_store(lhs, rhs), null);
     }
+
+    private Store memory_store(OneInstruction lhs, OneInstruction rhs) {
+        if (lhs.type.same(CType.CHAR))
+            return new Store(lhs.type.asNumType(), 8, lhs.instruction, rhs.instruction);
+        else if (lhs.type.same(CType.SHORT))
+            return new Store(lhs.type.asNumType(), 16, lhs.instruction, rhs.instruction);
+        else
+            return new Store(lhs.type.asNumType(), lhs.instruction, rhs.instruction);
+    }
+
+    private Load memory_load(CType type, Instruction i) {
+        if (type.size() == 1)
+            return new Load(type.asNumType(), 8, type.is_signed(), i);
+        else if (type.size() == 2)
+            return new Load(type.asNumType(), 16, type.is_signed(), i);
+        else
+            return new Load(type.asNumType(), i);
+    }
+
 
     @Override
     public NoOp visitMult_variable_decl(c4waParser.Mult_variable_declContext ctx) {
@@ -815,12 +857,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         Instruction memAddress = new Add(NumType.I32, ptr.instruction, new Const(mInfo.offset));
 
-        if (type.same(CType.CHAR))
-            return new OneInstruction(new Load(type.asNumType(), 8, type.is_signed(), memAddress), type);
-        else if (type.same(CType.SHORT))
-            return new OneInstruction(new Load(type.asNumType(), 16, type.is_signed(), memAddress), type);
-        else
-            return new OneInstruction(new Load(type.asNumType(), memAddress), type);
+        return new OneInstruction(memory_load(type, memAddress), type);
     }
 
     @Override
@@ -1148,12 +1185,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             if (type == null)
                 throw fail(ctx, "unary_op", "Trying to dereference '" + exp.type + "', must be a pointer");
 
-            if (type.same(CType.CHAR))
-                return new OneInstruction(new Load(type.asNumType(), 8, type.is_signed(), exp.instruction), type);
-            else if (type.same(CType.SHORT))
-                return new OneInstruction(new Load(type.asNumType(), 16, type.is_signed(), exp.instruction), type);
-            else
-                return new OneInstruction(new Load(type.asNumType(),exp.instruction), type);
+            return new OneInstruction(memory_load(type, exp.instruction), type);
         }
         else
             throw fail(ctx, "unary_op", "Operation '" + op + "' not recognized");

@@ -11,6 +11,7 @@ public class FunctionEnv implements Partial {
     final List<String> locals;
     final boolean export;
     final Map<String, CType> varType;
+    final Map<NumType, String> tempVars;
     final Deque<Block> blocks;
 
     Instruction[] instructions;
@@ -25,6 +26,7 @@ public class FunctionEnv implements Partial {
         this.mem_offset = 0;
         varType = new HashMap<>();
         blocks = new ArrayDeque<>();
+        tempVars = new HashMap<>();
 
         blocks.push(new Block());
     }
@@ -46,6 +48,10 @@ public class FunctionEnv implements Partial {
             params.add(name);
         else
             locals.add(name);
+    }
+
+    public String temporaryVar(NumType numType) {
+        return tempVars.computeIfAbsent(numType, t -> "@temp_" + t);
     }
 
     public FunctionDecl makeDeclaration() {
@@ -115,6 +121,9 @@ public class FunctionEnv implements Partial {
 
         for (String v : locals)
             elements.add(new Local(v, varType.get(v).asNumType()));
+
+        for (NumType numType : tempVars.keySet())
+            elements.add(new Local(tempVars.get(numType), numType));
 
         elements.addAll(Arrays.asList(instructions));
         return new Func(attributes, elements);
