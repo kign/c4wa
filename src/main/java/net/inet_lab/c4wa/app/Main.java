@@ -158,15 +158,19 @@ public class Main {
                 " -k, --keep    when compiling to WASM, keep intermediate WAT file\n" +
                 " -h, --help    this help screen\n" +
                 "\n" +
-                "Default options\n" +
-                "\n"
+                "Compiler properties:\n" +
+                "\n" +
+                "Name                             Default value\n" +
+                "----------------------------------------------\n"
         );
         @SuppressWarnings("unchecked")
         Enumeration<String> enums = (Enumeration<String>) prop.propertyNames();
         while (enums.hasMoreElements()) {
             String key = enums.nextElement();
-            String value = prop.getProperty(key);
-            System.out.println(key + " : " + value);
+            if (key.indexOf('.') > 0) {
+                String value = prop.getProperty(key);
+                System.out.printf("%-30s : %s\n", key, value);
+            }
         }
     }
 
