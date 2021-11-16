@@ -19,7 +19,8 @@ public class ModuleEnv implements Partial {
     final int DATA_OFFSET;
     final int DATA_LENGTH;
     final String GLOBAL_IMPORT_NAME;
-    final String MEMORY_EXPORT_NAME;
+    final MemoryState memoryState;
+    final String MEMORY_NAME;
 
     public ModuleEnv (Properties prop) {
         funcDecl = new HashMap<>();
@@ -31,7 +32,26 @@ public class ModuleEnv implements Partial {
         DATA_OFFSET = Integer.parseInt(prop.getProperty("module.dataOffset"));
         DATA_LENGTH = Integer.parseInt(prop.getProperty("module.dataLength"));
         GLOBAL_IMPORT_NAME = prop.getProperty("module.importName");
-        MEMORY_EXPORT_NAME = prop.getProperty("module.memoryExportName");
+        String memoryStatus = prop.getProperty("module.memoryStatus");
+        if (memoryStatus.startsWith("import:")) {
+            MEMORY_NAME = memoryStatus.substring(7);
+            memoryState = MemoryState.IMPORT;
+        }
+        else if (memoryStatus.startsWith("export:")) {
+            MEMORY_NAME = memoryStatus.substring(7);
+            memoryState = MemoryState.EXPORT;
+        }
+        else if (memoryStatus.equals("internal")) {
+            MEMORY_NAME = "";
+            memoryState = MemoryState.INTERNAL;
+        }
+        else if (memoryStatus.equals("none")) {
+            MEMORY_NAME = null;
+            memoryState = MemoryState.NONE;
+        }
+        else
+            throw new RuntimeException("Invalid value of property 'module.memoryStatus'");
+
         data = new byte[DATA_LENGTH];
         data_len = 0;
 
@@ -93,6 +113,13 @@ public class ModuleEnv implements Partial {
         return res;
     }
 
+    private enum MemoryState {
+        EXPORT,
+        IMPORT,
+        INTERNAL,
+        NONE
+    };
+
     public Module wat () {
         List<Instruction> elements = new ArrayList<>();
 
@@ -101,9 +128,20 @@ public class ModuleEnv implements Partial {
                 elements.add(new Import(GLOBAL_IMPORT_NAME, f.name, f.wat()));
 
         for (VariableDecl v : varDecl.values())
-            elements.add(v.wat(GLOBAL_IMPORT_NAME));
+            if (v.imported)
+                elements.add(v.wat(GLOBAL_IMPORT_NAME));
 
-        elements.add(new Memory(MEMORY_EXPORT_NAME, 1));
+        if (memoryState == MemoryState.IMPORT)
+            elements.add(new Memory(GLOBAL_IMPORT_NAME, MEMORY_NAME, 1));
+
+        for (VariableDecl v : varDecl.values())
+            if (!v.imported)
+                elements.add(v.wat(GLOBAL_IMPORT_NAME));
+
+        if (memoryState == MemoryState.EXPORT)
+            elements.add(new Memory(MEMORY_NAME, 1));
+        else if (memoryState == MemoryState.INTERNAL)
+            elements.add(new Memory( 1));
 
         if (data_len > 0)
             elements.add(new Data(DATA_OFFSET, data, data_len));
