@@ -1148,9 +1148,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         else if (List.of("<", "<=", ">", ">=").contains(op))
             res = new Cmp(numType, op.charAt(0) == '<', op.length() == 2, arg1.type.is_signed(),
                     arg1.instruction, arg2.instruction);
-        else if (op.equals("==") && arg1.instruction instanceof Const && ((Const)arg1.instruction).longValue == 0)
+        else if (op.equals("==") && arg1.instruction instanceof Const && ((Const)arg1.instruction).longValue == 0 && arg1.type.is_int())
             res = new Eqz(numType, arg2.instruction);
-        else if (op.equals("==") && arg2.instruction instanceof Const && ((Const)arg2.instruction).longValue == 0)
+        else if (op.equals("==") && arg2.instruction instanceof Const && ((Const)arg2.instruction).longValue == 0 && arg1.type.is_int())
             res = new Eqz(numType, arg1.instruction);
         else if (List.of("==", "!=").contains(op))
             res = new Cmp(numType, op.charAt(0) == '=', arg1.instruction, arg2.instruction);
