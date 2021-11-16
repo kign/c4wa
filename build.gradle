@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'net.inet_lab'
-version '0.1-SNAPSHOT'
+version appVersion
 
 repositories {
     mavenCentral()

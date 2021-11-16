@@ -18,12 +18,13 @@ choose to write relatively simple fragments of Web Assembly in WAT (text-based) 
 WAT format is more than just Web Assembly instructions written as text; it supports S-expressions and
 some other syntax sugar to make coding easier. 
 See excellent [introduction](https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format) 
-in WAT format at MDN. 
+to WAT format at MDN. 
 
 `c4wa` purports to be a middle ground between these two extremes. It allows you to write a code in a 
-relatively higher-level language (a subset of `C`) while retaining a connection to an underlying
+relatively higher-level language (a subset of `C`) while retaining a close relation to an underlying
 Web Assembly. Instead of a binary WASM file, it generates a well-formatted WAT output 
 which is trying to be similar to what a human programmer would have written when solving the problem directly in WAT.
 
+## Installation
 
-
+## Usage

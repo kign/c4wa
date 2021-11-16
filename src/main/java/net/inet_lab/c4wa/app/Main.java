@@ -152,7 +152,12 @@ public class Main {
     }
 
     private static void printUsage(Properties prop, String usage) {
-        System.out.print(usage + "\n" +
+        String appVersion = prop.getProperty("appVersion");
+        String appDate = prop.getProperty("appDate");
+        System.out.print(
+                "Subset of C to WAT/WASM compiler, version " + appVersion + ", " + appDate + "\n" +
+                "\n" +
+                usage + "\n" +
                 "\n" +
                 "Options are: \n" +
                 "\n" +
