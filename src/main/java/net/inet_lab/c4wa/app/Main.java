@@ -89,6 +89,11 @@ public class Main {
             ? runFileThroughCPreprocessor(fileName, ppOptions)
             : Files.lines(Paths.get(fileName), StandardCharsets.UTF_8).collect(Collectors.toUnmodifiableList());
 
+        if (programLines.size() == 0) {
+            System.err.println("No text");
+            System.exit(1);
+        }
+
         String programText = String.join("\n", programLines);
 
         if (!parsedArgs.containsKey("P") && hasPreprocessorDirectives(programText))
@@ -233,7 +238,7 @@ public class Main {
         // -E invokes preprocessor
         // -P inhibits line markers
         // -C preserves comments
-        String command = "gcc -E -P -C " + String.join(" ", ppOptions) + fileName;
+        String command = "gcc -E -P -C " + String.join(" ", ppOptions) + " " + fileName;
         Process process = Runtime.getRuntime().exec(command);
         return new BufferedReader(new InputStreamReader(process.getInputStream()))
                 .lines().collect(Collectors.toUnmodifiableList());
