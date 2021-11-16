@@ -9,16 +9,25 @@ public class Instruction_Return extends Instruction {
     }
 
     public String toStringPretty(int indent) {
-        return "(" + type.getName() + " " + arg.toStringPretty(indent) + ")";
+        if (arg == null)
+            return "(" + type.getName() + ")";
+        else
+            return "(" + type.getName() + " " + arg.toStringPretty(indent) + ")";
     }
 
     @Override
     public String toString() {
-        return "(" + type.getName() + " " + arg + ")";
+        if (arg == null)
+            return "(" + type.getName() + ")";
+        else
+            return "(" + type.getName() + " " + arg + ")";
     }
 
     @Override
     public int complexity() {
-        return arg.complexity();
+        if (arg == null)
+            return 0;
+        else
+            return arg.complexity();
     }
 }
