@@ -27,4 +27,65 @@ which is trying to be similar to what a human programmer would have written when
 
 ## Installation
 
+Download last release from [here](https://github.com/kign/c4wa/releases/); unzip to any directory
+and use shell wrapper `c4wa-compile` 
+
+```bash
+mkdir -p ~/Apps
+cd ~/Apps
+wget https://github.com/kign/c4wa/releases/download/v0.1/c4wa-compile-0.1.zip
+unzip c4wa-compile-0.1.zip
+cd
+PATH=~/Apps/c4wa-compile-0.1/bin:$PATH
+c4wa-compile --help
+```
+
 ## Usage
+
+Let's say we want to check [Collatz conjecture](https://en.wikipedia.org/wiki/Collatz_conjecture) for a 
+given integer number _N_.
+
+We start from this C code, which we save to file `collatz.c` :
+
+```c
+extern int collatz(int N) {
+    int len = 0;
+    unsigned long n = (unsigned long) N;
+    do {
+        if (n == 1)
+            break;
+        else if (n % 2 == 0)
+            n /= 2;
+        else
+            n = 3 * n + 1;
+        len ++;
+    }
+    while(1);
+    return len;
+}
+```
+
+Use `c4wa-compile` to compile to WAT and then `wat2wasm` to compile to WASM:
+
+```bash
+c4wa-compile -Xmodule.memoryStatus=none collatz.c
+wat2wasm collatz.wat
+```
+
+Write this simple `node`-based wrapper (save it as file ``)
+
+```javascript
+const fs = require('fs');
+const wasm_bytes = new Uint8Array(fs.readFileSync('collatz.wasm'));
+const n = parseInt(process.argv[2]);
+WebAssembly.instantiate(wasm_bytes).then(wasm =>
+    console.log("Cycle length of", n, "is", wasm.instance.exports.collatz (n)))
+```
+
+Now you can run the code :
+
+```bash
+node collatz.js 626331
+# Output: Cycle length of 626331 is 508
+```
+
