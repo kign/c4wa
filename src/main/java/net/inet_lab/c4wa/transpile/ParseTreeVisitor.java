@@ -583,6 +583,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitReturn_expression(c4waParser.Return_expressionContext ctx) {
+        if (ctx.expression() == null)
+            return new OneInstruction(new Return(), null);
+
         OneInstruction expression = (OneInstruction) visit(ctx.expression());
         if (expression.type == null)
             throw fail(ctx, "return", "expression has no type");

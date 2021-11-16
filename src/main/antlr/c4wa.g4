@@ -68,7 +68,7 @@ mult_variable_decl : primitive variable_with_modifiers (',' variable_with_modifi
 
 variable_init : variable_decl '=' expression;
 
-return_expression : RETURN expression;
+return_expression : RETURN expression?;
 
 simple_assignment : (ID '=')+ expression;
 
