@@ -49,12 +49,12 @@ We start from this C code, which we save to file `collatz.c` :
 
 ```c
 extern int collatz(int N) {
-    int len = 0;
+    int len;
     unsigned long n = (unsigned long) N;
     do {
         if (n == 1)
             break;
-        else if (n % 2 == 0)
+        if (n % 2 == 0)
             n /= 2;
         else
             n = 3 * n + 1;
@@ -72,7 +72,7 @@ c4wa-compile -Xmodule.memoryStatus=none collatz.c
 wat2wasm collatz.wat
 ```
 
-Write this simple `node`-based wrapper (save it as file ``)
+Write this simple `node`-based wrapper (save it as file `collatz.js`)
 
 ```javascript
 const fs = require('fs');
@@ -89,3 +89,10 @@ node collatz.js 626331
 # Output: Cycle length of 626331 is 508
 ```
 
+Note that generated WASM file `collatz.wasm` for is only 100 bytes in size.
+
+## Documentation
+
+ * Comparison with `emscripten`
+ * Language Spec
+ * [Compiler configuration options](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md)
