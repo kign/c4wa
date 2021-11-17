@@ -94,5 +94,5 @@ Note that generated WASM file `collatz.wasm` **is only 100 bytes in size**.
 ## Documentation
 
  * [Comparison with `emscripten` and other compilers](https://github.com/kign/c4wa/blob/master/etc/doc/comparison.md)
- * Language Spec
+ * [Language Spec](https://github.com/kign/c4wa/blob/master/etc/doc/language.md)
  * [Compiler configuration options](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md)

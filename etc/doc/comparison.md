@@ -202,11 +202,11 @@ gcc -Wno-incompatible-library-redeclaration main-collatz.c -o collatz
 ```
 
 In addition to testing, using C language automatically gives us C preprocessor, a useful tool for inlining or
-conditional compilation. Of course, in theory, nothing could stop us from using C preprocessor,
-or any other macro processor language for that matter (like the most popular one `m4`) on top of
-another language, or even on top of plain WAT.
+conditional compilation. 
 
-The problem with that approach though is that we de-facto creating a new language (e.g. WAT + m4) which
+(Of course, in theory, nothing could stop us from using C preprocessor,
+or any other macro processor language for that matter (like the most popular one `m4`) on top of
+another language, or even on top of plain WAT. The problem with that approach though is that we de-facto creating a new language (e.g. WAT + m4) which
 would have no syntax or other support in any existing IDE or other common tools. By contrast, C preprocessor
-would fit perfectly with C code. 
+would fit perfectly with C code).
 
