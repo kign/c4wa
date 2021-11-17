@@ -1,13 +1,13 @@
 # `c4wa` vs other compilers
 
-Let's try to take a simple C function we already used in the [overview](https://github.com/kign/c4wa/blob/master/README.md#usage)
-and try to compile it to Web Assembly using other existing compilers.
+Let's take a simple C function we already used in the [overview](https://github.com/kign/c4wa/blob/master/README.md#usage)
+and try to compile it to Web Assembly using some known compilers.
 
 **emscripten**
 
-Emscripten is closest, since it already compiles C code.
+`Emscripten` is closest, since it already compiles `C` code.
 To compile with [emscripten](https://developer.mozilla.org/en-US/docs/WebAssembly/C_to_wasm), we need to first change
-our function slightly (so that emscripten would include it in the generated Web Assembly):
+our function slightly (so that `emscripten` would include it in the generated Web Assembly):
 
 ```c
 #include <emscripten/emscripten.h>
@@ -152,13 +152,13 @@ created for Web Assembly, as a sibling of TypeScript) embeds into generated WebA
 This allows a developer to compile into Web Assembly with few, if any, changes, almost any existing code
 in a supported language.
 
-When writing a new code, however, full compatibility is less important. What you want is to generate
+When writing a new code, however, full feature support is less important. What you want is to generate
 reasonably efficient Web Assembly code, and to do in a reasonably high-level language.
 
-Who does it have to be a subset of C though?
+Why does it have to be a subset of C though?
 
-There are several projects to introduce a wrapper around WAT coding to make it easier to work with
-(for example, [wat](https://github.com/tmcw/wah)). While not a bad approach, *an advantage of using 
+There are several projects to introduce a wrapper around WAT to make it easier to work with
+(for example, [wah](https://github.com/tmcw/wah)). While not a bad approach, *an advantage of using 
 a subset of C is to be able to compile in test the code also in C*.
 
 Let's again go back to the original file `collatz.c`.
@@ -201,6 +201,12 @@ gcc -Wno-incompatible-library-redeclaration main-collatz.c -o collatz
 # Cycle length of 626331 is 508
 ```
 
+In addition to testing, using C language automatically gives us C preprocessor, a useful tool for inlining or
+conditional compilation. Of course, in theory, nothing could stop us from using C preprocessor,
+or any other macro processor language for that matter (like the most popular one `m4`) on top of
+another language, or even on top of plain WAT.
 
-
+The problem with that approach though is that we de-facto creating a new language (e.g. WAT + m4) which
+would have no syntax or other support in any existing IDE or other common tools. By contrast, C preprocessor
+would fit perfectly with C code. 
 
