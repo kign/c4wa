@@ -15,11 +15,11 @@ Obviously, details might change as work on the compiler continues.
 
 ## What this compiler is NOT
 
-Just to set expectations correctly, a few things **can't** be guarantee due to limited scope of this project, 
+Just to set expectations correctly, a few things **can't** be guaranteed due to limited scope of this project, 
 unavoidable inconsistencies with the standard C compiler, and differences between native executable and Web Assembly environment.
 
   * Your code might successfully pass through `c4wa` but still fail `wat2wasm` compilation. 
-    The plan in to eventually try to verify generated code as much as possible to avoid incorrect WAT code, 
+    The plan in to eventually try to verify generated code as much as possible to avoid incorrect WAT output, 
     but it's still very much work in progress (for example, as of version 0.1, 
     if you fail to return a value from a non-void function, you'll get a error from `wat2wasm`, not from `c4wa`). 
     In the meantime, since generated WAT code could be easily matched to the original code, 
@@ -29,8 +29,8 @@ unavoidable inconsistencies with the standard C compiler, and differences betwee
     inconsistencies you should be aware of when writing code for `c4wa`.
   * There could be occasional instances when due to a bug native executable would fail, yet Web Assembly version
     would still work as expected.
-  * `cw4a` might support certain features your C compiler does not, thus your code might compile and correctly execute
-    in Web Assembly, yet require some changes to pass through C compiler.
+  * `cw4a` might support certain features your C compiler does not, thus your code could compile and correctly execute
+    in Web Assembly, yet still require some adaptation to pass through C compiler.
 
 ## Overview
 
