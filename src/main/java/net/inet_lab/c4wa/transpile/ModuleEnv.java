@@ -16,11 +16,13 @@ public class ModuleEnv implements Partial {
     final byte[] data;
     int data_len;
 
-    final int DATA_OFFSET;
-    final int DATA_LENGTH;
+    final int STACK_SIZE;
+    final int DATA_SIZE;
     final String GLOBAL_IMPORT_NAME;
     final MemoryState memoryState;
     final String MEMORY_NAME;
+
+    final static String STACK_VAR_NAME = "@stack";
 
     public ModuleEnv (Properties prop) {
         funcDecl = new HashMap<>();
@@ -29,8 +31,6 @@ public class ModuleEnv implements Partial {
         strings = new HashMap<>();
         structs = new HashMap<>();
 
-        DATA_OFFSET = Integer.parseInt(prop.getProperty("module.dataOffset"));
-        DATA_LENGTH = Integer.parseInt(prop.getProperty("module.dataLength"));
         GLOBAL_IMPORT_NAME = prop.getProperty("module.importName");
         String memoryStatus = prop.getProperty("module.memoryStatus");
         if (memoryStatus.startsWith("import:")) {
@@ -52,7 +52,10 @@ public class ModuleEnv implements Partial {
         else
             throw new RuntimeException("Invalid value of property 'module.memoryStatus'");
 
-        data = new byte[DATA_LENGTH];
+        STACK_SIZE = memoryState == MemoryState.NONE? 0 : Integer.parseInt(prop.getProperty("module.stackSize"));
+        DATA_SIZE  = memoryState == MemoryState.NONE? 0 : Integer.parseInt(prop.getProperty("module.dataSize"));
+
+        data = new byte[DATA_SIZE];
         data_len = 0;
 
         addDeclaration(new FunctionDecl("memset", null,
@@ -104,7 +107,7 @@ public class ModuleEnv implements Partial {
     }
 
     private int _addString(String str) {
-        int res = DATA_OFFSET + data_len;
+        int res = STACK_SIZE + data_len;
 
         for(byte b: str.getBytes(StandardCharsets.UTF_8))
             data[data_len ++] = b;
@@ -121,8 +124,19 @@ public class ModuleEnv implements Partial {
     };
 
     public Module wat () {
+        boolean need_stack = functions.stream().anyMatch(f -> f.uses_stack);
+        if (need_stack) {
+            VariableDecl stackDecl = new VariableDecl(CType.INT, STACK_VAR_NAME);
+            stackDecl.imported = false;
+            stackDecl.exported = false;
+            stackDecl.mutable = true;
+            stackDecl.initialValue = new Const(0);
+            addDeclaration(stackDecl);
+        }
+
         List<Instruction> elements = new ArrayList<>();
 
+        // Everything imported must go first
         for (FunctionDecl f : funcDecl.values())
             if (f.imported)
                 elements.add(new Import(GLOBAL_IMPORT_NAME, f.name, f.wat()));
@@ -134,9 +148,10 @@ public class ModuleEnv implements Partial {
         if (memoryState == MemoryState.IMPORT)
             elements.add(new Memory(GLOBAL_IMPORT_NAME, MEMORY_NAME, 1));
 
+        // now we include everything non-imported
         for (VariableDecl v : varDecl.values())
             if (!v.imported)
-                elements.add(v.wat(GLOBAL_IMPORT_NAME));
+                elements.add(v.wat());
 
         if (memoryState == MemoryState.EXPORT)
             elements.add(new Memory(MEMORY_NAME, 1));
@@ -144,7 +159,7 @@ public class ModuleEnv implements Partial {
             elements.add(new Memory( 1));
 
         if (data_len > 0)
-            elements.add(new Data(DATA_OFFSET, data, data_len));
+            elements.add(new Data(STACK_SIZE, data, data_len));
 
         for (FunctionEnv f : functions)
             elements.add(f.wat());

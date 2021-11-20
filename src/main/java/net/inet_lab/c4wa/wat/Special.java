@@ -1,6 +1,5 @@
 package net.inet_lab.c4wa.wat;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public class Special extends Instruction {

@@ -3,8 +3,8 @@ package net.inet_lab.c4wa.wat;
 public class IfThenElse extends Instruction {
     final Instruction condition;
     final NumType resultType;
-    final Then _then;
-    final Else _else;
+    final Instruction_list _then;
+    final Instruction_list _else;
 
     public IfThenElse(Instruction condition, NumType resultType, Instruction[] thenList, Instruction[] elseList) {
         super(InstructionName.IF);
@@ -12,6 +12,18 @@ public class IfThenElse extends Instruction {
         this._then = (thenList == null)? null : new Then(thenList);
         this._else = (elseList == null)? null : new Else(elseList);
         this.resultType = resultType;
+    }
+
+    private IfThenElse(Instruction condition, NumType resultType, Instruction_list _then, Instruction_list _else) {
+        super(InstructionName.IF);
+        this.condition = condition;
+        this.resultType = resultType;
+        this._then = _then;
+        this._else = _else;
+    }
+    public Instruction[] postprocess(PostprocessContext ppctx) {
+        return new Instruction[]{new IfThenElse(condition, resultType, _then == null? null : (Instruction_list) _then.postprocess(ppctx)[0],
+                _else == null? null: (Instruction_list) _else.postprocess(ppctx)[0])};
     }
 
     @Override
@@ -37,16 +49,27 @@ public class IfThenElse extends Instruction {
 
     @Override
     public String toString() {
-        return '(' + type.getName() +
-                " (result " +
-                resultType +
-                ") " +
-                condition +
-                " (then " +
-                _then.elements[0] +
-                ") (else " +
-                _else.elements[0] +
-                "))";
+        StringBuilder b = new StringBuilder();
+
+        b.append('(').append(type.getName())
+                .append(' ');
+
+        if (resultType != null)
+            b.append(new Result(resultType));
+
+        b.append(' ').append(condition);
+
+        if (resultType == null) {
+            if (_then != null)
+                b.append(_then);
+            if (_else != null)
+                b.append(_else);
+        }
+        else
+            b.append(" (then ").append(_then.elements[0]).append(") (else ").append(_else.elements[0]).append(')');
+        b.append(')');
+
+        return b.toString();
     }
 
     @Override

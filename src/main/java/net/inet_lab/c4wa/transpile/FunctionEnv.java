@@ -4,7 +4,7 @@ import net.inet_lab.c4wa.wat.*;
 
 import java.util.*;
 
-public class FunctionEnv implements Partial {
+public class FunctionEnv implements Partial, PostprocessContext {
     final String name;
     final CType returnType;
     final List<String> params;
@@ -13,9 +13,11 @@ public class FunctionEnv implements Partial {
     final Map<String, CType> varType;
     final Map<NumType, String> tempVars;
     final Deque<Block> blocks;
+    final static String STACK_ENTRY_VAR = "@stack_entry";
 
     Instruction[] instructions;
-    int mem_offset;
+//    int mem_offset;
+    boolean uses_stack;
 
     public FunctionEnv (String name, CType returnType, boolean export) {
         this.name = name;
@@ -23,21 +25,26 @@ public class FunctionEnv implements Partial {
         this.params = new ArrayList<>();
         this.locals = new ArrayList<>();
         this.export = export;
-        this.mem_offset = 0;
+//        this.mem_offset = 0;
         varType = new HashMap<>();
         blocks = new ArrayDeque<>();
         tempVars = new HashMap<>();
 
         blocks.push(new Block());
+        uses_stack = false;
     }
 
-    public void setMemOffset(int offset) {
-        if (offset > mem_offset)
-            mem_offset = offset;
-    }
+//    public void setMemOffset(int offset) {
+//        if (offset > mem_offset)
+//            mem_offset = offset;
+//    }
+//
+//    public int getMemOffset() {
+//        return mem_offset;
+//    }
 
-    public int getMemOffset() {
-        return mem_offset;
+    public void markAsUsingStack () {
+        uses_stack = true;
     }
 
     public void registerVar(String name, CType type, boolean is_param) {
@@ -59,7 +66,7 @@ public class FunctionEnv implements Partial {
                 params.stream().map(varType::get).toArray(CType[]::new), false, false);
     }
 
-    public void addInstructions(Instruction[] instructions) {
+    public void setCode(Instruction[] instructions) {
         this.instructions = instructions;
     }
 
@@ -104,7 +111,7 @@ public class FunctionEnv implements Partial {
 
     }
 
-    public Func wat() {
+    public Instruction wat() {
         List<Instruction> attributes = new ArrayList<>();
         List<Instruction> elements = new ArrayList<>();
 
@@ -119,14 +126,28 @@ public class FunctionEnv implements Partial {
         if (returnType != null)
             attributes.add(new Result(returnType.asNumType()));
 
+        if (uses_stack)
+            elements.add(new Local(STACK_ENTRY_VAR, NumType.I32));
+
         for (String v : locals)
             elements.add(new Local(v, varType.get(v).asNumType()));
 
         for (NumType numType : tempVars.keySet())
             elements.add(new Local(tempVars.get(numType), numType));
 
+        if (uses_stack)
+            elements.add(new SetLocal(STACK_ENTRY_VAR, new GetGlobal(ModuleEnv.STACK_VAR_NAME)));
+
         elements.addAll(Arrays.asList(instructions));
-        return new Func(attributes, elements);
+
+        if (uses_stack && !(elements.get(elements.size() - 1) instanceof ParseTreeVisitor.PreparedReturn))
+            elements.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new GetLocal(FunctionEnv.STACK_ENTRY_VAR)));
+
+        Instruction watCode = new Func(attributes, elements);
+        Instruction[] res = watCode.postprocess(this);
+        if (res.length != 1)
+            throw new RuntimeException("Function postprocessing returned " + res.length + " instructions");
+        return res[0];
     }
 
     static class Block {

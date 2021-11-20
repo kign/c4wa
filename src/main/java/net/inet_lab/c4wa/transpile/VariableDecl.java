@@ -27,4 +27,13 @@ class VariableDecl implements Partial {
         else
             return new Global(name, type.asNumType(), mutable, initialValue);
     }
+
+    public Global wat () {
+        if (imported)
+            throw new RuntimeException("Incorrect wat() call with no arguments for imported variable");
+        if (exported)
+            return new Global(name, name, type.asNumType(), mutable, initialValue);
+        else
+            return new Global(name, type.asNumType(), mutable, initialValue);
+    }
 }

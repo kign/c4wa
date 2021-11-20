@@ -86,6 +86,49 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
     }
 
+    static class PreparedList extends ParserTemporary {
+        final Instruction[] instructions;
+        PreparedList (List<Instruction> instructions) {
+            this.instructions = instructions.toArray(Instruction[]::new);
+        }
+
+        @Override
+        public String toString() {
+            return "PreparedList";
+        }
+
+        @Override
+        public Instruction[] postprocess(PostprocessContext ppctx) {
+            return instructions;
+        }
+    }
+
+    static class PreparedReturn extends ParserTemporary {
+        final Return instruction;
+        PreparedReturn(Instruction arg) {
+            instruction = new Return(arg);
+        }
+
+        PreparedReturn() {
+            instruction = new Return();
+        }
+
+        @Override
+        public String toString() {
+            return "PreparedReturn";
+        }
+
+        @Override
+        public Instruction[] postprocess(PostprocessContext ppctx) {
+            FunctionEnv functionEnv = (FunctionEnv) ppctx;
+            if (functionEnv.uses_stack)
+                return new Instruction[]{new SetGlobal(ModuleEnv.STACK_VAR_NAME, new GetLocal(FunctionEnv.STACK_ENTRY_VAR)),
+                        instruction};
+            else
+                return new Instruction[] {instruction};
+        }
+    }
+
     static class OneFunction implements Partial {
         final FunctionEnv func;
         final c4waParser.Composite_blockContext code;
@@ -96,26 +139,29 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     static class BlockEnv {
-        int offset;
-        final int start_offset;
+//        int offset;
+//        final int start_offset;
         final List<Instruction> prefix;
+        final List<Instruction> postfix;
         String block_id;
         Instruction block_postfix;
         boolean need_block;
-        BlockEnv (int offset) {
-            this.start_offset = offset;
-            this.offset = offset;
+        BlockEnv () {
+//            this.start_offset = offset;
+//            this.offset = offset;
             prefix = new ArrayList<>();
+            postfix = new ArrayList<>();
             block_id = null;
         }
-        int getOffset() {
-            int res = offset;
-            offset += 8;
-            return res;
-        }
+//        int getOffset() {
+//            int res = offset;
+//            offset += 8;
+//            return res;
+//        }
         void reset() {
-            offset = this.start_offset;
+//            offset = this.start_offset;
             prefix.clear();
+            postfix.clear();
         }
         void markAsLoop(String block_id, Instruction block_postfix) {
             this.block_id = block_id;
@@ -153,12 +199,12 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         int mem_offset = 0;
         for (var oneFunc : functions) {
             functionEnv = oneFunc.func;
-            functionEnv.setMemOffset(mem_offset);
+            //functionEnv.setMemOffset(mem_offset);
 
-            functionEnv.addInstructions(Arrays.stream(((InstructionList) visit(oneFunc.code)).instructions).map(x -> x.instruction).toArray(Instruction[]::new));
+            functionEnv.setCode(Arrays.stream(((InstructionList) visit(oneFunc.code)).instructions).map(x -> x.instruction).toArray(Instruction[]::new));
             functionEnv.close();
             moduleEnv.addFunction(functionEnv);
-            mem_offset = functionEnv.getMemOffset();
+            //mem_offset = functionEnv.getMemOffset();
         }
 
         return moduleEnv;
@@ -267,7 +313,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (ctx.composite_block() != null)
             return (InstructionList) visit(ctx.composite_block());
         else {
-            BlockEnv blockEnv = new BlockEnv(functionEnv.getMemOffset());
+            BlockEnv blockEnv = new BlockEnv(/* functionEnv.getMemOffset() */);
             var parent = ctx.getParent();
             if (parent instanceof c4waParser.Element_do_whileContext ||
                     parent instanceof c4waParser.Element_forContext)
@@ -292,7 +338,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public InstructionList visitComposite_block(c4waParser.Composite_blockContext ctx) {
-        BlockEnv blockEnv = new BlockEnv(functionEnv.getMemOffset());
+        BlockEnv blockEnv = new BlockEnv(/* functionEnv.getMemOffset() */);
 
         // A hack obviously, but that's the best way I could find to meaningfully pass the knowledge
         // Basically we must know if this block is one associated with
@@ -525,30 +571,50 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         InstructionList args = (ctx.arg_list() == null)?(new InstructionList()):(InstructionList) visit(ctx.arg_list());
         Instruction[] call_args;
+        Instruction func_call = null;
         if (decl.anytype) {
-            BlockEnv blockEnv = blockStack.peek();
-            int idx = 0;
-            assert blockEnv != null;
-            int offset = blockEnv.offset;
+            if (decl.returnType != null)
+                throw fail(ctx, "function call", "'anytype' function with return value isn;t supported yet");
+
+            List<Instruction> func_call_elms = new ArrayList<>();
+            //String tempName = functionEnv.temporaryVar(NumType.I32);
+            Instruction getStack = new GetGlobal(ModuleEnv.STACK_VAR_NAME);
+//            BlockEnv blockEnv = blockStack.peek();
+//            assert blockEnv != null;
+            functionEnv.markAsUsingStack();
+
+            //blockEnv.prefix.add(new SetLocal(tempName, getStack));
+
+            // int offset = blockEnv.offset;
+            int idx = -1;
             for (var arg : args.instructions) {
                 idx ++;
                 if (arg.type == null)
-                    throw fail(ctx, "function call", "Argument number " + idx + " doesn't have type");
+                    throw fail(ctx, "function call", "Argument number " + (1 + idx) + " doesn't have type");
 
-                Const constOffset = new Const(blockEnv.getOffset());
+//                Const constOffset = new Const(blockEnv.getOffset());
+//                Instruction offsetAddress = idx == 0? getStack: new Add(NumType.I32, getStack, new Const(8 * idx));
                 if (arg.type.is_32() || arg.type.is_ptr()) {
                     NumType t64 = arg.type.is_int()|| arg.type.is_ptr()? NumType.I64 : NumType.F64;
-                    blockEnv.prefix.add(new Store(t64, constOffset,
+                    func_call_elms.add(new Store(t64, getStack,
                             GenericCast.cast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.instruction)));
                 }
                 else
-                    blockEnv.prefix.add(new Store(arg.type.asNumType(), constOffset, arg.instruction));
+                    func_call_elms.add(new Store(arg.type.asNumType(), getStack, arg.instruction));
+                if (idx < args.instructions.length - 1)
+                    func_call_elms.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Add(NumType.I32, getStack, new Const(8))));
+                else
+                    func_call_elms.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Sub(NumType.I32, getStack, new Const(8 * idx))));
             }
 
-            functionEnv.setMemOffset(blockEnv.offset);
+
+//            functionEnv.setMemOffset(blockEnv.offset);
+
             call_args = new Instruction[2];
-            call_args[0] = new Const(offset);
+            call_args[0] = getStack;
             call_args[1] = new Const(args.instructions.length);
+            func_call_elms.add(new Call(fname, call_args));
+            func_call = new PreparedList(func_call_elms);
         }
         else {
             if (decl.params.length != args.instructions.length)
@@ -569,11 +635,18 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 call_args[idx] = args.instructions[idx].instruction;
             }
         }
+//        if ("memset".equals(fname))
+//            return new OneInstruction(new MemoryFill(call_args[0], call_args[1], call_args[2]), null);
+//
+//        return new OneInstruction(new Call(fname, call_args), decl.returnType);
+
         // built-in functions
         if ("memset".equals(fname))
-            return new OneInstruction(new MemoryFill(call_args[0], call_args[1], call_args[2]), null);
+            func_call = new MemoryFill(call_args[0], call_args[1], call_args[2]);
+        else if (!decl.anytype)
+            func_call = new Call(fname, call_args);
 
-        return new OneInstruction(new Call(fname, call_args), decl.returnType);
+        return new OneInstruction(func_call, decl.returnType);
     }
 
     @Override
@@ -584,7 +657,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public OneInstruction visitReturn_expression(c4waParser.Return_expressionContext ctx) {
         if (ctx.expression() == null)
-            return new OneInstruction(new Return(), null);
+            return new OneInstruction(new PreparedReturn(), null);
 
         OneInstruction expression = (OneInstruction) visit(ctx.expression());
         if (expression.type == null)
@@ -596,7 +669,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "return", "Cannot return type '" + expression.type +
                     "' from a functiоn which is expected to return '" + functionEnv.returnType + "'");
 
-        return new OneInstruction(new Return(expression.instruction), null);
+        return new OneInstruction(new PreparedReturn(expression.instruction), null);
     }
 
     @Override
@@ -1203,7 +1276,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (!memptr.type.is_i32())
             throw fail(ctx, "alloc", "'" + memptr.type + "' won't work for alloc, must have int");
 
-        int memOffset = moduleEnv.DATA_OFFSET + moduleEnv.DATA_LENGTH;
+        int memOffset = moduleEnv.STACK_SIZE + moduleEnv.DATA_SIZE;
         if (memptr.instruction instanceof Const)
             return new OneInstruction(new Const(memOffset + (int)((Const)memptr.instruction).longValue), type.make_pointer_to());
         else

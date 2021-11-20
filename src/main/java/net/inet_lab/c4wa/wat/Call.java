@@ -19,9 +19,4 @@ public class Call extends Instruction {
         b.append(")");
         return b.toString();
     }
-
-    @Override
-    public int complexity() {
-        return 1000;
-    }
 }

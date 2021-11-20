@@ -13,10 +13,16 @@ public abstract class Instruction {
 
     abstract public String toString();
 
-    abstract public int complexity();
+    public int complexity() {
+        return 1000;
+    }
 
     public Instruction comptime_eval() {
         return this;
+    }
+
+    public Instruction[] postprocess(PostprocessContext ppctx) {
+        return new Instruction[]{this};
     }
 
     public Instruction Not(NumType numType) {

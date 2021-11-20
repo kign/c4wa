@@ -1,6 +1,10 @@
 package net.inet_lab.c4wa.wat;
 
-abstract public class Instruction_list extends Instruction {
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+public class Instruction_list extends Instruction {
     final Instruction[] attributes;
     final Instruction[] elements;
 
@@ -31,6 +35,31 @@ abstract public class Instruction_list extends Instruction {
     }
 
     @Override
+    public Instruction[] postprocess(PostprocessContext ppctx) {
+        List<Instruction> res = new ArrayList<>();
+
+        boolean same = true;
+        for (Instruction elm: elements) {
+            Instruction[] pp = elm.postprocess(ppctx);
+            if (pp.length != 1 || pp[0] != elm)
+                same = false;
+            res.addAll(Arrays.asList(pp));
+        }
+
+        Instruction ret;
+
+        if (same)
+            ret = this;
+        else {
+            if (res.size() == 0)
+                return new Instruction[0];
+            ret = new Instruction_list(type, attributes, res.toArray(Instruction[]::new));
+        }
+
+        return new Instruction[] {ret};
+    }
+
+    @Override
     public String toStringPretty(int indent) {
         StringBuilder b = new StringBuilder();
         b.append('(').append(type.getName());
@@ -57,10 +86,5 @@ abstract public class Instruction_list extends Instruction {
     @Override
     public String toString() {
         return toStringPretty(0);
-    }
-
-    @Override
-    public int complexity() {
-        return 1000;
     }
 }

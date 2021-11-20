@@ -1,8 +1,6 @@
 package net.inet_lab.c4wa.wat;
 
-import java.util.stream.IntStream;
-
-abstract public class Instruction_Bin extends Instruction {
+public class Instruction_Bin extends Instruction {
     final public Instruction arg1;
     final public Instruction arg2;
     final Const.TwoArgIntOperator op_i;
