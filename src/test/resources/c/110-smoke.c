@@ -18,7 +18,7 @@ double sqrt(double x) {
     return (a + b)/2.0;
 }
 
-void solve_square_equation(double a, double b, double c, double roots[], int * p_status) {
+void solve_square_equation(double a, double b, double c, double roots[2], int * p_status) {
     double d = b*b - 4.0*a*c;
     if (d < 0.) {
         *p_status = 0;

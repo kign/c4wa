@@ -8,8 +8,8 @@ public class Expression_2 extends Expression {
     public Expression_2(InstructionName name, NumType numType, Expression arg1, Expression arg2,
                         Const.TwoArgIntOperator op_i, Const.TwoArgFloatOperator op_f) {
         super(name, numType);
-        this.arg1 = arg1;
-        this.arg2 = arg2;
+        this.arg1 = arg1.comptime_eval();
+        this.arg2 = arg2.comptime_eval();
         this.op_i = op_i;
         this.op_f = op_f;
     }

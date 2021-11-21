@@ -9,12 +9,13 @@ class VariableDecl implements Partial {
     boolean exported;
     boolean imported;
     boolean mutable;
+    boolean inStack;
     Const initialValue;
 
     VariableDecl(CType type, String name) {
         this.type = type;
         this.name = name;
-        imported = exported = false;
+        imported = exported = inStack = false;
         mutable = true;
         initialValue = null;
     }

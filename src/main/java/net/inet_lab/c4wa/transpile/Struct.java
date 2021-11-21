@@ -55,4 +55,8 @@ public class Struct extends CType {
             this.offset = offset;
         }
     }
+
+    public boolean is_struct() {
+        return true;
+    }
 }

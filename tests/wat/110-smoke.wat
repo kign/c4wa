@@ -29,13 +29,13 @@
         (return)))
     (if (f64.eq (get_local $d) (f64.const 0.0))
       (then
-        (f64.store (i32.add (get_local $roots) (i32.mul (i32.const 0) (i32.const 8))) (f64.div (f64.div (f64.neg (get_local $b)) (f64.const 2.0)) (get_local $a)))
-        (f64.store (i32.add (get_local $roots) (i32.mul (i32.const 1) (i32.const 8))) (f64.div (f64.div (f64.neg (get_local $b)) (f64.const 2.0)) (get_local $a)))
+        (f64.store (get_local $roots) (f64.div (f64.div (f64.neg (get_local $b)) (f64.const 2.0)) (get_local $a)))
+        (f64.store (i32.add (get_local $roots) (i32.const 8)) (f64.div (f64.div (f64.neg (get_local $b)) (f64.const 2.0)) (get_local $a)))
         (i32.store (get_local $p_status) (i32.const 1))
         (return)))
     (set_local $sqrt_d (call $sqrt (get_local $d)))
-    (f64.store (i32.add (get_local $roots) (i32.mul (i32.const 0) (i32.const 8))) (f64.div (f64.div (f64.sub (f64.neg (get_local $b)) (get_local $sqrt_d)) (f64.const 2.0)) (get_local $a)))
-    (f64.store (i32.add (get_local $roots) (i32.mul (i32.const 1) (i32.const 8))) (f64.div (f64.div (f64.add (f64.neg (get_local $b)) (get_local $sqrt_d)) (f64.const 2.0)) (get_local $a)))
+    (f64.store (get_local $roots) (f64.div (f64.div (f64.sub (f64.neg (get_local $b)) (get_local $sqrt_d)) (f64.const 2.0)) (get_local $a)))
+    (f64.store (i32.add (get_local $roots) (i32.const 8)) (f64.div (f64.div (f64.add (f64.neg (get_local $b)) (get_local $sqrt_d)) (f64.const 2.0)) (get_local $a)))
     (i32.store (get_local $p_status) (i32.const 2)))
   (func $try_solving (param $a i32) (param $b i32) (param $c i32)
     (local $@stack_entry i32)
@@ -64,7 +64,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 1060))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (f64.store (global.get $@stack) (f64.load (i32.add (get_local $roots) (i32.mul (i32.const 0) (i32.const 8)))))
+            (f64.store (global.get $@stack) (f64.load (get_local $roots)))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2)))
           (else
@@ -72,9 +72,9 @@
               (then
                 (i64.store (global.get $@stack) (i64.const 1076))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-                (f64.store (global.get $@stack) (f64.load (i32.add (get_local $roots) (i32.mul (i32.const 0) (i32.const 8)))))
+                (f64.store (global.get $@stack) (f64.load (get_local $roots)))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-                (f64.store (global.get $@stack) (f64.load (i32.add (get_local $roots) (i32.mul (i32.const 1) (i32.const 8)))))
+                (f64.store (global.get $@stack) (f64.load (i32.add (get_local $roots) (i32.const 8))))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 16)))
                 (call $printf (global.get $@stack) (i32.const 3))))))))
     (global.set $@stack (get_local $@stack_entry)))

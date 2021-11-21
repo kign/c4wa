@@ -22,9 +22,11 @@ variable_decl : primitive variable_with_modifiers;
 variable_with_modifiers
     : ID                                 # variable_with_modifiers_name
     | '(' variable_with_modifiers ')'    # variable_with_modifiers_paren
-    | variable_with_modifiers '[' ']'    # variable_with_modifiers_array
+    | variable_with_modifiers '[' CONSTANT? ']'  # variable_with_modifiers_array
     | '*' variable_with_modifiers        # variable_with_modifiers_pointer
     ;
+
+local_variable:  '*'* ID ('[' expression ']')?;
 
 variable_type : primitive '*'* ;
 
@@ -64,7 +66,7 @@ statement
     | return_expression
     ;
 
-mult_variable_decl : primitive variable_with_modifiers (',' variable_with_modifiers)* ;
+mult_variable_decl : primitive local_variable (',' local_variable)* ;
 
 variable_init : variable_decl '=' expression;
 
@@ -192,8 +194,7 @@ ALLOC  :  'alloc';
 ID     :  [a-zA-Z_][a-zA-Z0-9_]*;
 ASM    :  'asm' [ \t\n\r]* '{' .*? '}';
 
-// CONSTANT : Sign? Constant;
-CONSTANT : Constant;
+//CONSTANT : Constant;
 
 STRING
     :   '"' SCharSequence? '"'
@@ -201,8 +202,7 @@ STRING
 
 CHARACTER : '\'' SChar '\'' ;
 
-fragment
-Constant
+CONSTANT
     :   '0'
     |   DecimalConstant
     |   DecimalFloatingConstant

@@ -8,7 +8,7 @@
     (local $i i32)
     (local $n i32)
     (local $p i32)
-    (i32.store (i32.add (get_local $primes) (i32.mul (i32.const 0) (i32.const 4))) (i32.const 2))
+    (i32.store (get_local $primes) (i32.const 2))
     (set_local $n (i32.const 1))
     (block $@block_1_break
       (set_local $p (i32.const 3))
@@ -32,7 +32,7 @@
     (local $n i32)
     (local $p i32)
     (local $d i32)
-    (i32.store (i32.add (get_local $primes) (i32.mul (i32.const 0) (i32.const 4))) (i32.const 2))
+    (i32.store (get_local $primes) (i32.const 2))
     (set_local $n (i32.const 1))
     (block $@block_1_break
       (set_local $p (i32.const 3))

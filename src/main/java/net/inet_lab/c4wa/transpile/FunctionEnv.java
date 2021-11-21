@@ -10,7 +10,8 @@ public class FunctionEnv implements Partial, PostprocessContext {
     final List<String> params;
     final List<String> locals;
     final boolean export;
-    final Map<String, CType> varType;
+    final Map<String, VariableDecl> variables;
+//    final Map<String, CType> varType;
     final Map<NumType, String> tempVars;
     final Deque<Block> blocks;
     final static String STACK_ENTRY_VAR = "@stack_entry";
@@ -24,7 +25,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
         this.params = new ArrayList<>();
         this.locals = new ArrayList<>();
         this.export = export;
-        varType = new HashMap<>();
+        variables = new HashMap<>();
         blocks = new ArrayDeque<>();
         tempVars = new HashMap<>();
 
@@ -37,9 +38,9 @@ public class FunctionEnv implements Partial, PostprocessContext {
     }
 
     public void registerVar(String name, CType type, boolean is_param) {
-        if (varType.containsKey(name))
+        if (variables.containsKey(name))
             throw new RuntimeException("Variable " + name + " already defined");
-        varType.put(name, type);
+        variables.put(name, new VariableDecl(type, name));
         if (is_param)
             params.add(name);
         else
@@ -52,7 +53,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
 
     public FunctionDecl makeDeclaration() {
         return new FunctionDecl(name, returnType,
-                params.stream().map(varType::get).toArray(CType[]::new), false, false);
+                params.stream().map(p -> variables.get(p).type).toArray(CType[]::new), false, false);
     }
 
     public void setCode(Instruction[] instructions) {
@@ -110,7 +111,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
             attributes.add(new Export(name));
 
         for (String p : params)
-            attributes.add(new Param(p, varType.get(p).asNumType()));
+            attributes.add(new Param(p, variables.get(p).type.asNumType()));
 
         if (returnType != null)
             attributes.add(new Result(returnType.asNumType()));
@@ -119,7 +120,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
             elements.add(new Local(STACK_ENTRY_VAR, NumType.I32));
 
         for (String v : locals)
-            elements.add(new Local(v, varType.get(v).asNumType()));
+            elements.add(new Local(v, variables.get(v).type.asNumType()));
 
         for (NumType numType : tempVars.keySet())
             elements.add(new Local(tempVars.get(numType), numType));

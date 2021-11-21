@@ -6,8 +6,8 @@ public class Instruction_2 extends Instruction {
 
     public Instruction_2(InstructionType type, Expression arg1, Expression arg2) {
         super(type);
-        this.arg1 = arg1;
-        this.arg2 = arg2;
+        this.arg1 = arg1.comptime_eval();
+        this.arg2 = arg2.comptime_eval();
     }
 
     @Override

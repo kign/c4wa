@@ -55,6 +55,18 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
     }
 
+    static class LocalVariable implements Partial {
+        final String name;
+        final int ref_level;
+        final Expression size;
+
+        LocalVariable(String name, int ref_level, Expression size) {
+            this.name = name;
+            this.ref_level = ref_level;
+            this.size = size;
+        }
+    }
+
     static class OneInstruction implements Partial {
         final Instruction instruction;
 
@@ -621,8 +633,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public OneInstruction visitSimple_increment(c4waParser.Simple_incrementContext ctx) {
         String name = ctx.ID().getText();
 
-        CType type = functionEnv.varType.get(name);
-        boolean is_global = type == null;
+        VariableDecl variableDecl = functionEnv.variables.get(name);
+        CType type;
+        boolean is_global = variableDecl == null;
         if (is_global) {
             VariableDecl decl = moduleEnv.varDecl.get(name);
 
@@ -634,6 +647,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
             type = decl.type;
         }
+        else
+            type = variableDecl.type;
+
 
         if(type.is_ptr())
             type = CType.INT;
@@ -656,7 +672,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         OneExpression binaryOp = binary_op(ctx, accessVariable(ctx, name), rhs, op);
 
-        if (functionEnv.varType.containsKey(name))
+        if (functionEnv.variables.containsKey(name))
             return new OneInstruction(new SetLocal(name, binaryOp.expression));
         else {
             VariableDecl decl = moduleEnv.varDecl.get(name);
@@ -676,9 +692,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         String[] names = ctx.ID().stream().map(ParseTree::getText).toArray(String[]::new);
 
         for (int i = 0; i < names.length; i ++) {
-            CType type = functionEnv.varType.get(names[i]);
-            if (type == null) {
-                VariableDecl decl = moduleEnv.varDecl.get(names[i]);
+            VariableDecl decl = functionEnv.variables.get(names[i]);
+            if (decl == null) {
+                decl = moduleEnv.varDecl.get(names[i]);
 
                 if (decl == null)
                     throw fail(ctx, "assignment", "Variable '" + names[i] + "' is not defined");
@@ -691,13 +707,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                             names[iGlobal] + "' and '" + names[i] + "'");
 
                 iGlobal = i;
-
-                type = decl.type;
             }
-            if (type == null)
-                throw fail(ctx, "assignment", "Variable '" + names[i] + "' is not defined");
-            if (!type.isValidRHS(rhs.type))
-                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable '" + names[i] + "' of type " + type);
+            if (!decl.type.isValidRHS(rhs.type))
+                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable '" + names[i] + "' of type " + decl.type);
         }
 
         Expression res = rhs.expression;
@@ -787,16 +799,45 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
 
     @Override
-    public NoOp visitMult_variable_decl(c4waParser.Mult_variable_declContext ctx) {
-        for (var v : ctx.variable_with_modifiers()) {
-            VariableWrapper variableWrapper = (VariableWrapper) visit(v);
+    public OneInstruction visitMult_variable_decl(c4waParser.Mult_variable_declContext ctx) {
+        List<Instruction> res = new ArrayList<>();
+
+        for (var v : ctx.local_variable()) {
+            LocalVariable localVar = (LocalVariable) visit(v);
             CType type = (CType) visit(ctx.primitive());
 
-            for (int i = 0; i < variableWrapper.ref_level; i++)
+            for (int i = 0; i < localVar.ref_level; i++)
                 type = type.make_pointer_to();
-            functionEnv.registerVar(variableWrapper.name, type, false);
+
+            functionEnv.registerVar(localVar.name, localVar.size == null? type: type.make_pointer_to(), false);
+
+            if (type.is_struct() || localVar.size != null) {
+                functionEnv.variables.get(localVar.name).mutable = false;
+                functionEnv.variables.get(localVar.name).inStack = true;
+
+                GetGlobal stack = new GetGlobal(NumType.I32, ModuleEnv.STACK_VAR_NAME);
+                res.add(new SetLocal(localVar.name, stack));
+                res.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Add(NumType.I32, stack,
+                        localVar.size == null
+                                ? new Const(type.size())
+                                : new Mul(NumType.I32, localVar.size, new Const(type.size())))));
+
+                functionEnv.markAsUsingStack();
+            }
         }
-        return new NoOp();
+
+        return new OneInstruction(new PreparedList(res));
+    }
+
+    @Override
+    public LocalVariable visitLocal_variable(c4waParser.Local_variableContext ctx) {
+        OneExpression size = null;
+        if (ctx.expression() != null) {
+            size = (OneExpression) visit(ctx.expression());
+            if (!size.type.is_i32())
+                throw fail(ctx, "local variable", "Array size must be INT, not '" + size.type + "'");
+        }
+        return new LocalVariable(ctx.ID().getText(), ctx.MULT().size(), size == null? null: size.expression);
     }
 
     @Override
@@ -1188,14 +1229,15 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     private OneExpression accessVariable(ParserRuleContext ctx, String name) {
-        CType type = functionEnv.varType.get(name);
-        if (type != null)
-            return new OneExpression(new GetLocal(type.asNumType(), name), type);
+        VariableDecl decl = functionEnv.variables.get(name);
 
-        VariableDecl globalDecl = moduleEnv.varDecl.get(name);
+        if (decl != null)
+            return new OneExpression(new GetLocal(decl.type.asNumType(), name), decl.type);
 
-        if (globalDecl != null)
-            return new OneExpression(new GetGlobal(globalDecl.type.asNumType(), name), globalDecl.type);
+        decl = moduleEnv.varDecl.get(name);
+
+        if (decl != null)
+            return new OneExpression(new GetGlobal(decl.type.asNumType(), name), decl.type);
 
         throw fail(ctx, "variable", "'" + name + "' not defined");
     }
