@@ -11,4 +11,9 @@ public class Expression_1 extends Expression {
     public String toString() {
         return "(" + fullName() + " " + arg + ")";
     }
+
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new Expression_1(name, numType, arg.postprocess(ppctx));
+    }
 }

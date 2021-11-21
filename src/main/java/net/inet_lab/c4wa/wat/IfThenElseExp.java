@@ -33,4 +33,9 @@ public class IfThenElseExp extends Expression {
     public int complexity() {
         return 1 + Math.max(condition.complexity(), Math.max(_then.complexity(), _else.complexity()));
     }
+
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new IfThenElseExp(condition.postprocess(ppctx), numType, _then.postprocess(ppctx), _else.postprocess(ppctx));
+    }
 }

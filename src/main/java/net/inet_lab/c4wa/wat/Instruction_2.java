@@ -19,4 +19,9 @@ public class Instruction_2 extends Instruction {
     public String toString() {
         return "(" + type.getName() + " " + arg1 + " " + arg2 + ")";
     }
+
+    @Override
+    public Instruction[] postprocess(PostprocessContext ppctx) {
+        return new Instruction[]{new Instruction_2(type, arg1.postprocess(ppctx), arg2.postprocess(ppctx))};
+    }
 }

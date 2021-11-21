@@ -109,9 +109,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
     }
 
-    static class PreparedList extends ParserTemporary {
+    static class DelayedList extends Instruction_Delayed {
         final Instruction[] instructions;
-        PreparedList (List<Instruction> instructions) {
+        DelayedList(List<Instruction> instructions) {
             this.instructions = instructions.toArray(Instruction[]::new);
         }
 
@@ -126,13 +126,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
     }
 
-    static class PreparedReturn extends ParserTemporary {
+    static class DelayedReturn extends Instruction_Delayed {
         final Return instruction;
-        PreparedReturn(Expression arg) {
+        DelayedReturn(Expression arg) {
             instruction = new Return(arg);
         }
 
-        PreparedReturn() {
+        DelayedReturn() {
             instruction = new Return();
         }
 
@@ -149,6 +149,61 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                         instruction};
             else
                 return new Instruction[] {instruction};
+        }
+    }
+
+    static class DelayedLocalDefinition extends Instruction_Delayed {
+        final String name;
+        DelayedLocalDefinition(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return "DelayedLocalDefinition('" + name + "')";
+        }
+
+        @Override
+        public Instruction[] postprocess(PostprocessContext ppctx) {
+            FunctionEnv functionEnv = (FunctionEnv) ppctx;
+            VariableDecl decl = functionEnv.variables.get(name);
+            assert decl != null;
+            if (decl.inStack) {
+                GetGlobal stack = new GetGlobal(NumType.I32, ModuleEnv.STACK_VAR_NAME);
+                return new Instruction[]{new SetLocal(name, stack), new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Add(NumType.I32, stack, new Const(decl.type.size())))};
+            }
+            else
+                return new Instruction[0];
+        }
+    }
+
+    static class DelayedLocalAccess extends Expression_Delayed {
+        final String name;
+
+        DelayedLocalAccess(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public int complexity() {
+            return 1;
+        }
+
+        @Override
+        public String toString() {
+            return "DelayedLocalAccess('" + name + "')";
+        }
+
+        @Override
+        public Expression postprocess(PostprocessContext ppctx) {
+            FunctionEnv functionEnv = (FunctionEnv) ppctx;
+            VariableDecl decl = functionEnv.variables.get(name);
+            assert decl != null;
+            if (decl.inStack && !decl.isArray && !decl.type.is_struct()) {
+                return memory_load(decl.type, new GetLocal(decl.type.asNumType(), decl.name));
+            }
+            else
+                return new GetLocal(decl.type.asNumType(), decl.name);
         }
     }
 
@@ -464,7 +519,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
         else {
             if (condition == null)
-                return new OneInstruction(new PreparedList(List.of(blockEnv.block_postfix, new Br(ref))));
+                return new OneInstruction(new DelayedList(List.of(blockEnv.block_postfix, new Br(ref))));
             else
                 return new OneInstruction(
                         new IfThenElse(condition.expression,
@@ -556,7 +611,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             call_args[0] = getStack;
             call_args[1] = new Const(args.expressions.length);
             func_call_elms.add(new Call(fname, call_args));
-            func_call_void = new PreparedList(func_call_elms);
+            func_call_void = new DelayedList(func_call_elms);
         }
         else {
             if (decl.params.length != args.expressions.length)
@@ -599,7 +654,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public OneInstruction visitReturn_expression(c4waParser.Return_expressionContext ctx) {
         if (ctx.expression() == null)
-            return new OneInstruction(new PreparedReturn());
+            return new OneInstruction(new DelayedReturn());
 
         OneExpression expression = (OneExpression) visit(ctx.expression());
         if (functionEnv.returnType == null)
@@ -609,7 +664,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "return", "Cannot return type '" + expression.type +
                     "' from a functiоn which is expected to return '" + functionEnv.returnType + "'");
 
-        return new OneInstruction(new PreparedReturn(expression.expression));
+        return new OneInstruction(new DelayedReturn(expression.expression));
     }
 
     @Override
@@ -760,7 +815,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             OneExpression new_lhs = new OneExpression(new GetLocal(type.asNumType(), tempVar), type);
             OneExpression binaryOp = binary_op(ctx, new OneExpression(memory_load(type, new_lhs.expression), type), rhs, op);
 
-            return new OneInstruction(new PreparedList(List.of(new SetLocal(tempVar, lhs.expression), memory_store(new_lhs, binaryOp))));
+            return new OneInstruction(new DelayedList(List.of(new SetLocal(tempVar, lhs.expression), memory_store(new_lhs, binaryOp))));
         }
     }
 
@@ -788,7 +843,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return new Store(lhs.type.asNumType(), lhs.expression, rhs.expression);
     }
 
-    private Load memory_load(CType type, Expression i) {
+    static private Load memory_load(CType type, Expression i) {
         if (type.size() == 1)
             return new Load(type.asNumType(), 8, type.is_signed(), i);
         else if (type.size() == 2)
@@ -814,6 +869,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             if (type.is_struct() || localVar.size != null) {
                 functionEnv.variables.get(localVar.name).mutable = false;
                 functionEnv.variables.get(localVar.name).inStack = true;
+                functionEnv.variables.get(localVar.name).isArray = localVar.size != null;
 
                 GetGlobal stack = new GetGlobal(NumType.I32, ModuleEnv.STACK_VAR_NAME);
                 res.add(new SetLocal(localVar.name, stack));
@@ -824,9 +880,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
                 functionEnv.markAsUsingStack();
             }
+            else
+                res.add(new DelayedLocalDefinition(localVar.name));
         }
 
-        return new OneInstruction(new PreparedList(res));
+        return new OneInstruction(new DelayedList(res));
     }
 
     @Override
@@ -863,6 +921,29 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "dereference", "trying to dereference '" + ptr.type + "' which is not a reference");
 
         return new OneExpression(ptr.expression, type);
+    }
+
+    @Override
+    public OneExpression visitExpression_addr_var(c4waParser.Expression_addr_varContext ctx) {
+        String name = ctx.ID().getText();
+        VariableDecl decl = functionEnv.variables.get(name);
+
+        if (decl == null)
+            throw fail(ctx, "address of variable", "'" + name + "' is not a local variable");
+
+        if (decl.isArray)
+            throw fail(ctx, "address of variable", "'" + name + "' is array, cannot take address of an array");
+
+        decl.inStack = true;
+
+        return new OneExpression(new GetLocal(NumType.I32, name), decl.type.make_pointer_to());
+    }
+
+    @Override
+    public OneExpression visitExpression_addr_lhs(c4waParser.Expression_addr_lhsContext ctx) {
+        OneExpression exp = (OneExpression) visit(ctx.lhs());
+
+        return new OneExpression(exp.expression, exp.type.make_pointer_to());
     }
 
     @Override
@@ -1232,7 +1313,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         VariableDecl decl = functionEnv.variables.get(name);
 
         if (decl != null)
-            return new OneExpression(new GetLocal(decl.type.asNumType(), name), decl.type);
+//            return new OneExpression(new GetLocal(decl.type.asNumType(), name), decl.type);
+            return new OneExpression(new DelayedLocalAccess(name), decl.type);
 
         decl = moduleEnv.varDecl.get(name);
 

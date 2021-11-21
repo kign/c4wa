@@ -37,4 +37,9 @@ public class Expression_2 extends Expression {
     public int complexity() {
         return 1 + Math.max(arg1.complexity(), arg2.complexity());
     }
+
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new Expression_2(name, numType, arg1.postprocess(ppctx), arg2.postprocess(ppctx), op_i, op_f);
+    }
 }

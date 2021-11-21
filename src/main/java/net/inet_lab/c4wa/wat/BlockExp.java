@@ -1,5 +1,9 @@
 package net.inet_lab.c4wa.wat;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public class BlockExp extends Expression {
     final String ref;
     final Instruction[] body;
@@ -22,5 +26,14 @@ public class BlockExp extends Expression {
         b.append(' ').append(returnExp).append(')');
 
         return b.toString();
+    }
+
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        List<Instruction> pp = new ArrayList<>();
+
+        for (var i : body)
+            pp.addAll(Arrays.asList(i.postprocess(ppctx)));
+        return new BlockExp(ref, numType, pp.toArray(Instruction[]::new), returnExp.postprocess(ppctx));
     }
 }

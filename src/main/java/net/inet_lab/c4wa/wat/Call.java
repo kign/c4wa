@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.util.Arrays;
+
 public class Call extends Instruction {
     public final String name;
     public final Expression[] args;
@@ -19,5 +21,10 @@ public class Call extends Instruction {
             b.append(" ").append(arg);
         b.append(")");
         return b.toString();
+    }
+
+    @Override
+    public Instruction[] postprocess(PostprocessContext ppctx) {
+        return new Instruction[]{new Call(name, Arrays.stream(args).map(e -> e.postprocess(ppctx)).toArray(Expression[]::new))};
     }
 }

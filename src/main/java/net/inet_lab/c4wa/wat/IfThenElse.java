@@ -21,7 +21,7 @@ public class IfThenElse extends Instruction {
         this._else = _else;
     }
     public Instruction[] postprocess(PostprocessContext ppctx) {
-        return new Instruction[]{new IfThenElse(condition, _then == null? null : _then.postprocessList(ppctx),
+        return new Instruction[]{new IfThenElse(condition.postprocess(ppctx), _then == null? null : _then.postprocessList(ppctx),
                 _else == null? null: _else.postprocessList(ppctx))};
     }
 

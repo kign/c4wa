@@ -22,4 +22,13 @@ public class Instruction_1 extends Instruction {
         else
             return "(" + type.getName() + " " + arg + ")";
     }
+
+    @Override
+    public Instruction[] postprocess(PostprocessContext ppctx) {
+        if (arg == null)
+            return new Instruction[]{this};
+        else
+            return new Instruction[]{new Instruction_1(type, arg.postprocess(ppctx))};
+    }
+
 }

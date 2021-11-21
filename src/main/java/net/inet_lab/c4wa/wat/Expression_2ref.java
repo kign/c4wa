@@ -22,4 +22,8 @@ public class Expression_2ref extends Expression {
         return 1 + Math.max(arg1.complexity(), arg2.complexity());
     }
 
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new Expression_2ref(name, numType, ref, arg1.postprocess(ppctx), arg2.postprocess(ppctx));
+    }
 }

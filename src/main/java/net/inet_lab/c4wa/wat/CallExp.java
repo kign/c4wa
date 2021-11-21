@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.util.Arrays;
+
 public class CallExp extends Expression {
     public final String funcName;
     public final Expression[] args;
@@ -25,4 +27,8 @@ public class CallExp extends Expression {
         return b.toString();
     }
 
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new CallExp(funcName, numType, Arrays.stream(args).map(e -> e.postprocess(ppctx)).toArray(Expression[]::new));
+    }
 }

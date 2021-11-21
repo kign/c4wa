@@ -82,6 +82,7 @@ complex_assignment: lhs '=' expression;
 
 lhs
     : expression '->' ID                      # lhs_struct_member
+    | '(' lhs ')'                      # lhs_parentheses
     | ptr=expression '[' idx=expression ']'   # lhs_index
     | '*' expression                          # lhs_dereference
     ;
@@ -92,11 +93,13 @@ arg_list: expression (',' expression)*;
 
 // cmp. Operators Precedence in C: https://www.tutorialspoint.com/Operators-Precedence-in-Cplusplus
 expression
-    : op=(NOT|MINUS|MULT) expression                 # expression_unary_op
+    : ptr=expression '[' idx=expression ']'        # expression_index
     | expression '->' ID                      # expression_struct_member
+    | op=(NOT|MINUS|MULT) expression                 # expression_unary_op
+    | BWAND ID                                          # expression_addr_var
+    | BWAND lhs                                         # expression_addr_lhs
     | SIZEOF '(' variable_type ')'                 # expression_sizeof_type
     | SIZEOF expression                 # expression_sizeof_exp
-    | ptr=expression '[' idx=expression ']'        # expression_index
     | '(' expression ')'                  # expression_parentheses
     | '(' variable_type ')' expression    # expression_cast
     | expression op=(MULT | DIV | MOD) expression    # expression_binary_mult

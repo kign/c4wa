@@ -119,8 +119,10 @@ public class FunctionEnv implements Partial, PostprocessContext {
         if (uses_stack)
             elements.add(new Local(STACK_ENTRY_VAR, NumType.I32));
 
-        for (String v : locals)
-            elements.add(new Local(v, variables.get(v).type.asNumType()));
+        for (String v : locals) {
+            VariableDecl decl = variables.get(v);
+            elements.add(new Local(v, decl.inStack? NumType.I32 : decl.type.asNumType()));
+        }
 
         for (NumType numType : tempVars.keySet())
             elements.add(new Local(tempVars.get(numType), numType));
@@ -130,14 +132,11 @@ public class FunctionEnv implements Partial, PostprocessContext {
 
         elements.addAll(Arrays.asList(instructions));
 
-        if (uses_stack && !(elements.get(elements.size() - 1) instanceof ParseTreeVisitor.PreparedReturn))
+        if (uses_stack && !(elements.get(elements.size() - 1) instanceof ParseTreeVisitor.DelayedReturn))
             elements.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new GetLocal(NumType.I32, FunctionEnv.STACK_ENTRY_VAR)));
 
-        Instruction watCode = new Func(attributes, elements);
-        Instruction[] res = watCode.postprocess(this);
-        if (res.length != 1)
-            throw new RuntimeException("Function postprocessing returned " + res.length + " instructions");
-        return res[0];
+        Func watCode = new Func(attributes, elements);
+        return watCode.postprocessList(this).postprocessList(this);
     }
 
     static class Block {
