@@ -1,10 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
-public class Mul extends Instruction_Bin {
-    final public NumType numType;
-
-    public Mul(NumType numType, Instruction arg1, Instruction arg2) {
-        super(new InstructionWithNumPrefix(numType, InstructionName.MUL), arg1, arg2, (a,b)->a*b, (a,b)->a*b);
-        this.numType = numType;
+public class Mul extends Expression_2 {
+    public Mul(NumType numType, Expression arg1, Expression arg2) {
+        super(InstructionName.MUL, numType, arg1, arg2, (a,b)->a*b, (a,b)->a*b);
     }
 }

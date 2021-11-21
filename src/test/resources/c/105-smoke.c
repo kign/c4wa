@@ -35,6 +35,38 @@ void v3 () {
             printf(" %d", p);
     printf("\n");
 }
+void v4 () {
+    printf("2");
+    for (int p = 3; p < N; p += 2) {
+        int found = 0;
+        for (int d = 3; d*d <= p; d += 2) {
+            if (p % d > 0)
+                continue;
+            found = 1;
+            break;
+        }
+        if (!found)
+            printf(" %d", p);
+    }
+    printf("\n");
+}
+void v5 () {
+    printf("2");
+    for (int p = 3; p < N; p += 2) {
+        int found = 0;
+        for (int d = 3; d*d <= p; d += 2) {
+            found = 1;
+            if (p % d > 0) {
+                found = 0;
+                continue;
+            }
+            break;
+        }
+        if (!found)
+            printf(" %d", p);
+    }
+    printf("\n");
+}
 int test(int p) {
     if (p == 3)
         return 1;
@@ -46,8 +78,12 @@ extern int main () {
     v1();
     v2();
     v3();
+    v4();
+    v5();
     return 0;
 }
+// 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97
+// 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97
 // 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97
 // 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97
 // 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97

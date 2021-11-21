@@ -1,12 +1,14 @@
 package net.inet_lab.c4wa.transpile;
 
+import java.util.*;
+import org.jetbrains.annotations.NotNull;
+
 import net.inet_lab.c4wa.autogen.parser.c4waBaseVisitor;
 import net.inet_lab.c4wa.autogen.parser.c4waParser;
 import net.inet_lab.c4wa.wat.*;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
-import java.util.*;
 
 public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     private FunctionEnv functionEnv;
@@ -55,10 +57,18 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     static class OneInstruction implements Partial {
         final Instruction instruction;
-        final CType type;
 
-        OneInstruction(Instruction instruction, CType type) {
-            this.instruction = instruction.comptime_eval();
+        OneInstruction(Instruction instruction) {
+            this.instruction = instruction;
+        }
+    }
+
+    static class OneExpression implements Partial {
+        final Expression expression;
+        @NotNull final CType type;
+
+        OneExpression(Expression expression, @NotNull CType type) {
+            this.expression = expression.comptime_eval();
             this.type = type;
         }
     }
@@ -67,22 +77,23 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     static class InstructionList implements Partial {
-        final OneInstruction[] instructions;
+        final Instruction[] instructions;
         boolean need_block;
-        InstructionList() {
-            this.instructions = new OneInstruction[0];
-            need_block = false;
-        }
-        InstructionList(OneInstruction[] instructions) {
-            this.instructions = instructions;
-            need_block = false;
-        }
-        InstructionList(OneInstruction[] instructions, boolean need_block) {
+        InstructionList(Instruction[] instructions, boolean need_block) {
             this.instructions = instructions;
             this.need_block = need_block;
         }
-        Instruction[] extract() {
-            return Arrays.stream(instructions).map(x -> x.instruction).toArray(Instruction[]::new);
+    }
+
+    static class ExpressionList implements Partial {
+        final OneExpression[] expressions;
+
+        ExpressionList() {
+            this.expressions = new OneExpression[0];
+        }
+
+        ExpressionList(OneExpression[] expressions) {
+            this.expressions = expressions;
         }
     }
 
@@ -105,7 +116,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     static class PreparedReturn extends ParserTemporary {
         final Return instruction;
-        PreparedReturn(Instruction arg) {
+        PreparedReturn(Expression arg) {
             instruction = new Return(arg);
         }
 
@@ -122,7 +133,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         public Instruction[] postprocess(PostprocessContext ppctx) {
             FunctionEnv functionEnv = (FunctionEnv) ppctx;
             if (functionEnv.uses_stack)
-                return new Instruction[]{new SetGlobal(ModuleEnv.STACK_VAR_NAME, new GetLocal(FunctionEnv.STACK_ENTRY_VAR)),
+                return new Instruction[]{new SetGlobal(ModuleEnv.STACK_VAR_NAME, new GetLocal(NumType.I32, FunctionEnv.STACK_ENTRY_VAR)),
                         instruction};
             else
                 return new Instruction[] {instruction};
@@ -139,29 +150,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     static class BlockEnv {
-//        int offset;
-//        final int start_offset;
-        final List<Instruction> prefix;
-        final List<Instruction> postfix;
         String block_id;
         Instruction block_postfix;
         boolean need_block;
         BlockEnv () {
-//            this.start_offset = offset;
-//            this.offset = offset;
-            prefix = new ArrayList<>();
-            postfix = new ArrayList<>();
             block_id = null;
-        }
-//        int getOffset() {
-//            int res = offset;
-//            offset += 8;
-//            return res;
-//        }
-        void reset() {
-//            offset = this.start_offset;
-            prefix.clear();
-            postfix.clear();
         }
         void markAsLoop(String block_id, Instruction block_postfix) {
             this.block_id = block_id;
@@ -196,15 +189,12 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 throw fail(g, "global item", "Unknown class " + parseGlobalDecl.getClass());
         }
 
-        int mem_offset = 0;
         for (var oneFunc : functions) {
             functionEnv = oneFunc.func;
-            //functionEnv.setMemOffset(mem_offset);
 
-            functionEnv.setCode(Arrays.stream(((InstructionList) visit(oneFunc.code)).instructions).map(x -> x.instruction).toArray(Instruction[]::new));
+            functionEnv.setCode(((InstructionList) visit(oneFunc.code)).instructions);
             functionEnv.close();
             moduleEnv.addFunction(functionEnv);
-            //mem_offset = functionEnv.getMemOffset();
         }
 
         return moduleEnv;
@@ -230,10 +220,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         else {
             if (decl.mutable && decl.imported)
                 throw fail(ctx, "global variable","Imported global variable cannot be initialized, declare 'const' or 'static'");
-            OneInstruction rhs = (OneInstruction) visit(ctx.expression());
-            if (!(rhs.instruction instanceof Const))
+            OneExpression rhs = (OneExpression) visit(ctx.expression());
+            if (!(rhs.expression instanceof Const))
                 throw fail(ctx, "global_variable", "RHS '" + ctx.expression().getText() + "' hasn't evaluated to a constant");
-            decl.initialValue = new Const(decl.type.asNumType(), (Const) rhs.instruction);
+            decl.initialValue = new Const(decl.type.asNumType(), (Const) rhs.expression);
             // decl.initialValue = parseConstant(ctx, decl.type, ctx.CONSTANT().getText());
             if (!decl.mutable)
                 decl.imported = false;
@@ -319,20 +309,18 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     parent instanceof c4waParser.Element_forContext)
                 blockEnv.markAsLoop(functionEnv.getBlockId(), functionEnv.getBlockPostfix());
 
-            List<OneInstruction> res = new ArrayList<>();
+            List<Instruction> res = new ArrayList<>();
 
             blockStack.push(blockEnv);
             Partial parsedElem = visit(ctx.element());
 
-            for (var i : blockEnv.prefix)
-                res.add(new OneInstruction(i, null));
             if (parsedElem instanceof OneInstruction)
-                res.add((OneInstruction) parsedElem);
-            else if (parsedElem instanceof InstructionList)
-                res.addAll(Arrays.asList(((InstructionList) parsedElem).instructions));
+                res.add(((OneInstruction) parsedElem).instruction);
+            else if (!(parsedElem instanceof NoOp))
+                throw new RuntimeException("Wrong type of parsedElem = " + parsedElem);
             blockStack.pop();
 
-            return new InstructionList(res.toArray(OneInstruction[]::new), blockEnv.need_block);
+            return new InstructionList(res.toArray(Instruction[]::new), blockEnv.need_block);
         }
     }
 
@@ -350,7 +338,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             blockEnv.markAsLoop(functionEnv.getBlockId(), functionEnv.getBlockPostfix());
 
         blockStack.push(blockEnv);
-        List<OneInstruction> res = new ArrayList<>();
+        List<Instruction> res = new ArrayList<>();
 
         int idx = 0;
         for (var blockElem : ctx.element()) {
@@ -359,22 +347,19 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             if (parsedElem == null)
                 throw fail(ctx, "block", "Instruction number " + idx + " was not parsed" +
                         ((idx == 1)?"":" (last parsed was '" + ctx.element(idx - 2).getText() + "')"));
-            for (var i : blockEnv.prefix)
-                res.add(new OneInstruction(i, null));
-            blockEnv.reset();
             if (parsedElem instanceof OneInstruction)
-                res.add((OneInstruction) parsedElem);
-            else if (parsedElem instanceof InstructionList)
-                res.addAll(Arrays.asList(((InstructionList) parsedElem).instructions));
+                res.add(((OneInstruction) parsedElem).instruction);
+            else if (!(parsedElem instanceof NoOp))
+                throw new RuntimeException("Wrong type of parsedElem = " + parsedElem);
         }
 
         blockStack.pop();
-        return new InstructionList(res.toArray(OneInstruction[]::new), blockEnv.need_block);
+        return new InstructionList(res.toArray(Instruction[]::new), blockEnv.need_block);
     }
 
     @Override
     public OneInstruction visitElement_do_while(c4waParser.Element_do_whileContext ctx) {
-        OneInstruction condition = (OneInstruction) visit(ctx.expression());
+        OneExpression condition = (OneExpression) visit(ctx.expression());
 
         String block_id = functionEnv.pushBlock(null);
         String block_id_cont = block_id + CONT_SUFFIX;
@@ -383,38 +368,27 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         InstructionList body = (InstructionList) visit(ctx.block());
         functionEnv.popBlock();
 
-        if (condition.type == null)
-            throw fail(ctx, "do_while", "Expression '" + ctx.expression().getText() +
-                    "' has no type (any type would have worked in WASM as 'boolean', but there is none)");
+        List<Instruction> body_elems = new ArrayList<>(Arrays.asList(body.instructions));
 
-        List<Instruction> body_elems = new ArrayList<>();
-        for(var i : body.instructions)
-            body_elems.add(i.instruction);
-
-        if (condition.instruction instanceof Const) {
-            if (((Const) condition.instruction).isTrue())
+        if (condition.expression instanceof Const) {
+            if (((Const) condition.expression).isTrue())
                 body_elems.add(new Br(block_id_cont));
         }
         else
-            body_elems.add(new BrIf(block_id_cont, condition.instruction));
+            body_elems.add(new BrIf(block_id_cont, condition.expression));
         if (body.need_block)
             return new OneInstruction(
                     new Block(block_id_break, new Instruction[]{
-                            new Loop(block_id_cont, body_elems.toArray(Instruction[]::new))}),
-                    null);
+                            new Loop(block_id_cont, body_elems.toArray(Instruction[]::new))}));
         else
-            return new OneInstruction(new Loop(block_id_cont, body_elems.toArray(Instruction[]::new)), null);
+            return new OneInstruction(new Loop(block_id_cont, body_elems.toArray(Instruction[]::new)));
     }
 
     @Override
     public OneInstruction visitElement_for(c4waParser.Element_forContext ctx) {
         OneInstruction prestat = (OneInstruction) visit(ctx.pre);
 
-        OneInstruction condition = (OneInstruction) visit(ctx.expression());
-        if (condition != null && condition.type == null)
-            throw fail(ctx, "for", "Expression '" + ctx.expression().getText() +
-                    "' has no type (any type would have worked in WASM as 'boolean', but there is none)");
-
+        OneExpression condition = (OneExpression) visit(ctx.expression());
         OneInstruction poststat = (OneInstruction) visit(ctx.post);
 
         String block_id = functionEnv.pushBlock(poststat == null?null:poststat.instruction);
@@ -426,9 +400,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         List<Instruction> loop_elems = new ArrayList<>();
         if (condition != null)
-            loop_elems.add(new BrIf(block_id_break, condition.instruction.Not(condition.type.asNumType())));
-        for (var i : body.instructions)
-            loop_elems.add(i.instruction);
+            loop_elems.add(new BrIf(block_id_break, condition.expression.Not(condition.type.asNumType())));
+        loop_elems.addAll(Arrays.asList(body.instructions));
         if (poststat != null)
             loop_elems.add(poststat.instruction);
         loop_elems.add(new Br(block_id_cont));
@@ -439,29 +412,24 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         block_elems.add(new Loop(block_id_cont, loop_elems.toArray(Instruction[]::new)));
 
         return new OneInstruction(
-                new Block(block_id_break, block_elems.toArray(Instruction[]::new)),
-                null);
+                new Block(block_id_break, block_elems.toArray(Instruction[]::new)));
     }
 
     @Override
-    public Partial visitElement_break_continue_if(c4waParser.Element_break_continue_ifContext ctx) {
+    public OneInstruction visitElement_break_continue_if(c4waParser.Element_break_continue_ifContext ctx) {
         boolean is_break = ctx.BREAK() != null;
-        OneInstruction condition = (OneInstruction) visit(ctx.expression());
-
-        if (condition.type == null)
-            throw fail(ctx, "break if", "condition of type void");
+        OneExpression condition = (OneExpression) visit(ctx.expression());
 
         return break_if(ctx, is_break, condition);
     }
 
     @Override
-    public Partial visitElement_break_continue(c4waParser.Element_break_continueContext ctx) {
+    public OneInstruction visitElement_break_continue(c4waParser.Element_break_continueContext ctx) {
         boolean is_break = ctx.BREAK() != null;
-
         return break_if(ctx, is_break, null);
     }
 
-    private Partial break_if(ParserRuleContext ctx, boolean is_break, OneInstruction condition) {
+    private OneInstruction break_if(ParserRuleContext ctx, boolean is_break, OneExpression condition) {
         BlockEnv blockEnv = null;
         for (var b : blockStack)
             if (b.block_id != null) {
@@ -478,26 +446,23 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         if (blockEnv.block_postfix == null || is_break) {
             if (condition == null)
-                return new OneInstruction(new Br(ref), null);
+                return new OneInstruction(new Br(ref));
             else
-                return new OneInstruction(new BrIf(ref, condition.instruction), null);
+                return new OneInstruction(new BrIf(ref, condition.expression));
         }
         else {
             if (condition == null)
-                return new InstructionList(new OneInstruction[]{new OneInstruction(blockEnv.block_postfix, null),
-                new OneInstruction(new Br(ref), null)});
+                return new OneInstruction(new PreparedList(List.of(blockEnv.block_postfix, new Br(ref))));
             else
                 return new OneInstruction(
-                        new IfThenElse(condition.instruction,
-                        null,
-                        new Instruction[]{blockEnv.block_postfix, new Br(ref)},
-                        null), null);
+                        new IfThenElse(condition.expression,
+                        new Instruction[]{blockEnv.block_postfix, new Br(ref)}, null));
         }
     }
 
     @Override
     public OneInstruction visitElement_if(c4waParser.Element_ifContext ctx) {
-        OneInstruction condition = (OneInstruction) visit(ctx.expression());
+        OneExpression condition = (OneExpression) visit(ctx.expression());
         InstructionList thenList = (InstructionList) visit(ctx.block());
 
         return if_then_else(ctx, condition, thenList, null);
@@ -505,7 +470,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitElement_if_else(c4waParser.Element_if_elseContext ctx) {
-        OneInstruction condition = (OneInstruction) visit(ctx.expression());
+        OneExpression condition = (OneExpression) visit(ctx.expression());
         InstructionList thenList = (InstructionList) visit(ctx.block(0));
         InstructionList elseList = (InstructionList) visit(ctx.block(1));
 
@@ -513,46 +478,24 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
-    public OneInstruction visitExpression_if_else(c4waParser.Expression_if_elseContext ctx) {
-        OneInstruction condition = (OneInstruction) visit(ctx.expression(0));
-        OneInstruction thenExp = (OneInstruction) visit(ctx.expression(1));
-        OneInstruction elseExp = (OneInstruction) visit(ctx.expression(2));
-
-        if (condition.type == null)
-            throw fail(ctx, "ternary", "condition type void isn't allowed");
-
-        if (thenExp.type == null)
-            throw fail(ctx, "ternary", "first argument type void isn't allowed");
-
-        if (elseExp.type == null)
-            throw fail(ctx, "ternary", "second argument type void isn't allowed");
+    public OneExpression visitExpression_if_else(c4waParser.Expression_if_elseContext ctx) {
+        OneExpression condition = (OneExpression) visit(ctx.expression(0));
+        OneExpression thenExp = (OneExpression) visit(ctx.expression(1));
+        OneExpression elseExp = (OneExpression) visit(ctx.expression(2));
 
         if (!thenExp.type.same(elseExp.type))
             throw fail(ctx, "ternary", "argument types '" + thenExp.type +
                     "' and '" + elseExp.type + "' are incompatible");
 
-        return new OneInstruction(new IfThenElse(condition.instruction, thenExp.type.asNumType(), new Instruction[]{ thenExp.instruction },
-                new Instruction[]{ elseExp.instruction }), thenExp.type);
+        return new OneExpression(new IfThenElseExp(condition.expression, thenExp.type.asNumType(), thenExp.expression,
+                elseExp.expression), thenExp.type);
     }
 
-    private OneInstruction if_then_else(ParserRuleContext ctx, OneInstruction condition, InstructionList thenList,
+    private OneInstruction if_then_else(ParserRuleContext ctx, OneExpression condition, InstructionList thenList,
                                         InstructionList elseList) {
-        if (condition.type == null)
-            throw fail(ctx, "if...then", "condition type void isn't allowed");
 
-        CType resType = (thenList.instructions.length == 1 &&
-                            elseList != null &&
-                            elseList.instructions.length == 1 &&
-                            thenList.instructions[0].type != null &&
-                            elseList.instructions[0].type != null &&
-                            thenList.instructions[0].type.same(elseList.instructions[0].type))
-                ? thenList.instructions[0].type
-                : null;
-
-        return new OneInstruction(new IfThenElse(condition.instruction,
-                (resType == null)?null:resType.asNumType(),
-                thenList.extract(), (elseList == null)?null:elseList.extract()),
-                resType);
+        return new OneInstruction(new IfThenElse(condition.expression,
+                thenList.instructions, (elseList == null)?null:elseList.instructions));
     }
 
     @Override
@@ -561,7 +504,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
-    public OneInstruction visitFunction_call(c4waParser.Function_callContext ctx) {
+    public Partial visitFunction_call(c4waParser.Function_callContext ctx) {
         String fname = ctx.ID().getText();
 
         FunctionDecl decl = moduleEnv.funcDecl.get(fname);
@@ -569,99 +512,84 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (decl == null)
             throw fail(ctx, "function call", "Function '" + fname + "' not defined or declared");
 
-        InstructionList args = (ctx.arg_list() == null)?(new InstructionList()):(InstructionList) visit(ctx.arg_list());
-        Instruction[] call_args;
-        Instruction func_call = null;
+        ExpressionList args = (ctx.arg_list() == null)?(new ExpressionList()):(ExpressionList) visit(ctx.arg_list());
+        Expression[] call_args;
+        Instruction func_call_void = null;
+        Expression func_call_with_return = null;
         if (decl.anytype) {
             if (decl.returnType != null)
                 throw fail(ctx, "function call", "'anytype' function with return value isn;t supported yet");
 
             List<Instruction> func_call_elms = new ArrayList<>();
-            //String tempName = functionEnv.temporaryVar(NumType.I32);
-            Instruction getStack = new GetGlobal(ModuleEnv.STACK_VAR_NAME);
-//            BlockEnv blockEnv = blockStack.peek();
-//            assert blockEnv != null;
+            Expression getStack = new GetGlobal(NumType.I32, ModuleEnv.STACK_VAR_NAME);
             functionEnv.markAsUsingStack();
 
-            //blockEnv.prefix.add(new SetLocal(tempName, getStack));
+            for (int idx = 0; idx < args.expressions.length; idx ++) {
+                var arg = args.expressions[idx];
 
-            // int offset = blockEnv.offset;
-            int idx = -1;
-            for (var arg : args.instructions) {
-                idx ++;
-                if (arg.type == null)
-                    throw fail(ctx, "function call", "Argument number " + (1 + idx) + " doesn't have type");
-
-//                Const constOffset = new Const(blockEnv.getOffset());
-//                Instruction offsetAddress = idx == 0? getStack: new Add(NumType.I32, getStack, new Const(8 * idx));
                 if (arg.type.is_32() || arg.type.is_ptr()) {
                     NumType t64 = arg.type.is_int()|| arg.type.is_ptr()? NumType.I64 : NumType.F64;
                     func_call_elms.add(new Store(t64, getStack,
-                            GenericCast.cast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.instruction)));
+                            GenericCast.cast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.expression)));
                 }
                 else
-                    func_call_elms.add(new Store(arg.type.asNumType(), getStack, arg.instruction));
-                if (idx < args.instructions.length - 1)
+                    func_call_elms.add(new Store(arg.type.asNumType(), getStack, arg.expression));
+                if (idx < args.expressions.length - 1)
                     func_call_elms.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Add(NumType.I32, getStack, new Const(8))));
                 else
                     func_call_elms.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Sub(NumType.I32, getStack, new Const(8 * idx))));
             }
 
-
-//            functionEnv.setMemOffset(blockEnv.offset);
-
-            call_args = new Instruction[2];
+            call_args = new Expression[2];
             call_args[0] = getStack;
-            call_args[1] = new Const(args.instructions.length);
+            call_args[1] = new Const(args.expressions.length);
             func_call_elms.add(new Call(fname, call_args));
-            func_call = new PreparedList(func_call_elms);
+            func_call_void = new PreparedList(func_call_elms);
         }
         else {
-            if (decl.params.length != args.instructions.length)
+            if (decl.params.length != args.expressions.length)
                 throw fail(ctx, "function call", "Function '" + fname +
-                        "' expects " + decl.params.length + " arguments, provided " + args.instructions.length);
+                        "' expects " + decl.params.length + " arguments, provided " + args.expressions.length);
 
-            call_args = new Instruction[args.instructions.length];
+            call_args = new Expression[args.expressions.length];
             for(int idx = 0; idx < decl.params.length; idx ++) {
-                if (args.instructions[idx].type == null)
-                    throw fail(ctx, "function call", "Argument number " + (idx + 1) +
-                            " of function '" + fname + "' received argument with no type");
-
-                if (!decl.params[idx].isValidRHS(args.instructions[idx].type))
+                if (!decl.params[idx].isValidRHS(args.expressions[idx].type))
                     throw fail(ctx, "function call", "Argument number " + (idx + 1) +
                             " of function '" + fname + "' expects type '" + decl.params[idx] +
-                            "', received type '" + args.instructions[idx].type + "'");
+                            "', received type '" + args.expressions[idx].type + "'");
 
-                call_args[idx] = args.instructions[idx].instruction;
+                call_args[idx] = args.expressions[idx].expression;
             }
         }
-//        if ("memset".equals(fname))
-//            return new OneInstruction(new MemoryFill(call_args[0], call_args[1], call_args[2]), null);
-//
-//        return new OneInstruction(new Call(fname, call_args), decl.returnType);
 
-        // built-in functions
         if ("memset".equals(fname))
-            func_call = new MemoryFill(call_args[0], call_args[1], call_args[2]);
-        else if (!decl.anytype)
-            func_call = new Call(fname, call_args);
+            func_call_void = new MemoryFill(call_args[0], call_args[1], call_args[2]);
+        else if (!decl.anytype) {
+            if (decl.returnType == null)
+                func_call_void = new Call(fname, call_args);
+            else
+                func_call_with_return = new CallExp(fname, decl.returnType.asNumType(), call_args);
+        }
 
-        return new OneInstruction(func_call, decl.returnType);
+        if (decl.returnType == null)
+            return new OneInstruction(func_call_void);
+        else {
+            assert func_call_with_return != null;
+            return new OneExpression(func_call_with_return, decl.returnType);
+        }
     }
 
     @Override
-    public InstructionList visitArg_list(c4waParser.Arg_listContext ctx) {
-        return new InstructionList(ctx.expression().stream().map(this::visit).toArray(OneInstruction[]::new));
+    public ExpressionList visitArg_list(c4waParser.Arg_listContext ctx) {
+        return new ExpressionList(ctx.expression().stream().map(this::visit).toArray(OneExpression[]::new));
     }
 
     @Override
     public OneInstruction visitReturn_expression(c4waParser.Return_expressionContext ctx) {
         if (ctx.expression() == null)
-            return new OneInstruction(new PreparedReturn(), null);
+            return new OneInstruction(new PreparedReturn());
 
-        OneInstruction expression = (OneInstruction) visit(ctx.expression());
-        if (expression.type == null)
-            throw fail(ctx, "return", "expression has no type");
+        OneExpression expression = (OneExpression) visit(ctx.expression());
         if (functionEnv.returnType == null)
             throw fail(ctx, "return", "Function '" + functionEnv.name + "' doesn't return anything");
 
@@ -669,30 +597,24 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "return", "Cannot return type '" + expression.type +
                     "' from a functiоn which is expected to return '" + functionEnv.returnType + "'");
 
-        return new OneInstruction(new PreparedReturn(expression.instruction), null);
+        return new OneInstruction(new PreparedReturn(expression.expression));
     }
 
     @Override
     public OneInstruction visitVariable_init(c4waParser.Variable_initContext ctx) {
         VariableDecl variableDecl = (VariableDecl) visit(ctx.variable_decl());
-        OneInstruction rhs = (OneInstruction) visit(ctx.expression());
-
-        if (rhs == null)
-            throw fail(ctx, "init", "RHS was not parsed");
-
-        if (rhs.type == null)
-            throw fail(ctx,"init", "RHS expression has no type");
+        OneExpression rhs = (OneExpression) visit(ctx.expression());
 
         if (!variableDecl.type.isValidRHS(rhs.type)) {
-            if (rhs.instruction instanceof Const && variableDecl.type.is_primitive())
-                rhs = new OneInstruction(new Const(variableDecl.type.asNumType(), (Const) rhs.instruction), variableDecl.type);
+            if (rhs.expression instanceof Const && variableDecl.type.is_primitive())
+                rhs = new OneExpression(new Const(variableDecl.type.asNumType(), (Const) rhs.expression), variableDecl.type);
             else
                 throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + variableDecl.type);
         }
 
         functionEnv.registerVar(variableDecl.name, variableDecl.type, false);
 
-        return new OneInstruction(new SetLocal(variableDecl.name, rhs.instruction), null);
+        return new OneInstruction(new SetLocal(variableDecl.name, rhs.expression));
     }
 
     @Override
@@ -717,41 +639,38 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             type = CType.INT;
 
         String op;
-        OneInstruction rhs;
+        OneExpression rhs;
 
         if (ctx.PLUSPLUS() != null) {
             op = "+";
-            rhs = new OneInstruction(new Const(type.asNumType(), 1), type);
+            rhs = new OneExpression(new Const(type.asNumType(), 1), type);
         }
         else if (ctx.MINUSMINUS() != null) {
             op = "-";
-            rhs = new OneInstruction(new Const(type.asNumType(), 1), type);
+            rhs = new OneExpression(new Const(type.asNumType(), 1), type);
         }
         else {
             op = ctx.op.getText().substring(0, ctx.op.getText().length() - 1);
-            rhs = (OneInstruction) visit(ctx.expression());
+            rhs = (OneExpression) visit(ctx.expression());
         }
 
-        OneInstruction binaryOp = binary_op(ctx, accessVariable(ctx, name), rhs, op);
+        OneExpression binaryOp = binary_op(ctx, accessVariable(ctx, name), rhs, op);
 
         if (functionEnv.varType.containsKey(name))
-            return new OneInstruction(new SetLocal(name, binaryOp.instruction), null);
+            return new OneInstruction(new SetLocal(name, binaryOp.expression));
         else {
             VariableDecl decl = moduleEnv.varDecl.get(name);
 
             if (!decl.mutable)
                 throw fail(ctx, "increment", "Global variable '" + name + "' is not mutable");
 
-            return new OneInstruction(new SetGlobal(name, binaryOp.instruction), null);
+            return new OneInstruction(new SetGlobal(name, binaryOp.expression));
         }
     }
 
     @Override
     public OneInstruction visitSimple_assignment(c4waParser.Simple_assignmentContext ctx) {
-        OneInstruction rhs = (OneInstruction) visit(ctx.expression());
-
-        if (rhs.type == null)
-            throw fail(ctx, "assignment", "RHS expression has no type");
+        OneExpression rhs = (OneExpression) visit(ctx.expression());
 
         int iGlobal = -1;
         String[] names = ctx.ID().stream().map(ParseTree::getText).toArray(String[]::new);
@@ -781,90 +700,83 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable '" + names[i] + "' of type " + type);
         }
 
-        Instruction res = rhs.instruction;
+        Expression res = rhs.expression;
+        Instruction ires = null;
         for (int i = 0; i < names.length; i++) {
             if (i == iGlobal)
                 continue;
 
             if (iGlobal >= 0 || i < names.length - 1)
-                res = new TeeLocal(names[i], res);
+                res = new TeeLocal(rhs.type.asNumType(), names[i], res);
             else
-                res = new SetLocal(names[i], res);
+                ires = new SetLocal(names[i], res);
         }
 
         if (iGlobal >= 0)
-            res = new SetGlobal(names[iGlobal], res);
+            ires = new SetGlobal(names[iGlobal], res);
 
-        return new OneInstruction(res, null);
+        return new OneInstruction(ires);
     }
 
     @Override
-    public Partial visitComplex_increment(c4waParser.Complex_incrementContext ctx) {
-        OneInstruction lhs = (OneInstruction) visit(ctx.lhs());
+    public OneInstruction visitComplex_increment(c4waParser.Complex_incrementContext ctx) {
+        OneExpression lhs = (OneExpression) visit(ctx.lhs());
 
         String op;
-        OneInstruction rhs;
+        OneExpression rhs;
         CType type = lhs.type;
 
         if (ctx.PLUSPLUS() != null) {
             op = "+";
-            rhs = new OneInstruction(new Const(type.asNumType(), 1), type);
+            rhs = new OneExpression(new Const(type.asNumType(), 1), type);
         } else if (ctx.MINUSMINUS() != null) {
             op = "-";
-            rhs = new OneInstruction(new Const(type.asNumType(), 1), type);
+            rhs = new OneExpression(new Const(type.asNumType(), 1), type);
         } else {
             op = ctx.op.getText().substring(0, ctx.op.getText().length() - 1);
-            rhs = (OneInstruction) visit(ctx.expression());
+            rhs = (OneExpression) visit(ctx.expression());
         }
 
-        if (lhs.instruction.complexity() <= 3) {
-            OneInstruction binaryOp = binary_op(ctx, new OneInstruction(memory_load(type,lhs.instruction), type), rhs, op);
-            return new OneInstruction(memory_store(lhs, binaryOp), null);
+        if (lhs.expression.complexity() <= 3) {
+            OneExpression binaryOp = binary_op(ctx, new OneExpression(memory_load(type,lhs.expression), type), rhs, op);
+            return new OneInstruction(memory_store(lhs, binaryOp));
 
         }
         else {
             String tempVar = functionEnv.temporaryVar(NumType.I32);
-            OneInstruction[] assignmentParts = new OneInstruction[2];
 
-            assignmentParts[0] = new OneInstruction(new SetLocal(tempVar, lhs.instruction), null);
-            OneInstruction new_lhs = new OneInstruction(new GetLocal(tempVar), type);
-            OneInstruction binaryOp = binary_op(ctx, new OneInstruction(memory_load(type, new_lhs.instruction), type), rhs, op);
-            assignmentParts[1] = new OneInstruction(memory_store(new_lhs, binaryOp), null);
+            OneExpression new_lhs = new OneExpression(new GetLocal(type.asNumType(), tempVar), type);
+            OneExpression binaryOp = binary_op(ctx, new OneExpression(memory_load(type, new_lhs.expression), type), rhs, op);
 
-            return new InstructionList(assignmentParts);
+            return new OneInstruction(new PreparedList(List.of(new SetLocal(tempVar, lhs.expression), memory_store(new_lhs, binaryOp))));
         }
     }
 
     @Override
     public OneInstruction visitComplex_assignment(c4waParser.Complex_assignmentContext ctx) {
-        OneInstruction lhs = (OneInstruction) visit(ctx.lhs());
-        OneInstruction rhs = (OneInstruction) visit(ctx.expression());
-
-        if (lhs.type == null)
-            throw fail(ctx, "assign", "LHS has no type");
-        if (rhs.type == null)
-            throw fail(ctx, "assign", "RHS has no type");
+        OneExpression lhs = (OneExpression) visit(ctx.lhs());
+        OneExpression rhs = (OneExpression) visit(ctx.expression());
 
         if (!lhs.type.isValidRHS(rhs.type)) {
-            if (rhs.instruction instanceof Const && lhs.type.is_primitive())
-                rhs = new OneInstruction(new Const(lhs.type.asNumType(), (Const) rhs.instruction), lhs.type);
+            if (rhs.expression instanceof Const && lhs.type.is_primitive())
+                rhs = new OneExpression(new Const(lhs.type.asNumType(), (Const) rhs.expression), lhs.type);
             else
                 throw fail(ctx, "assign", "Expression of type " + rhs.type + " cannot be assigned to '" + lhs.type + "'");
         }
 
-        return new OneInstruction(memory_store(lhs, rhs), null);
+        return new OneInstruction(memory_store(lhs, rhs));
     }
 
-    private Store memory_store(OneInstruction lhs, OneInstruction rhs) {
+    private Store memory_store(OneExpression lhs, OneExpression rhs) {
         if (lhs.type.same(CType.CHAR))
-            return new Store(lhs.type.asNumType(), 8, lhs.instruction, rhs.instruction);
+            return new Store(lhs.type.asNumType(), 8, lhs.expression, rhs.expression);
         else if (lhs.type.same(CType.SHORT))
-            return new Store(lhs.type.asNumType(), 16, lhs.instruction, rhs.instruction);
+            return new Store(lhs.type.asNumType(), 16, lhs.expression, rhs.expression);
         else
-            return new Store(lhs.type.asNumType(), lhs.instruction, rhs.instruction);
+            return new Store(lhs.type.asNumType(), lhs.expression, rhs.expression);
     }
 
-    private Load memory_load(CType type, Instruction i) {
+    private Load memory_load(CType type, Expression i) {
         if (type.size() == 1)
             return new Load(type.asNumType(), 8, type.is_signed(), i);
         else if (type.size() == 2)
@@ -888,38 +800,35 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
-    public OneInstruction visitExpression_sizeof_type(c4waParser.Expression_sizeof_typeContext ctx) {
+    public OneExpression visitExpression_sizeof_type(c4waParser.Expression_sizeof_typeContext ctx) {
         CType type = (CType) visit(ctx.variable_type());
-        return new OneInstruction(new Const(type.size()), CType.INT);
+        return new OneExpression(new Const(type.size()), CType.INT);
     }
 
     @Override
-    public OneInstruction visitExpression_sizeof_exp(c4waParser.Expression_sizeof_expContext ctx) {
-        OneInstruction e = (OneInstruction) visit(ctx.expression());
+    public OneExpression visitExpression_sizeof_exp(c4waParser.Expression_sizeof_expContext ctx) {
+        OneExpression e = (OneExpression) visit(ctx.expression());
 
-        return new OneInstruction(new Const(e.type.size()), CType.INT);
+        return new OneExpression(new Const(e.type.size()), CType.INT);
     }
 
     @Override
-    public OneInstruction visitLhs_dereference(c4waParser.Lhs_dereferenceContext ctx) {
-        OneInstruction ptr = (OneInstruction) visit(ctx.expression());
-
-        if (ptr.type == null)
-            throw fail(ctx, "dereference", "trying to dereference with no type");
+    public OneExpression visitLhs_dereference(c4waParser.Lhs_dereferenceContext ctx) {
+        OneExpression ptr = (OneExpression) visit(ctx.expression());
 
         CType type = ptr.type.deref();
 
         if (type == null)
             throw fail(ctx, "dereference", "trying to dereference '" + ptr.type + "' which is not a reference");
 
-        return new OneInstruction(ptr.instruction, type);
+        return new OneExpression(ptr.expression, type);
     }
 
     @Override
-    public OneInstruction visitExpression_struct_member(c4waParser.Expression_struct_memberContext ctx) {
-        OneInstruction ptr = (OneInstruction) visit(ctx.expression());
+    public OneExpression visitExpression_struct_member(c4waParser.Expression_struct_memberContext ctx) {
+        OneExpression ptr = (OneExpression) visit(ctx.expression());
 
-        if (ptr.type == null || ptr.type.deref() == null || !(ptr.type.deref() instanceof Struct))
+        if (ptr.type.deref() == null || !(ptr.type.deref() instanceof Struct))
             throw fail(ctx, "struct_member", "'" + ptr.type + "' is not a structure pointer");
 
         String mem = ctx.ID().getText();
@@ -931,16 +840,16 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         CType type = mInfo.type;
 
-        Instruction memAddress = new Add(NumType.I32, ptr.instruction, new Const(mInfo.offset));
+        Expression memAddress = new Add(NumType.I32, ptr.expression, new Const(mInfo.offset));
 
-        return new OneInstruction(memory_load(type, memAddress), type);
+        return new OneExpression(memory_load(type, memAddress), type);
     }
 
     @Override
-    public OneInstruction visitLhs_struct_member(c4waParser.Lhs_struct_memberContext ctx) {
-        OneInstruction ptr = (OneInstruction) visit(ctx.expression());
+    public OneExpression visitLhs_struct_member(c4waParser.Lhs_struct_memberContext ctx) {
+        OneExpression ptr = (OneExpression) visit(ctx.expression());
 
-        if (ptr.type == null || ptr.type.deref() == null || !(ptr.type.deref() instanceof Struct))
+        if (ptr.type.deref() == null || !(ptr.type.deref() instanceof Struct))
             throw fail(ctx, "struct_member", "'" + ptr.type + "' is not a structure pointer");
 
         String mem = ctx.ID().getText();
@@ -950,19 +859,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (mInfo == null)
             throw fail(ctx, "struct_member", "No member '" + mem + "' in " + c_struct);
 
-        return new OneInstruction(new Add(NumType.I32, ptr.instruction, new Const(mInfo.offset)), mInfo.type);
+        return new OneExpression(new Add(NumType.I32, ptr.expression, new Const(mInfo.offset)), mInfo.type);
     }
 
     @Override
-    public OneInstruction visitLhs_index(c4waParser.Lhs_indexContext ctx) {
-        OneInstruction ptr = (OneInstruction) visit(ctx.ptr);
-        OneInstruction idx = (OneInstruction) visit(ctx.idx);
-
-        if (ptr.type == null)
-            throw fail(ctx, "index", "trying to dereference with no type");
-
-        if (idx.type == null)
-            throw fail(ctx, "index", "index must be INT, got void");
+    public OneExpression visitLhs_index(c4waParser.Lhs_indexContext ctx) {
+        OneExpression ptr = (OneExpression) visit(ctx.ptr);
+        OneExpression idx = (OneExpression) visit(ctx.idx);
 
         if (!idx.type.same(CType.INT))
             throw fail(ctx, "index", "index must be INT, got '" + idx.type + "'");
@@ -973,22 +876,16 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "index", "trying to dereference '" + ptr.type + "' which is not a reference");
 
         if (type.size() == 1)
-            return new OneInstruction(new Add(NumType.I32, ptr.instruction, idx.instruction), type);
+            return new OneExpression(new Add(NumType.I32, ptr.expression, idx.expression), type);
         else
-            return new OneInstruction(new Add(NumType.I32, ptr.instruction,
-                    new Mul(NumType.I32, idx.instruction, new Const(type.size()))), type);
+            return new OneExpression(new Add(NumType.I32, ptr.expression,
+                    new Mul(NumType.I32, idx.expression, new Const(type.size()))), type);
     }
 
     @Override
-    public OneInstruction visitExpression_index(c4waParser.Expression_indexContext ctx) {
-        OneInstruction ptr = (OneInstruction) visit(ctx.ptr);
-        OneInstruction idx = (OneInstruction) visit(ctx.idx);
-
-        if (ptr.type == null)
-            throw fail(ctx, "index", "trying to dereference with no type");
-
-        if (idx.type == null)
-            throw fail(ctx, "index", "index must be INT, got void");
+    public OneExpression visitExpression_index(c4waParser.Expression_indexContext ctx) {
+        OneExpression ptr = (OneExpression) visit(ctx.ptr);
+        OneExpression idx = (OneExpression) visit(ctx.idx);
 
         if (!idx.type.same(CType.INT))
             throw fail(ctx, "index", "index must be INT, got '" + idx.type + "'");
@@ -998,42 +895,42 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (type == null)
             throw fail(ctx, "index", "trying to dereference '" + ptr.type + "' which is not a reference");
 
-        Instruction memAddress = (type.size() == 1)
-                ? new Add(NumType.I32, ptr.instruction, idx.instruction)
-                : new Add(NumType.I32, ptr.instruction, new Mul(NumType.I32, idx.instruction, new Const(type.size())));
+        Expression memAddress = (type.size() == 1)
+                ? new Add(NumType.I32, ptr.expression, idx.expression)
+                : new Add(NumType.I32, ptr.expression, new Mul(NumType.I32, idx.expression, new Const(type.size())));
 
-
-        if (type.same(CType.CHAR))
-            return new OneInstruction(new Load(type.asNumType(), 8, type.is_signed(), memAddress), type);
-        else if (type.same(CType.SHORT))
-            return new OneInstruction(new Load(type.asNumType(), 16, type.is_signed(), memAddress), type);
-        else
-            return  new OneInstruction(new Load(type.asNumType(), memAddress), type);
+        return new OneExpression(memory_load(type, memAddress), type);
+//        if (type.same(CType.CHAR))
+//            return new OneExpression(new Load(type.asNumType(), 8, type.is_signed(), memAddress), type);
+//        else if (type.same(CType.SHORT))
+//            return new OneExpression(new Load(type.asNumType(), 16, type.is_signed(), memAddress), type);
+//        else
+//            return new OneExpression(new Load(type.asNumType(), memAddress), type);
     }
 
     @Override
-    public OneInstruction visitExpression_binary_cmp(c4waParser.Expression_binary_cmpContext ctx) {
-        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
-        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+    public OneExpression visitExpression_binary_cmp(c4waParser.Expression_binary_cmpContext ctx) {
+        OneExpression arg1 = (OneExpression) visit(ctx.expression(0));
+        OneExpression arg2 = (OneExpression) visit(ctx.expression(1));
         return binary_op(ctx, arg1, arg2, ctx.op.getText());
     }
 
     @Override
-    public OneInstruction visitExpression_binary_add(c4waParser.Expression_binary_addContext ctx) {
-        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
-        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+    public OneExpression visitExpression_binary_add(c4waParser.Expression_binary_addContext ctx) {
+        OneExpression arg1 = (OneExpression) visit(ctx.expression(0));
+        OneExpression arg2 = (OneExpression) visit(ctx.expression(1));
         return binary_op(ctx, arg1, arg2, ctx.op.getText());
     }
 
     @Override
-    public OneInstruction visitExpression_binary_mult(c4waParser.Expression_binary_multContext ctx) {
-        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
-        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+    public OneExpression visitExpression_binary_mult(c4waParser.Expression_binary_multContext ctx) {
+        OneExpression arg1 = (OneExpression) visit(ctx.expression(0));
+        OneExpression arg2 = (OneExpression) visit(ctx.expression(1));
         return binary_op(ctx, arg1, arg2, ctx.op.getText());
     }
 
     @Override
-    public OneInstruction visitExpression_binary_or(c4waParser.Expression_binary_orContext ctx) {
+    public OneExpression visitExpression_binary_or(c4waParser.Expression_binary_orContext ctx) {
         List<c4waParser.ExpressionContext> components = new ArrayList<>();
 
         do {
@@ -1052,7 +949,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
-    public OneInstruction visitExpression_binary_and(c4waParser.Expression_binary_andContext ctx) {
+    public OneExpression visitExpression_binary_and(c4waParser.Expression_binary_andContext ctx) {
         List<c4waParser.ExpressionContext> components = new ArrayList<>();
 
         do {
@@ -1070,90 +967,80 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return and_or_chain(components, true);
     }
 
-    private OneInstruction and_or_chain(List<c4waParser.ExpressionContext> ctxList, boolean is_and) {
-        OneInstruction[] exp = new OneInstruction[ctxList.size()];
-        Instruction[] condition = new Instruction[exp.length];
+    private OneExpression and_or_chain(List<c4waParser.ExpressionContext> ctxList, boolean is_and) {
+        OneExpression[] exp = new OneExpression[ctxList.size()];
+        Expression[] condition = new Expression[exp.length];
         int i = -1;
         for (var ctx: ctxList) {
             i ++;
-            exp[i] = (OneInstruction) visit(ctx);
-            if (exp[i].type == null)
-                throw fail(ctx, "AND", "Type void is invalid for boolean operations");
+            exp[i] = (OneExpression) visit(ctx);
             if (!exp[i].type.is_int())
                 throw fail(ctx, "AND", "Type '" + exp[i].type + "' is invalid for boolean operations");
 
             condition[i] = is_and ?
-                            exp[i].instruction.Not(exp[i].type.asNumType())
+                            exp[i].expression.Not(exp[i].type.asNumType())
                      :( exp[i].type.is_i64() ?
-                            GenericCast.cast(exp[i].type.asNumType(), NumType.I32, false, exp[i].instruction)
-                    :       exp[i].instruction);
+                            GenericCast.cast(exp[i].type.asNumType(), NumType.I32, false, exp[i].expression)
+                    :       exp[i].expression);
         }
 
         if (exp.length == 2)
-            return new OneInstruction(new IfThenElse(condition[0], NumType.I32,
-                    new Instruction[]{new Const(is_and? 0 : 1)},
-                    new Instruction[]{
-                            new Cmp(exp[1].type.asNumType(), false, exp[1].instruction,
-                                    new Const(exp[1].type.asNumType(), 0))}), CType.INT);
-
+            return new OneExpression(new IfThenElseExp(condition[0], NumType.I32,
+                    new Const(is_and? 0 : 1),
+                    new Cmp(exp[1].type.asNumType(), false, exp[1].expression,
+                                    new Const(exp[1].type.asNumType(), 0))), CType.INT);
 
         String block_id = functionEnv.pushBlock(null);
         String block_id_break = block_id + BREAK_SUFFIX;
 
-        Instruction[] elm = new Instruction[exp.length + 1];
+        Instruction[] elm = new Instruction[exp.length];
 
         for (i = 0; i < exp.length; i ++)
-            elm[i] = new Drop(new BrIf(block_id_break, condition[i], new Const(is_and ? 0 : 1)));
-
-        elm[exp.length] = new Const(is_and ? 1 : 0);
+            elm[i] = new Drop(new BrIfExp(block_id_break, NumType.I32, condition[i], new Const(is_and ? 0 : 1)));
 
         functionEnv.popBlock();
 
-        return new OneInstruction(new Block(block_id_break, NumType.I32, elm), CType.INT);
+        return new OneExpression(new BlockExp(block_id_break, NumType.I32, elm, new Const(is_and ? 1 : 0)), CType.INT);
     }
 
     @Override
-    public OneInstruction visitExpression_binary_bwxor(c4waParser.Expression_binary_bwxorContext ctx) {
-        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
-        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+    public OneExpression visitExpression_binary_bwxor(c4waParser.Expression_binary_bwxorContext ctx) {
+        OneExpression arg1 = (OneExpression) visit(ctx.expression(0));
+        OneExpression arg2 = (OneExpression) visit(ctx.expression(1));
         return binary_op(ctx, arg1, arg2, ctx.op.getText());
     }
 
     @Override
-    public OneInstruction visitExpression_binary_bwand(c4waParser.Expression_binary_bwandContext ctx) {
-        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
-        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+    public OneExpression visitExpression_binary_bwand(c4waParser.Expression_binary_bwandContext ctx) {
+        OneExpression arg1 = (OneExpression) visit(ctx.expression(0));
+        OneExpression arg2 = (OneExpression) visit(ctx.expression(1));
         return binary_op(ctx, arg1, arg2, ctx.op.getText());
     }
 
     @Override
-    public OneInstruction visitExpression_binary_bwor(c4waParser.Expression_binary_bworContext ctx) {
-        OneInstruction arg1 = (OneInstruction) visit(ctx.expression(0));
-        OneInstruction arg2 = (OneInstruction) visit(ctx.expression(1));
+    public OneExpression visitExpression_binary_bwor(c4waParser.Expression_binary_bworContext ctx) {
+        OneExpression arg1 = (OneExpression) visit(ctx.expression(0));
+        OneExpression arg2 = (OneExpression) visit(ctx.expression(1));
         return binary_op(ctx, arg1, arg2, ctx.op.getText());
     }
 
-    private OneInstruction binary_op (ParserRuleContext ctx, OneInstruction arg1, OneInstruction arg2, String op) {
+    private OneExpression binary_op (ParserRuleContext ctx, OneExpression arg1, OneExpression arg2, String op) {
         if (arg1 == null)
             throw fail(ctx, "Expression", "1-st arg not parsed");
         if (arg2 == null)
             throw fail(ctx, "Expression", "2-nd arg not parsed");
-        if (arg1.type == null)
-            throw fail(ctx, "Expression", "1-st arg has no type");
-        if (arg2.type == null)
-            throw fail(ctx, "Expression", "2-nd arg has no type");
 
-        if (arg1.type.is_i64() && arg2.type.is_i32() && arg2.instruction instanceof Const) {
-            arg2 = new OneInstruction(new Const((((Const) arg2.instruction).longValue)), arg1.type);
+        if (arg1.type.is_i64() && arg2.type.is_i32() && arg2.expression instanceof Const) {
+            arg2 = new OneExpression(new Const((((Const) arg2.expression).longValue)), arg1.type);
         }
-        else if (arg2.type.is_i64() && arg1.type.is_i32() && arg1.instruction instanceof Const) {
-            arg1 = new OneInstruction(new Const((((Const) arg1.instruction).longValue)), arg2.type);
+        else if (arg2.type.is_i64() && arg1.type.is_i32() && arg1.expression instanceof Const) {
+            arg1 = new OneExpression(new Const((((Const) arg1.expression).longValue)), arg2.type);
         }
-        else if (arg1.type.is_f64() && arg2.type.is_f32() && arg2.instruction instanceof Const) {
-            arg2 = new OneInstruction(new Const((((Const) arg2.instruction).doubleValue)), arg1.type);
+        else if (arg1.type.is_f64() && arg2.type.is_f32() && arg2.expression instanceof Const) {
+            arg2 = new OneExpression(new Const((((Const) arg2.expression).doubleValue)), arg1.type);
         }
-        else if (arg2.type.is_f64() && arg1.type.is_f32() && arg1.instruction instanceof Const) {
-            arg1 = new OneInstruction(new Const((((Const) arg1.instruction).doubleValue)), arg2.type);
+        else if (arg2.type.is_f64() && arg1.type.is_f32() && arg1.expression instanceof Const) {
+            arg1 = new OneExpression(new Const((((Const) arg1.expression).doubleValue)), arg2.type);
         }
 
         NumType numType;
@@ -1161,29 +1048,29 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         if ("+".equals(op) && arg2.type.same(CType.INT) && arg1.type.deref() != null) {
             CType type = arg1.type.deref();
-            return new OneInstruction((type.size() == 1)
-                    ? new Add(NumType.I32, arg1.instruction, arg2.instruction)
-                    : new Add(NumType.I32, arg1.instruction, new Mul(NumType.I32, arg2.instruction, new Const(type.size()))),
+            return new OneExpression((type.size() == 1)
+                    ? new Add(NumType.I32, arg1.expression, arg2.expression)
+                    : new Add(NumType.I32, arg1.expression, new Mul(NumType.I32, arg2.expression, new Const(type.size()))),
                     arg1.type);
         }
         if ("-".equals(op) && arg2.type.same(CType.INT) && arg1.type.deref() != null) {
             CType type = arg1.type.deref();
-            return new OneInstruction((type.size() == 1)
-                    ? new Sub(NumType.I32, arg1.instruction, arg2.instruction)
-                    : new Sub(NumType.I32, arg1.instruction, new Mul(NumType.I32, arg2.instruction, new Const(type.size()))),
+            return new OneExpression((type.size() == 1)
+                    ? new Sub(NumType.I32, arg1.expression, arg2.expression)
+                    : new Sub(NumType.I32, arg1.expression, new Mul(NumType.I32, arg2.expression, new Const(type.size()))),
                     arg1.type);
         }
         else if ("+".equals(op) && arg1.type.same(CType.INT) && arg2.type.deref() != null) {
             CType type = arg2.type.deref();
-            return new OneInstruction((type.size() == 1)
-                    ? new Add(NumType.I32, arg2.instruction, arg1.instruction)
-                    : new Add(NumType.I32, arg2.instruction, new Mul(NumType.I32, arg1.instruction, new Const(type.size()))),
+            return new OneExpression((type.size() == 1)
+                    ? new Add(NumType.I32, arg2.expression, arg1.expression)
+                    : new Add(NumType.I32, arg2.expression, new Mul(NumType.I32, arg1.expression, new Const(type.size()))),
                     arg2.type);
         }
         else if ("-".equals(op) && arg1.type.is_ptr() && arg2.type.is_ptr() && arg1.type.deref().same(arg2.type.deref()))
-            return new OneInstruction(arg1.type.deref().size() == 1
-                    ? new Sub(NumType.I32, arg1.instruction, arg2.instruction)
-                    : new Div(NumType.I32, true, new Sub(NumType.I32, arg1.instruction, arg2.instruction), new Const(arg1.type.deref().size())),
+            return new OneExpression(arg1.type.deref().size() == 1
+                    ? new Sub(NumType.I32, arg1.expression, arg2.expression)
+                    : new Div(NumType.I32, true, new Sub(NumType.I32, arg1.expression, arg2.expression), new Const(arg1.type.deref().size())),
             CType.INT);
         else if (arg1.type.is_i32() && arg2.type.is_i32()) {
             numType = NumType.I32;
@@ -1207,85 +1094,81 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         resType = resType.make_signed(arg1.type.is_signed());
 
-        Instruction res;
+        Expression res;
         if ("+".equals(op))
-            res = new Add(numType, arg1.instruction, arg2.instruction);
+            res = new Add(numType, arg1.expression, arg2.expression);
         else if ("-".equals(op))
-            res = new Sub(numType, arg1.instruction, arg2.instruction);
+            res = new Sub(numType, arg1.expression, arg2.expression);
         else if ("*".equals(op))
-            res = new Mul(numType, arg1.instruction, arg2.instruction);
+            res = new Mul(numType, arg1.expression, arg2.expression);
         else if ("/".equals(op))
-            res = new Div(numType, arg1.type.is_signed(), arg1.instruction, arg2.instruction);
+            res = new Div(numType, arg1.type.is_signed(), arg1.expression, arg2.expression);
         else if ("%".equals(op))
-            res = new Rem(numType, arg1.type.is_signed(), arg1.instruction, arg2.instruction);
+            res = new Rem(numType, arg1.type.is_signed(), arg1.expression, arg2.expression);
         else if (List.of("<", "<=", ">", ">=").contains(op))
             res = new Cmp(numType, op.charAt(0) == '<', op.length() == 2, arg1.type.is_signed(),
-                    arg1.instruction, arg2.instruction);
-        else if (op.equals("==") && arg1.instruction instanceof Const && ((Const)arg1.instruction).longValue == 0 && arg1.type.is_int())
-            res = new Eqz(numType, arg2.instruction);
-        else if (op.equals("==") && arg2.instruction instanceof Const && ((Const)arg2.instruction).longValue == 0 && arg1.type.is_int())
-            res = new Eqz(numType, arg1.instruction);
+                    arg1.expression, arg2.expression);
+        else if (op.equals("==") && arg1.expression instanceof Const && ((Const)arg1.expression).longValue == 0 && arg1.type.is_int())
+            res = new Eqz(numType, arg2.expression);
+        else if (op.equals("==") && arg2.expression instanceof Const && ((Const)arg2.expression).longValue == 0 && arg1.type.is_int())
+            res = new Eqz(numType, arg1.expression);
         else if (List.of("==", "!=").contains(op))
-            res = new Cmp(numType, op.charAt(0) == '=', arg1.instruction, arg2.instruction);
+            res = new Cmp(numType, op.charAt(0) == '=', arg1.expression, arg2.expression);
         else if ("&&".equals(op) || "&".equals(op))
-            res = new And(numType, arg1.instruction, arg2.instruction);
+            res = new And(numType, arg1.expression, arg2.expression);
         else if ("||".equals(op) || "|".equals(op))
-            res = new Or(numType, arg1.instruction, arg2.instruction);
+            res = new Or(numType, arg1.expression, arg2.expression);
         else if ("^".equals(op))
-            res = new Xor(numType, arg1.instruction, arg2.instruction);
+            res = new Xor(numType, arg1.expression, arg2.expression);
         else
             throw fail(ctx, "binary operation", "Instruction '" + op + "' not recognized");
 
-        return new OneInstruction(res, resType);
+        return new OneExpression(res, resType);
     }
 
     @Override
-    public OneInstruction visitExpression_unary_op(c4waParser.Expression_unary_opContext ctx) {
+    public OneExpression visitExpression_unary_op(c4waParser.Expression_unary_opContext ctx) {
         String op = ctx.op.getText();
-        OneInstruction exp = (OneInstruction) visit(ctx.expression());
-
-        if (exp.type == null)
-            throw fail(ctx, "unary_op", "expression has no type");
+        OneExpression exp = (OneExpression) visit(ctx.expression());
 
         if (op.equals("-")) {
             if (exp.type.is_int())
-                return new OneInstruction(new Sub(exp.type.asNumType(), new Const(0), exp.instruction), exp.type);
+                return new OneExpression(new Sub(exp.type.asNumType(), new Const(0), exp.expression), exp.type);
             else
-                return new OneInstruction(new Neg(exp.type.asNumType(), exp.instruction), exp.type);
+                return new OneExpression(new Neg(exp.type.asNumType(), exp.expression), exp.type);
         }
         else if (op.equals("!")) {
-            return new OneInstruction(exp.instruction.Not(exp.type.asNumType()), exp.type);
+            return new OneExpression(exp.expression.Not(exp.type.asNumType()), exp.type);
         }
         else if (op.equals("*")) {
             CType type = exp.type.deref();
             if (type == null)
                 throw fail(ctx, "unary_op", "Trying to dereference '" + exp.type + "', must be a pointer");
 
-            return new OneInstruction(memory_load(type, exp.instruction), type);
+            return new OneExpression(memory_load(type, exp.expression), type);
         }
         else
             throw fail(ctx, "unary_op", "Operation '" + op + "' not recognized");
     }
 
     @Override
-    public OneInstruction visitExpression_alloc(c4waParser.Expression_allocContext ctx) {
-        OneInstruction memptr = (OneInstruction) visit(ctx.memptr);
-        //OneInstruction count = (OneInstruction) visit(ctx.count);
+    public OneExpression visitExpression_alloc(c4waParser.Expression_allocContext ctx) {
+        OneExpression memptr = (OneExpression) visit(ctx.memptr);
         CType type = (CType) visit(ctx.variable_type());
 
         if (!memptr.type.is_i32())
             throw fail(ctx, "alloc", "'" + memptr.type + "' won't work for alloc, must have int");
 
         int memOffset = moduleEnv.STACK_SIZE + moduleEnv.DATA_SIZE;
-        if (memptr.instruction instanceof Const)
-            return new OneInstruction(new Const(memOffset + (int)((Const)memptr.instruction).longValue), type.make_pointer_to());
+        if (memptr.expression instanceof Const)
+            return new OneExpression(new Const(memOffset + (int)((Const)memptr.expression).longValue), type.make_pointer_to());
         else
-            return new OneInstruction(new Add(NumType.I32, memptr.instruction, new Const(memOffset)), type.make_pointer_to());
+            return new OneExpression(new Add(NumType.I32, memptr.expression, new Const(memOffset)), type.make_pointer_to());
     }
 
     @Override
-    public OneInstruction visitExpression_cast(c4waParser.Expression_castContext ctx) {
-        OneInstruction exp = (OneInstruction) visit(ctx.expression());
+    public OneExpression visitExpression_cast(c4waParser.Expression_castContext ctx) {
+        OneExpression exp = (OneExpression) visit(ctx.expression());
         CType castToType = (CType) visit(ctx.variable_type());
 
         boolean signed;
@@ -1296,49 +1179,49 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         else
             signed = true;
 
-        return new OneInstruction(GenericCast.cast(exp.type.asNumType(), castToType.asNumType(), signed, exp.instruction), castToType);
+        return new OneExpression(GenericCast.cast(exp.type.asNumType(), castToType.asNumType(), signed, exp.expression), castToType);
     }
 
     @Override
-    public OneInstruction visitExpression_variable(c4waParser.Expression_variableContext ctx) {
+    public OneExpression visitExpression_variable(c4waParser.Expression_variableContext ctx) {
         return accessVariable(ctx, ctx.ID().getText());
     }
 
-    private OneInstruction accessVariable(ParserRuleContext ctx, String name) {
+    private OneExpression accessVariable(ParserRuleContext ctx, String name) {
         CType type = functionEnv.varType.get(name);
         if (type != null)
-            return new OneInstruction(new GetLocal(name), type);
+            return new OneExpression(new GetLocal(type.asNumType(), name), type);
 
         VariableDecl globalDecl = moduleEnv.varDecl.get(name);
 
         if (globalDecl != null)
-            return new OneInstruction(new GetGlobal(name), globalDecl.type);
+            return new OneExpression(new GetGlobal(globalDecl.type.asNumType(), name), globalDecl.type);
 
         throw fail(ctx, "variable", "'" + name + "' not defined");
     }
 
     @Override
-    public OneInstruction visitExpression_const(c4waParser.Expression_constContext ctx) {
+    public OneExpression visitExpression_const(c4waParser.Expression_constContext ctx) {
         return parseConstant(ctx, ctx.CONSTANT().getText());
     }
 
     @Override
-    public OneInstruction visitExpression_string(c4waParser.Expression_stringContext ctx) {
+    public OneExpression visitExpression_string(c4waParser.Expression_stringContext ctx) {
         StringBuilder b = new StringBuilder();
         for (var s : ctx.STRING())
             b.append(unescape(s.getText()));
 
         //String str = unescape(ctx.STRING().getText());
-        return new OneInstruction(new Const(moduleEnv.addString(b.toString())), CType.CHAR.make_pointer_to());
+        return new OneExpression(new Const(moduleEnv.addString(b.toString())), CType.CHAR.make_pointer_to());
     }
 
     @Override
-    public OneInstruction visitExpression_character(c4waParser.Expression_characterContext ctx) {
+    public OneExpression visitExpression_character(c4waParser.Expression_characterContext ctx) {
         String s = ctx.CHARACTER().getText();
         Integer val = unescapeChar(s);
         if (val == null)
             throw fail(ctx, "character", "Invalid character definition " + s);
-        return new OneInstruction(new Const(val), CType.CHAR);
+        return new OneExpression(new Const(val), CType.CHAR);
     }
 
     @Override
@@ -1378,40 +1261,23 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return c_struct;
     }
 
-    private OneInstruction parseConstant(ParserRuleContext ctx, String textOfConstant) {
+    private OneExpression parseConstant(ParserRuleContext ctx, String textOfConstant) {
         try {
-            return new OneInstruction(new Const(Integer.parseInt(textOfConstant)), CType.INT);
+            return new OneExpression(new Const(Integer.parseInt(textOfConstant)), CType.INT);
         } catch (NumberFormatException ignored) {
         }
 
         try {
-            return new OneInstruction(new Const(Long.parseLong(textOfConstant)), CType.LONG);
+            return new OneExpression(new Const(Long.parseLong(textOfConstant)), CType.LONG);
         } catch (NumberFormatException ignored) {
         }
 
         try {
-            return new OneInstruction(new Const(Double.parseDouble(textOfConstant)), CType.DOUBLE);
+            return new OneExpression(new Const(Double.parseDouble(textOfConstant)), CType.DOUBLE);
         } catch (NumberFormatException ignored) {
         }
 
         throw fail(ctx, "const", "'" + textOfConstant + "' cannot be parsed");
-    }
-
-    // We are now switching to compile-time evaluation, so this won't be necessary, but let's keep for now
-    private Const parseConstant_TBR(ParserRuleContext ctx, CType ctype, String textOfConstant) {
-        try {
-            if (ctype == CType.INT)
-                return new Const(Integer.parseInt(textOfConstant));
-            else if (ctype == CType.LONG)
-                return new Const(Long.parseLong(textOfConstant));
-            else if (ctype == CType.FLOAT)
-                return new Const(Float.parseFloat(textOfConstant));
-            else
-                return new Const(Double.parseDouble(textOfConstant));
-
-        } catch (NumberFormatException err) {
-            throw fail(ctx, "const", "'" + textOfConstant + "' cannot be parsed as " + ctype);
-        }
     }
 
     private Partial visit(ParserRuleContext ctx) {

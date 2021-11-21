@@ -2,8 +2,9 @@ package net.inet_lab.c4wa.wat;
 
 public class Call extends Instruction {
     public final String name;
-    public final Instruction[] args;
-    public Call(String name, Instruction[] args) {
+    public final Expression[] args;
+
+    public Call(String name, Expression[] args) {
         super(InstructionName.CALL);
         this.name = name;
         this.args = args;

@@ -1,12 +1,12 @@
 package net.inet_lab.c4wa.wat;
 
-public class Eqz extends Instruction_Return {
-    public Eqz(NumType numType, Instruction arg) {
-        super(new InstructionWithNumPrefix(numType, InstructionName.EQZ), arg);
+public class Eqz extends Expression_1 {
+    public Eqz(NumType numType, Expression arg) {
+        super(InstructionName.EQZ, numType, arg);
     }
 
     @Override
-    public Instruction Not(NumType numType) {
+    public Expression Not(NumType numType) {
         return arg;
     }
 }

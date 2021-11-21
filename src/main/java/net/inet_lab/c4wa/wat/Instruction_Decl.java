@@ -1,41 +1,64 @@
 package net.inet_lab.c4wa.wat;
 
 public class Instruction_Decl extends Instruction {
-    final Instruction arg1;
-    final Instruction arg2;
-    final Instruction arg3;
-    final Instruction arg4;
+    final Instruction i1;
+    final Expression  e1;
+    final Instruction i2;
+    final Instruction i3;
+    final Expression  e3;
 
-    Instruction_Decl(InstructionName type, Instruction arg1) {
+    Instruction_Decl(InstructionName type, Instruction i1) {
         super(type);
-        this.arg1 = arg1;
-        arg2 = null;
-        arg3 = null;
-        arg4 = null;
+        this.i1 = i1;
+        e1 = null;
+        i2 = null;
+        i3 = null;
+        e3 = null;
     }
 
-    Instruction_Decl(InstructionName type, Instruction arg1, Instruction arg2) {
+    Instruction_Decl(InstructionName type, Instruction i1, Instruction i2) {
         super(type);
-        this.arg1 = arg1;
-        this.arg2 = arg2;
-        arg3 = null;
-        arg4 = null;
+        this.i1 = i1;
+        this.i2 = i2;
+        e1 = null;
+        i3 = null;
+        e3 = null;
     }
 
-    Instruction_Decl(InstructionName type, Instruction arg1, Instruction arg2, Instruction arg3) {
+    Instruction_Decl(InstructionName type, Expression e1, Instruction i2) {
         super(type);
-        this.arg1 = arg1;
-        this.arg2 = arg2;
-        this.arg3 = arg3;
-        arg4 = null;
+        this.e1 = e1;
+        this.i2 = i2;
+        i1 = null;
+        i3 = null;
+        e3 = null;
     }
 
-    Instruction_Decl(InstructionName type, Instruction arg1, Instruction arg2, Instruction arg3, Instruction arg4) {
+    Instruction_Decl(InstructionName type, Instruction i1, Instruction i2, Instruction i3) {
         super(type);
-        this.arg1 = arg1;
-        this.arg2 = arg2;
-        this.arg3 = arg3;
-        this.arg4 = arg4;
+        this.i1 = i1;
+        this.i2 = i2;
+        this.i3 = i3;
+        e1 = null;
+        e3 = null;
+    }
+
+    Instruction_Decl(InstructionName type, Instruction i1, Instruction i2, Expression e3) {
+        super(type);
+        this.i1 = i1;
+        this.i2 = i2;
+        this.e3 = e3;
+        e1 = null;
+        i3 = null;
+    }
+
+    Instruction_Decl(InstructionName type, Instruction i1, Instruction i2, Instruction i3, Expression e3) {
+        super(type);
+        e1 = null;
+        this.i1 = i1;
+        this.i2 = i2;
+        this.i3 = i3;
+        this.e3 = e3;
     }
 
     @Override
@@ -43,20 +66,18 @@ public class Instruction_Decl extends Instruction {
         StringBuilder b = new StringBuilder();
 
         b.append("(").append(type.getName());
-        if (arg1 != null)
-            b.append(' ').append(arg1);
-        if (arg2 != null)
-            b.append(' ').append(arg2);
-        if (arg3 != null)
-            b.append(' ').append(arg3);
-        if (arg4 != null)
-            b.append(' ').append(arg4);
+        if (i1 != null)
+            b.append(' ').append(i1);
+        if (e1 != null)
+            b.append(' ').append(e1);
+        if (i2 != null)
+            b.append(' ').append(i2);
+        if (i3 != null)
+            b.append(' ').append(i3);
+        if (e3 != null)
+            b.append(' ').append(e3);
         b.append(")");
         return b.toString();
     }
 
-    @Override
-    public int complexity() {
-        return 0;
-    }
 }

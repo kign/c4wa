@@ -1,10 +1,10 @@
 package net.inet_lab.c4wa.wat;
 
-public class Instruction_SetLocal extends Instruction {
+public class Instruction_1ref extends Instruction {
     public final String ref;
-    final public Instruction arg;
+    final public Expression arg;
 
-    public Instruction_SetLocal(InstructionType type, String ref, Instruction arg) {
+    public Instruction_1ref(InstructionType type, String ref, Expression arg) {
         super(type);
         this.ref = ref;
         this.arg = arg;
@@ -13,10 +13,5 @@ public class Instruction_SetLocal extends Instruction {
     @Override
     public String toString() {
         return "(" + type.getName() + " $" + ref + " " + arg +")";
-    }
-
-    @Override
-    public int complexity() {
-        return 0;
     }
 }

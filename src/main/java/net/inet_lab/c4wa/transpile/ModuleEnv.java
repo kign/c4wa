@@ -121,7 +121,7 @@ public class ModuleEnv implements Partial {
         IMPORT,
         INTERNAL,
         NONE
-    };
+    }
 
     public Module wat () {
         boolean need_stack = functions.stream().anyMatch(f -> f.uses_stack);

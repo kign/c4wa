@@ -1,9 +1,9 @@
 package net.inet_lab.c4wa.wat;
 
-public class Instruction_Return extends Instruction {
-    public final Instruction arg;
+public class Instruction_1 extends Instruction {
+    public final Expression arg;
 
-    public Instruction_Return(InstructionType type, Instruction arg) {
+    public Instruction_1(InstructionType type, Expression arg) {
         super(type);
         this.arg = arg;
     }
@@ -12,7 +12,7 @@ public class Instruction_Return extends Instruction {
         if (arg == null)
             return "(" + type.getName() + ")";
         else
-            return "(" + type.getName() + " " + arg.toStringPretty(indent) + ")";
+            return "(" + type.getName() + " " + arg + ")";
     }
 
     @Override
@@ -21,13 +21,5 @@ public class Instruction_Return extends Instruction {
             return "(" + type.getName() + ")";
         else
             return "(" + type.getName() + " " + arg + ")";
-    }
-
-    @Override
-    public int complexity() {
-        if (arg == null)
-            return 0;
-        else
-            return arg.complexity();
     }
 }

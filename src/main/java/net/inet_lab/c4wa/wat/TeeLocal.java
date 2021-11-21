@@ -1,7 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
-public class TeeLocal extends Instruction_SetLocal {
-    public TeeLocal(String ref, Instruction arg) {
-        super(InstructionName.TEE_LOCAL, ref, arg);
+public class TeeLocal extends Expression_1ref {
+    public TeeLocal(NumType numType, String ref, Expression arg) {
+        super(InstructionName.TEE_LOCAL, numType, ref, arg);
     }
 }

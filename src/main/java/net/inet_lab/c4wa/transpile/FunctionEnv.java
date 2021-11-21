@@ -16,7 +16,6 @@ public class FunctionEnv implements Partial, PostprocessContext {
     final static String STACK_ENTRY_VAR = "@stack_entry";
 
     Instruction[] instructions;
-//    int mem_offset;
     boolean uses_stack;
 
     public FunctionEnv (String name, CType returnType, boolean export) {
@@ -25,7 +24,6 @@ public class FunctionEnv implements Partial, PostprocessContext {
         this.params = new ArrayList<>();
         this.locals = new ArrayList<>();
         this.export = export;
-//        this.mem_offset = 0;
         varType = new HashMap<>();
         blocks = new ArrayDeque<>();
         tempVars = new HashMap<>();
@@ -33,15 +31,6 @@ public class FunctionEnv implements Partial, PostprocessContext {
         blocks.push(new Block());
         uses_stack = false;
     }
-
-//    public void setMemOffset(int offset) {
-//        if (offset > mem_offset)
-//            mem_offset = offset;
-//    }
-//
-//    public int getMemOffset() {
-//        return mem_offset;
-//    }
 
     public void markAsUsingStack () {
         uses_stack = true;
@@ -136,12 +125,12 @@ public class FunctionEnv implements Partial, PostprocessContext {
             elements.add(new Local(tempVars.get(numType), numType));
 
         if (uses_stack)
-            elements.add(new SetLocal(STACK_ENTRY_VAR, new GetGlobal(ModuleEnv.STACK_VAR_NAME)));
+            elements.add(new SetLocal(STACK_ENTRY_VAR, new GetGlobal(NumType.I32, ModuleEnv.STACK_VAR_NAME)));
 
         elements.addAll(Arrays.asList(instructions));
 
         if (uses_stack && !(elements.get(elements.size() - 1) instanceof ParseTreeVisitor.PreparedReturn))
-            elements.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new GetLocal(FunctionEnv.STACK_ENTRY_VAR)));
+            elements.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new GetLocal(NumType.I32, FunctionEnv.STACK_ENTRY_VAR)));
 
         Instruction watCode = new Func(attributes, elements);
         Instruction[] res = watCode.postprocess(this);

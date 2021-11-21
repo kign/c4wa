@@ -6,6 +6,6 @@ public class Param extends Instruction_Decl {
     }
 
     public Param(NumType numType) {
-        super(InstructionName.PARAM, null, new Special(numType));
+        super(InstructionName.PARAM, new Special(numType));
     }
 }

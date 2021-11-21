@@ -36,6 +36,10 @@ public class Instruction_list extends Instruction {
 
     @Override
     public Instruction[] postprocess(PostprocessContext ppctx) {
+        return new Instruction[] {postprocessList(ppctx)};
+    }
+
+    public Instruction_list postprocessList(PostprocessContext ppctx) {
         List<Instruction> res = new ArrayList<>();
 
         boolean same = true;
@@ -46,17 +50,12 @@ public class Instruction_list extends Instruction {
             res.addAll(Arrays.asList(pp));
         }
 
-        Instruction ret;
-
         if (same)
-            ret = this;
-        else {
-            if (res.size() == 0)
-                return new Instruction[0];
-            ret = new Instruction_list(type, attributes, res.toArray(Instruction[]::new));
-        }
-
-        return new Instruction[] {ret};
+            return this;
+        else if (res.size() == 0)
+            return null;
+        else
+            return new Instruction_list(type, attributes, res.toArray(Instruction[]::new));
     }
 
     @Override

@@ -1,11 +1,11 @@
 package net.inet_lab.c4wa.wat;
 
-public class GenericCast extends Instruction_Return {
-    private GenericCast(NumType srcType, NumType dstType, boolean signed, Instruction arg) {
-        super(from_to(srcType, dstType, signed), arg);
+public class GenericCast extends Expression_1 {
+    private GenericCast(NumType srcType, NumType dstType, boolean signed, Expression arg) {
+        super(from_to(srcType, dstType, signed), dstType, arg);
     }
 
-    static private InstructionType from_to(NumType srcType, NumType dstType, boolean signed) {
+    static private InstructionName from_to(NumType srcType, NumType dstType, boolean signed) {
         InstructionName name;
 
         if (srcType == NumType.I64 && dstType == NumType.I32)
@@ -28,10 +28,10 @@ public class GenericCast extends Instruction_Return {
         else
             throw new RuntimeException("Cast '" + srcType + "' => '" + dstType + "'" + (signed?"":" (unsigned)") +
                     "is not defined or not available");
-        return new InstructionWithNumPrefix(dstType, name);
+        return name;
     }
 
-    static public Instruction cast(NumType srcType, NumType dstType, boolean signed, Instruction arg) {
+    static public Expression cast(NumType srcType, NumType dstType, boolean signed, Expression arg) {
         if (dstType == srcType)
             return arg;
         else if (arg instanceof Const)

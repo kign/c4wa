@@ -1,15 +1,12 @@
 package net.inet_lab.c4wa.wat;
 
-public class And extends Instruction_Bin {
-    final public NumType numType;
-
-    public And(NumType numType, Instruction arg1, Instruction arg2) {
-        super(new InstructionWithNumPrefix(numType, InstructionName.AND), arg1, arg2, (a,b) -> a&b, null);
-        this.numType = numType;
+public class And extends Expression_2 {
+    public And(NumType numType, Expression arg1, Expression arg2) {
+        super(InstructionName.AND, numType, arg1, arg2, (a,b) -> a&b, null);
     }
 
     @Override
-    public Instruction Not(NumType numType) {
+    public Expression Not(NumType numType) {
         return new Or(numType, arg1.Not(numType), arg2.Not(numType));
     }
 }

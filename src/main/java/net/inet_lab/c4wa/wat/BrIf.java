@@ -2,18 +2,12 @@ package net.inet_lab.c4wa.wat;
 
 public class BrIf extends Instruction {
     final String ref;
-    final Instruction condition;
-    final Instruction returnValue;
+    final Expression condition;
 
-    public BrIf(String ref, Instruction condition) {
-        this(ref, condition, null);
-    }
-
-    public BrIf(String ref, Instruction condition, Instruction returnValue) {
+    public BrIf(String ref, Expression condition) {
         super(InstructionName.BR_IF);
         this.ref = ref;
         this.condition = condition;
-        this.returnValue = returnValue;
     }
 
     @Override
@@ -22,10 +16,7 @@ public class BrIf extends Instruction {
 
         b.append("(").append(type.getName()).append(" $").append(ref);
 
-        if (returnValue != null)
-            b.append(" ").append(returnValue.toStringPretty(indent));
-
-        b.append(" ").append(condition.toStringPretty(indent)).append(")");
+        b.append(" ").append(condition).append(")");
 
         return b.toString();
     }
@@ -33,13 +24,5 @@ public class BrIf extends Instruction {
     @Override
     public String toString() {
         return toStringPretty(0);
-    }
-
-    @Override
-    public int complexity() {
-        int ret = condition.complexity();
-        if (returnValue != null && returnValue.complexity() > ret)
-            ret = returnValue.complexity();
-        return ret;
     }
 }

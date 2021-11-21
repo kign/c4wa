@@ -17,11 +17,7 @@
         (block $@block_1_2_break
           (set_local $i (i32.const 1))
           (loop $@block_1_2_continue
-            (br_if $@block_1_2_break (i32.eqz (block $@block_1_1_break (result i32)
-              (drop (br_if $@block_1_1_break (i32.const 0) (i32.ge_s (get_local $i) (get_local $n))))
-              (drop (br_if $@block_1_1_break (i32.const 0) (i32.ge_s (i32.mul (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4)))) (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4))))) (get_local $p))))
-              (drop (br_if $@block_1_1_break (i32.const 0) (i32.eq (i32.rem_s (get_local $p) (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4))))) (i32.const 0))))
-              (i32.const 1))))
+            (br_if $@block_1_2_break (i32.eqz (block $@block_1_1_break (result i32) (drop (br_if $@block_1_1_break (i32.const 0) (i32.ge_s (get_local $i) (get_local $n)))) (drop (br_if $@block_1_1_break (i32.const 0) (i32.ge_s (i32.mul (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4)))) (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4))))) (get_local $p)))) (drop (br_if $@block_1_1_break (i32.const 0) (i32.eq (i32.rem_s (get_local $p) (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4))))) (i32.const 0)))) (i32.const 1))))
             (set_local $i (i32.add (get_local $i) (i32.const 1)))
             (br $@block_1_2_continue)))
         (if (if (result i32) (i32.ge_s (get_local $i) (get_local $n)) (then (i32.const 1)) (else (i32.ne (i32.ne (i32.rem_s (get_local $p) (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4))))) (i32.const 0)) (i32.const 0))))
@@ -51,11 +47,7 @@
             (br_if $@block_1_1_break (if (result i32) (i32.ge_s (i32.mul (get_local $d) (get_local $d)) (get_local $p)) (then (i32.const 1)) (else (i32.ne (i32.eqz (i32.rem_s (get_local $p) (get_local $d))) (i32.const 0)))))
             (set_local $i (i32.add (get_local $i) (i32.const 1)))
             (br $@block_1_1_continue)))
-        (if (block $@block_1_2_break (result i32)
-            (drop (br_if $@block_1_2_break (i32.const 0) (i32.le_s (get_local $d) (i32.const 0))))
-            (drop (br_if $@block_1_2_break (i32.const 0) (i32.ge_s (get_local $d) (get_local $p))))
-            (drop (br_if $@block_1_2_break (i32.const 0) (i32.rem_s (get_local $p) (get_local $d))))
-            (i32.const 1))
+        (if (block $@block_1_2_break (result i32) (drop (br_if $@block_1_2_break (i32.const 0) (i32.le_s (get_local $d) (i32.const 0)))) (drop (br_if $@block_1_2_break (i32.const 0) (i32.ge_s (get_local $d) (get_local $p)))) (drop (br_if $@block_1_2_break (i32.const 0) (i32.rem_s (get_local $p) (get_local $d)))) (i32.const 1))
           (then
             (set_local $p (i32.add (get_local $p) (i32.const 2)))
             (br $@block_1_continue)))
