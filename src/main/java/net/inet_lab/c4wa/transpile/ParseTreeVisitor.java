@@ -18,7 +18,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     final private static String CONT_SUFFIX = "_continue";
     final private static String BREAK_SUFFIX = "_break";
-    final private boolean print_stack_trace_on_errors = false;
+    static final private boolean print_stack_trace_on_errors = false;
 
     public ParseTreeVisitor(Properties prop) {
         blockStack = new ArrayDeque<>();
@@ -177,6 +177,79 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
     }
 
+    static class DelayedAssignment extends Instruction_Delayed {
+        final String[] names;
+        final Expression rhs;
+        final CType type;
+        final ParserRuleContext ctx;
+
+        DelayedAssignment(ParserRuleContext ctx, String[] names, Expression rhs, CType type) {
+            this.ctx = ctx;
+            this.names = names;
+            this.rhs = rhs;
+            this.type = type;
+        }
+
+        @Override
+        public String toString() {
+            return "DelayedAssignment(" + String.join(",", names)  + ")";
+        }
+
+        @Override
+        public Instruction[] postprocess(PostprocessContext ppctx) {
+            FunctionEnv functionEnv = (FunctionEnv) ppctx;
+            ModuleEnv moduleEnv = functionEnv.moduleEnv;
+            final char GLOBAL = 'G';
+            final char LOCAL = 'L';
+            final char STACK = 'S';
+
+            int iFirst = -1;
+            char tFirst = 'X';
+            for (int i = 0; i < names.length; i++) {
+                VariableDecl decl = functionEnv.variables.get(names[i]);
+                boolean isGlobal = false;
+                if (decl == null) {
+                    decl = moduleEnv.varDecl.get(names[i]);
+                    isGlobal = true;
+                }
+
+                if (decl == null)
+                    throw fail(ctx, "assignment", "Variable '" + names[i] + "' is not defined");
+
+                if (!decl.mutable)
+                    throw fail(ctx, "assignment", "Variable '" + names[i] + "' is not assignable");
+
+                if (isGlobal || decl.inStack) {
+                    if (iFirst >= 0)
+                        throw fail(ctx, "assignment", "Can have at most one global or stack variable in chain assignment; found at least two, '" +
+                                names[iFirst] + "' and '" + names[i] + "'");
+                    iFirst = i;
+                    tFirst = isGlobal? GLOBAL : STACK;
+                }
+
+                if (!decl.type.isValidRHS(type))
+                    throw fail(ctx, "init", "Expression of type " + type + " cannot be assigned to variable '" + names[i] + "' of type " + decl.type);
+            }
+
+            Expression res = rhs;
+            if (iFirst < 0) {
+                iFirst = names.length - 1;
+                tFirst = LOCAL;
+            }
+            for (int i = 0; i < names.length; i++) {
+                if (i == iFirst)
+                    continue;
+                res = new TeeLocal(type.asNumType(), names[i], res);
+            }
+
+            Instruction ires = tFirst == LOCAL ? new SetLocal(names[iFirst], res) :
+                               (tFirst == GLOBAL ? new SetGlobal(names[iFirst], res) :
+                                       memory_store(type, new GetLocal(NumType.I32, names[iFirst]), res));
+
+            return new Instruction[]{ires};
+        }
+    }
+
     static class DelayedLocalAccess extends Expression_Delayed {
         final String name;
 
@@ -318,7 +391,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         VariableDecl funcDecl = (VariableDecl) visit(ctx.variable_decl());
         ParamList paramList = (ctx.param_list() == null)?new ParamList(): (ParamList) visit(ctx.param_list());
 
-        functionEnv = new FunctionEnv(funcDecl.name, funcDecl.type,ctx.EXTERN() != null);
+        functionEnv = new FunctionEnv(funcDecl.name, funcDecl.type, moduleEnv, ctx.EXTERN() != null);
 
         Arrays.stream(paramList.paramList).forEach(x -> functionEnv.registerVar(x.name, x.type, true));
 
@@ -681,7 +754,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         functionEnv.registerVar(variableDecl.name, variableDecl.type, false);
 
-        return new OneInstruction(new SetLocal(variableDecl.name, rhs.expression));
+        return new OneInstruction(new DelayedList(List.of(new DelayedLocalDefinition(variableDecl.name), new DelayedAssignment(ctx, new String[]{variableDecl.name}, rhs.expression, rhs.type))));
+        //return new OneInstruction(new DelayedAssignment(ctx, new String[] {variableDecl.name}, rhs.expression, rhs.type));
+
+//        return new OneInstruction(new SetLocal(variableDecl.name, rhs.expression));
     }
 
     @Override
@@ -743,46 +819,48 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public OneInstruction visitSimple_assignment(c4waParser.Simple_assignmentContext ctx) {
         OneExpression rhs = (OneExpression) visit(ctx.expression());
 
-        int iGlobal = -1;
         String[] names = ctx.ID().stream().map(ParseTree::getText).toArray(String[]::new);
+        return new OneInstruction(new DelayedAssignment(ctx, names, rhs.expression, rhs.type));
 
-        for (int i = 0; i < names.length; i ++) {
-            VariableDecl decl = functionEnv.variables.get(names[i]);
-            if (decl == null) {
-                decl = moduleEnv.varDecl.get(names[i]);
-
-                if (decl == null)
-                    throw fail(ctx, "assignment", "Variable '" + names[i] + "' is not defined");
-
-                if (!decl.mutable)
-                    throw fail(ctx, "assignment", "Global variable '" + names[i] + "' is not mutable");
-
-                if (iGlobal >= 0)
-                    throw fail(ctx, "assignment", "Can have at most one global variable in chain assignment; found at least two, '" +
-                            names[iGlobal] + "' and '" + names[i] + "'");
-
-                iGlobal = i;
-            }
-            if (!decl.type.isValidRHS(rhs.type))
-                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable '" + names[i] + "' of type " + decl.type);
-        }
-
-        Expression res = rhs.expression;
-        Instruction ires = null;
-        for (int i = 0; i < names.length; i++) {
-            if (i == iGlobal)
-                continue;
-
-            if (iGlobal >= 0 || i < names.length - 1)
-                res = new TeeLocal(rhs.type.asNumType(), names[i], res);
-            else
-                ires = new SetLocal(names[i], res);
-        }
-
-        if (iGlobal >= 0)
-            ires = new SetGlobal(names[iGlobal], res);
-
-        return new OneInstruction(ires);
+//        int iGlobal = -1;
+//
+//        for (int i = 0; i < names.length; i ++) {
+//            VariableDecl decl = functionEnv.variables.get(names[i]);
+//            if (decl == null) {
+//                decl = moduleEnv.varDecl.get(names[i]);
+//
+//                if (decl == null)
+//                    throw fail(ctx, "assignment", "Variable '" + names[i] + "' is not defined");
+//
+//                if (!decl.mutable)
+//                    throw fail(ctx, "assignment", "Global variable '" + names[i] + "' is not mutable");
+//
+//                if (iGlobal >= 0)
+//                    throw fail(ctx, "assignment", "Can have at most one global variable in chain assignment; found at least two, '" +
+//                            names[iGlobal] + "' and '" + names[i] + "'");
+//
+//                iGlobal = i;
+//            }
+//            if (!decl.type.isValidRHS(rhs.type))
+//                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable '" + names[i] + "' of type " + decl.type);
+//        }
+//
+//        Expression res = rhs.expression;
+//        Instruction ires = null;
+//        for (int i = 0; i < names.length; i++) {
+//            if (i == iGlobal)
+//                continue;
+//
+//            if (iGlobal >= 0 || i < names.length - 1)
+//                res = new TeeLocal(rhs.type.asNumType(), names[i], res);
+//            else
+//                ires = new SetLocal(names[i], res);
+//        }
+//
+//        if (iGlobal >= 0)
+//            ires = new SetGlobal(names[iGlobal], res);
+//
+//        return new OneInstruction(ires);
     }
 
     @Override
@@ -834,13 +912,23 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return new OneInstruction(memory_store(lhs, rhs));
     }
 
-    private Store memory_store(OneExpression lhs, OneExpression rhs) {
-        if (lhs.type.same(CType.CHAR))
-            return new Store(lhs.type.asNumType(), 8, lhs.expression, rhs.expression);
-        else if (lhs.type.same(CType.SHORT))
-            return new Store(lhs.type.asNumType(), 16, lhs.expression, rhs.expression);
+    static private Store memory_store(OneExpression lhs, OneExpression rhs) {
+        return memory_store(lhs.type, lhs.expression, rhs.expression);
+//        if (lhs.type.same(CType.CHAR))
+//            return new Store(lhs.type.asNumType(), 8, lhs.expression, rhs.expression);
+//        else if (lhs.type.same(CType.SHORT))
+//            return new Store(lhs.type.asNumType(), 16, lhs.expression, rhs.expression);
+//        else
+//            return new Store(lhs.type.asNumType(), lhs.expression, rhs.expression);
+    }
+
+    static private Store memory_store(CType type, Expression lhs, Expression rhs) {
+        if (type.same(CType.CHAR))
+            return new Store(type.asNumType(), 8, lhs, rhs);
+        else if (type.same(CType.SHORT))
+            return new Store(type.asNumType(), 16, lhs, rhs);
         else
-            return new Store(lhs.type.asNumType(), lhs.expression, rhs.expression);
+            return new Store(type.asNumType(), lhs, rhs);
     }
 
     static private Load memory_load(CType type, Expression i) {
@@ -1481,7 +1569,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return b.toString();
     }
 
-    private RuntimeException fail(ParserRuleContext ctx, String desc, String error) {
+    static private RuntimeException fail(ParserRuleContext ctx, String desc, String error) {
         if (print_stack_trace_on_errors)
             return new RuntimeException("[" + ctx.start.getLine() + ":" +
                     ctx.start.getCharPositionInLine() + "] " + desc + " " + ctx.getText() + " : " + error);

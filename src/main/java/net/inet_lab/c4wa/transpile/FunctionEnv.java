@@ -15,12 +15,14 @@ public class FunctionEnv implements Partial, PostprocessContext {
     final Map<NumType, String> tempVars;
     final Deque<Block> blocks;
     final static String STACK_ENTRY_VAR = "@stack_entry";
+    final ModuleEnv moduleEnv;
 
     Instruction[] instructions;
     boolean uses_stack;
 
-    public FunctionEnv (String name, CType returnType, boolean export) {
+    public FunctionEnv (String name, CType returnType, ModuleEnv moduleEnv, boolean export) {
         this.name = name;
+        this.moduleEnv = moduleEnv;
         this.returnType = returnType;
         this.params = new ArrayList<>();
         this.locals = new ArrayList<>();
@@ -136,7 +138,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
             elements.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new GetLocal(NumType.I32, FunctionEnv.STACK_ENTRY_VAR)));
 
         Func watCode = new Func(attributes, elements);
-        return watCode.postprocessList(this).postprocessList(this);
+        return watCode.postprocessList(this).postprocessList(this).postprocessList(this);
     }
 
     static class Block {
