@@ -14,7 +14,7 @@ global_decl
     : (STATIC|EXTERN)? CONST? variable_decl ('=' expression)? ';'                   # global_decl_variable
     | STATIC? variable_decl '(' (variable_type (',' variable_type)* )? ')' ';'    # global_decl_function
     | EXTERN? variable_decl '(' param_list? ')' composite_block                   # function_definition
-    | STRUCT ID '{' (variable_decl ';')+ '}'  ';'                                 # struct_definition
+    | STRUCT ID '{' (struct_mult_members_decl ';')+ '}'  ';'                                 # struct_definition
     ;
 
 variable_decl : primitive variable_with_modifiers;
@@ -27,6 +27,10 @@ variable_with_modifiers
     ;
 
 local_variable:  '*'* ID ('[' expression ']')?;
+
+struct_member_decl:  '*'* ID ('[' expression ']')?;
+
+struct_mult_members_decl : primitive struct_member_decl (',' struct_member_decl)* ;
 
 variable_type : primitive '*'* ;
 
@@ -82,6 +86,7 @@ complex_assignment: lhs '=' expression;
 
 lhs
     : expression '->' ID                      # lhs_struct_member
+    | expression '.' ID                      # lhs_struct_member_dot
     | '(' lhs ')'                      # lhs_parentheses
     | ptr=expression '[' idx=expression ']'   # lhs_index
     | '*' expression                          # lhs_dereference
@@ -95,6 +100,7 @@ arg_list: expression (',' expression)*;
 expression
     : ptr=expression '[' idx=expression ']'        # expression_index
     | expression '->' ID                      # expression_struct_member
+    | expression '.' ID                      # expression_struct_member_dot
     | op=(NOT|MINUS|MULT) expression                 # expression_unary_op
     | BWAND ID                                          # expression_addr_var
     | BWAND lhs                                         # expression_addr_lhs
@@ -163,6 +169,7 @@ OBRACE : '{';
 CBRACE : '}';
 OBRAKET : '[';
 CBRACKET : ']';
+DOT: '.';
 
 TRUE : 'true';
 FALSE : 'false';

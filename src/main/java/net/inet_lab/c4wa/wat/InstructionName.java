@@ -77,6 +77,7 @@ public enum InstructionName implements InstructionType {
     REINTERPRET_I64 ("reinterpret_i64"),
 
     MEMORY_FILL ("memory.fill"),
+    MEMORY_COPY ("memory.copy"),
     MEMORY_GROW ("memory.grow"),
     MEMORY_SIZE ("memory.size"),
 

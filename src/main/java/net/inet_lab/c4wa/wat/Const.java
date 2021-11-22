@@ -28,10 +28,10 @@ public class Const extends Expression {
         doubleValue = value;
     }
 
-    public Const(NumType numType, long value) {
-        super(InstructionName.CONST, numType);
-        longValue = (numType == NumType.I32 || numType == NumType.I64) ? value : 0;
-        doubleValue = (numType == NumType.I32 || numType == NumType.I64)? 0 : value;
+    public Const(NumType numType1, long value) {
+        super(InstructionName.CONST, numType1);
+        longValue = (numType1 == NumType.I32 || numType1 == NumType.I64) ? value : 0;
+        doubleValue = (numType1 == NumType.I32 || numType1 == NumType.I64)? 0 : value;
     }
 
     public Const(NumType numType, double value) {
@@ -56,6 +56,10 @@ public class Const extends Expression {
         return numType == NumType.I32 || numType == NumType.I64
                 ? longValue != 0
                 : doubleValue != 0;
+    }
+
+    public boolean is_int() {
+        return numType == NumType.I32 || numType == NumType.I64;
     }
 
     interface TwoArgIntOperator {

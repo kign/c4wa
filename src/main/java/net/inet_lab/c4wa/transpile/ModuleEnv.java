@@ -60,6 +60,8 @@ public class ModuleEnv implements Partial {
 
         addDeclaration(new FunctionDecl("memset", null,
                 new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR, CType.INT}, false, false));
+        addDeclaration(new FunctionDecl("memcpy", null,
+                new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR.make_pointer_to(), CType.INT}, false, false));
     }
 
     public void addStruct(String name, Struct struct) {
