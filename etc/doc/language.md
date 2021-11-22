@@ -126,6 +126,8 @@ options (default is `c4wa`).
 
 ### Composition of linear memory
 
+![Linear memory](https://github.com/kign/c4wa/blob/stack/etc/doc/memory.png?raw=true "Linear memory" )
+
 ### `alloc`
 
 ### stack variables
