@@ -27,19 +27,12 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     static class ParamList implements Partial {
         final VariableDecl[] paramList;
-        final String struct_name;
 
-        ParamList(VariableDecl[] paramList, String struct_name) {
-            this.paramList = paramList;
-            this.struct_name = struct_name;
-        }
         ParamList(VariableDecl[] paramList) {
             this.paramList = paramList;
-            this.struct_name = null;
         }
         ParamList() {
             this.paramList = new VariableDecl[0];
-            this.struct_name = null;
         }
     }
 
@@ -789,9 +782,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         functionEnv.registerVar(variableDecl.name, variableDecl.type, false);
 
         return new OneInstruction(new DelayedList(List.of(new DelayedLocalDefinition(variableDecl.name), new DelayedAssignment(ctx, new String[]{variableDecl.name}, rhs.expression, rhs.type))));
-        //return new OneInstruction(new DelayedAssignment(ctx, new String[] {variableDecl.name}, rhs.expression, rhs.type));
-
-//        return new OneInstruction(new SetLocal(variableDecl.name, rhs.expression));
     }
 
     @Override
@@ -855,46 +845,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         String[] names = ctx.ID().stream().map(ParseTree::getText).toArray(String[]::new);
         return new OneInstruction(new DelayedAssignment(ctx, names, rhs.expression, rhs.type));
-
-//        int iGlobal = -1;
-//
-//        for (int i = 0; i < names.length; i ++) {
-//            VariableDecl decl = functionEnv.variables.get(names[i]);
-//            if (decl == null) {
-//                decl = moduleEnv.varDecl.get(names[i]);
-//
-//                if (decl == null)
-//                    throw fail(ctx, "assignment", "Variable '" + names[i] + "' is not defined");
-//
-//                if (!decl.mutable)
-//                    throw fail(ctx, "assignment", "Global variable '" + names[i] + "' is not mutable");
-//
-//                if (iGlobal >= 0)
-//                    throw fail(ctx, "assignment", "Can have at most one global variable in chain assignment; found at least two, '" +
-//                            names[iGlobal] + "' and '" + names[i] + "'");
-//
-//                iGlobal = i;
-//            }
-//            if (!decl.type.isValidRHS(rhs.type))
-//                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable '" + names[i] + "' of type " + decl.type);
-//        }
-//
-//        Expression res = rhs.expression;
-//        Instruction ires = null;
-//        for (int i = 0; i < names.length; i++) {
-//            if (i == iGlobal)
-//                continue;
-//
-//            if (iGlobal >= 0 || i < names.length - 1)
-//                res = new TeeLocal(rhs.type.asNumType(), names[i], res);
-//            else
-//                ires = new SetLocal(names[i], res);
-//        }
-//
-//        if (iGlobal >= 0)
-//            ires = new SetGlobal(names[iGlobal], res);
-//
-//        return new OneInstruction(ires);
     }
 
     @Override
@@ -948,12 +898,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     static private Store memory_store(OneExpression lhs, OneExpression rhs) {
         return memory_store(lhs.type, lhs.expression, rhs.expression);
-//        if (lhs.type.same(CType.CHAR))
-//            return new Store(lhs.type.asNumType(), 8, lhs.expression, rhs.expression);
-//        else if (lhs.type.same(CType.SHORT))
-//            return new Store(lhs.type.asNumType(), 16, lhs.expression, rhs.expression);
-//        else
-//            return new Store(lhs.type.asNumType(), lhs.expression, rhs.expression);
     }
 
     static private Store memory_store(CType type, Expression lhs, Expression rhs) {
@@ -1109,21 +1053,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (ptr.type.deref() == null || !ptr.type.deref().is_struct())
             throw fail(ctx, "struct_member", "'" + ptr.type + "' is not a structure pointer");
 
-        String mem = ctx.ID().getText();
-        Struct c_struct = (Struct) ptr.type.deref();
-        Struct.Var mInfo = c_struct.m.get(mem);
-
-        if (mInfo == null)
-            throw fail(ctx, "struct_member", "No member '" + mem + "' in " + c_struct);
-
-        CType type = mInfo.type;
-
-        Expression memAddress = new Add(NumType.I32, ptr.expression, new Const(mInfo.offset));
-
-        if (mInfo.size != null || type.is_struct())
-            return new OneExpression(memAddress, type);
-
-        return new OneExpression(memory_load(type, memAddress), type);
+        return rhs_struct_member(ctx, (Struct) ptr.type.deref(), ctx.ID().getText(), ptr.expression);
     }
 
     @Override
@@ -1133,21 +1063,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (!str.type.is_struct())
             throw fail(ctx, "struct_member_dor", "'" + str.type + "' is not a structure");
 
-        String mem = ctx.ID().getText();
-        Struct c_struct = (Struct) str.type;
-        Struct.Var mInfo = c_struct.m.get(mem);
-
-        if (mInfo == null)
-            throw fail(ctx, "struct_member", "No member '" + mem + "' in " + c_struct);
-
-        CType type = mInfo.type;
-
-        Expression memAddress = new Add(NumType.I32, str.expression, new Const(mInfo.offset));
-
-        if (mInfo.size != null || type.is_struct())
-            return new OneExpression(memAddress, type);
-
-        return new OneExpression(memory_load(type, memAddress), type);
+        return rhs_struct_member(ctx, (Struct) str.type, ctx.ID().getText(), str.expression);
     }
 
     @Override
@@ -1157,14 +1073,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (ptr.type.deref() == null || !ptr.type.deref().is_struct())
             throw fail(ctx, "struct_member", "'" + ptr.type + "' is not a structure pointer");
 
-        String mem = ctx.ID().getText();
-        Struct c_struct = (Struct) ptr.type.deref();
-        Struct.Var mInfo = c_struct.m.get(mem);
-
-        if (mInfo == null)
-            throw fail(ctx, "struct_member", "No member '" + mem + "' in " + c_struct);
-
-        return new OneExpression(new Add(NumType.I32, ptr.expression, new Const(mInfo.offset)), mInfo.type);
+        return lhs_struct_member(ctx, (Struct) ptr.type.deref(), ctx.ID().getText(), ptr.expression);
     }
 
     @Override
@@ -1174,8 +1083,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (!str.type.is_struct())
             throw fail(ctx, "struct_member_dor", "'" + str.type + "' is not a structure");
 
-        String mem = ctx.ID().getText();
-        Struct c_struct = (Struct) str.type;
+        return lhs_struct_member (ctx, (Struct) str.type, ctx.ID().getText(), str.expression);
+    }
+
+    private OneExpression lhs_struct_member(ParserRuleContext ctx, Struct c_struct, String mem, Expression expression) {
         Struct.Var mInfo = c_struct.m.get(mem);
 
         if (mInfo == null)
@@ -1183,12 +1094,29 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         CType type = mInfo.type;
 
-        Expression memAddress = new Add(NumType.I32, str.expression, new Const(mInfo.offset));
+        if (mInfo.size != null)
+            throw fail(ctx, "struct_member", "Array member '" + mem + "' cannot be assigned to");
 
-//        return new OneExpression(memory_load(CType.INT, memAddress), type);
+        Expression memAddress = new Add(NumType.I32, expression, new Const(mInfo.offset));
+
         return new OneExpression(memAddress, type);
     }
 
+    private OneExpression rhs_struct_member(ParserRuleContext ctx, Struct c_struct, String mem, Expression expression) {
+        Struct.Var mInfo = c_struct.m.get(mem);
+
+        if (mInfo == null)
+            throw fail(ctx, "struct_member", "No member '" + mem + "' in " + c_struct);
+
+        CType type = mInfo.type;
+
+        Expression memAddress = new Add(NumType.I32, expression, new Const(mInfo.offset));
+
+        if (mInfo.size != null || type.is_struct())
+            return new OneExpression(memAddress, type);
+
+        return new OneExpression(memory_load(type, memAddress), type);
+    }
 
     @Override
     public OneExpression visitLhs_index(c4waParser.Lhs_indexContext ctx) {
@@ -1228,12 +1156,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 : new Add(NumType.I32, ptr.expression, new Mul(NumType.I32, idx.expression, new Const(type.size())));
 
         return new OneExpression(memory_load(type, memAddress), type);
-//        if (type.same(CType.CHAR))
-//            return new OneExpression(new Load(type.asNumType(), 8, type.is_signed(), memAddress), type);
-//        else if (type.same(CType.SHORT))
-//            return new OneExpression(new Load(type.asNumType(), 16, type.is_signed(), memAddress), type);
-//        else
-//            return new OneExpression(new Load(type.asNumType(), memAddress), type);
     }
 
     @Override
