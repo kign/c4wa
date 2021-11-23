@@ -11,7 +11,7 @@ Obviously, details might change as work on the compiler continues.
   * **Functionality first, syntax sugar later.**<br> Implement the widest possible scope of languages features first, worry 
     about convenience only as necessary.
   * **Compatibility with C standard.**<br> It shouldn't take too much effort to write code which could be compiled 
-    and tested with an ordinary C compiler.
+    and tested both with `c4wm` _and_ an ordinary C compiler.
 
 ## What this compiler is NOT
 
@@ -43,8 +43,8 @@ Web Assembly environment.
 ## Overview
 
 Web Assembly doesn't have any memory management features, instead giving programmers access to one single memory block 
-("linear memory"). Correspondingly, `c4wa` has limited any dynamic memory allocation capabilities; for anything beyond
-that, developer must assign free space to all dynamic objects manually (more on tha below).
+("linear memory"). Correspondingly, `c4wa` has only limited any dynamic memory allocation capabilities; for anything beyond
+that, developer must assign free space to all dynamic objects manually (more on that below).
 
 `cw4a` supports Web Assembly primitive types (`i32`, `i64`, `f32` and `f64` which translate to C as 
 `int`, `long`, `float` and `double` correspondingly), also `char` and `short` 
@@ -52,13 +52,13 @@ that, developer must assign free space to all dynamic objects manually (more on 
 pointers, structures and arrays. Not all possible combinations are supported though, like you can't have
 pointer to an array, etc.
 
-Any integer types could be `unsigned`. `sizeof` is supported (but will return results different from native C
+Any integer type could be `unsigned`. `sizeof` is supported (but may return results different from native C
 compiler due to no need to use alignment in Web Assembly memory).
 
 `typedef` isn't supported. You must use syntax `struct NAME` when declaring variables of type `struct`. 
 There are no `union`s.
 
-`c4wa` supports most usual operators, but assignment isn't treated as an operator. It does support chain assignment
+`c4wa` supports most C operators, but assignment isn't treated as an operator. It does support chain assignment
 `a = b = c ...` with some limitations though.
 
 Usual pointer arithmetic is supported; `&` operator can be used with some limitations.
@@ -87,32 +87,35 @@ could be assigned to.
 
 Web Assembly is kind of strict about requiring explicit `return` statement at the end of non-void functions,
 even if your code is structured in a way that it could never reach the end, and value is ways returned; 
-this requirement is thus passed to code written for `c4wa` (I could of course add missing `return` to generated WAT code,
+this requirement is thus passed to code written for `c4wa` (I could perhaps add missing `return` to generated WAT code,
 but that would risk masking a real problem, so I prefer not to do it).
 
 Function declarations (unlike definition) can't have parameter names, only types.
 
 ## Import and export
 
-Syntax of C doesn't exactly match Web Assembly notion of "imported" and "exported" symbols (global variables, functions
-and memory); here is how we map existing C attributes Web Assembly:
+Syntax of C doesn't exactly match Web Assembly notions of "imported" and "exported" symbols (global variables, functions
+and memory); here is how we interpret some C attributes for Web Assembly:
 
-**Function definition** could be `extern`; this makes function exported. It is always exported under its own name. 
+**Function definition** could be `extern`; this makes function _exported_. It is always exported under its own name. 
 A function which is not `extern` will not be exported. Obviously, you should always have at least one `extern` function,
 but you can have as many as you want.
 
-**Function declaration** could be `static`; this will case declared function _not_ to be imported. 
+**Function declaration** could be `static`; this will cause declared function _not_ to be imported. 
 
-Normally, when you declare function like `double atan2(double, double)`, it is interpreted as imported, and
+Normally, when you declare function like `double atan2(double, double)` (no attributes), 
+it is interpreted as _imported_, and
 if not provided by the run-time, this will trigger a error. You don't have to declare a function defined 
-in your code, regardless where it is defined or used; however, normal C compiler might require such 
-preliminary declaration. In this case, you can declare `static` function, so it won't be looked up in import.
+in your code, regardless where it is defined or used; however, regular C compiler requires such 
+preliminary declarations. In this case, you can declare `static` function, so it won't be looked up in import.
 
-**Global variables** could be `static`, `extern`, or neither. `extern` variable will be exported, and neither `extern`
-nor `static` will be imported (just like a function declaration). `static` global variables are neither 
+**Global variables** could be `static`, `extern`, or neither. `extern` variable will be _exported_, and neither `extern`
+nor `static` will be _imported_ (just like a function declaration). `static` global variables are neither 
 imported not exported.
 
-(Unrelated to import or export, global variable could also be `const`).
+(Unrelated to import or export, global variable could also be `const`)
+
+Any C attribute not listed above is not allowed (so you can't have `static` function definition or `extern` declaration). 
 
 **Memory** behaviour is determined by compiler options 
 (see [here](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md)). It could be imported, 
@@ -124,22 +127,198 @@ options (default is `c4wa`).
 
 ## Memory
 
+A simple C program might not require a linear memory at all; you can use 
+[compiler option](https://github.com/kign/c4wa/blob/stack/etc/doc/properties.md) `module.memoryStatus=none`
+to not add any memory declaration to generated WAT file. However, many features, such as 
+taking address of a local variable, using `struct`s or arrays, calling imported function with 
+arbitrary number of arguments (like `printf`), and obviosuly allocating memory directly, won't work without 
+linear memory.
+
 ### Composition of linear memory
 
 ![Linear memory](https://github.com/kign/c4wa/blob/stack/etc/doc/memory.png?raw=true "Linear memory" )
 
+Generated WAT will two special blocks of linear memory with configurable sizes.
+
+  * **Stack**, size `module.stackSize` (default 1024), for stack variables;
+  * **Data**, size `module.dataSize` (default 1024), for string literals.
+
+The rest of memory, from byte number  `module.stackSize + module.dataSize` onwards, will only be used
+by directly calling `alloc` pseudo-macro.
+
 ### `alloc`
+
+You can think of `alloc` as macro wih this definition
+
+```c
+#ifdef C4WA
+#define alloc(address, _ignore, type) (type *)(address + offset)
+#else 
+#define alloc(_ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
+#endif
+```
+
+In Web Assembly, this simply returns its first argument plus offset 
+(which is where general use memory begins, `module.stackSize + module.dataSize`) wrapped up and
+pointer to the last argument. When compiling with regular C compiler, you can invoke `malloc`
+to trigger a similar behaviour.
+
+Example:
+
+```c
+int * arr = alloc(10, N + 1, int);
+```
+
+This can be used to allocate an array of `N+1` integers (note that you can also use syntax `int arr[N+1]`).
+
+Second argument `N+1` is ignored by `c4wa`. It is only present for possible future implementation
+of an actual memory manager and to make it easier to compile and test with native C compiler.
 
 ### stack variables
 
+We b Assembly supports unlimited number of local variables, so when you have a local variable in C,
+we normally map it to a local variable in Web Assembly under same name (these names are only present in WAT file,
+actual WASM code simply refers to them by consecutive numbers). There are two cases when we can't do it though.
+
+First, this happens if you declare a variable of type array (not pointer) or `struct`. In this case,
+your variable allocated in the _stack_ (first `module.stackSize` bytes of linear memory). Actual WASM local variable
+holds a pointer to this memory (which is one case when pointer could have a numeric value 0).
+
 ### `&`
+
+However, `cw4a` would also assign a regular primitive type variable to the stack if you attempt to take an
+address of this variable. If everything works as it should, whether a local variable allocated in the stack
+or not should make no difference on the C code; however, constantly accessing and saving memory could 
+have a performance hit and also generate larger and more complex WAT code. It is therefore recommended to
+limit use of stack variables to get better results.
+
+You can't take an address of an array (since it's already the address) or a global variable 
+(since they can't be put on the stack)
+
+One peculiarity of `c4wa` is that expression `&a[1]` is interpreted as `(&a)[1]` and not `&(a[1])` as it should.
+This is related to left recursion in Antlr4, and I haven't been able to solve this yet without significant
+changes to the grammar. For any practical use, this is hardly a problem, you can always use parenthesis or
+simply replace this expression with `a + 1`, which is what it is.
+
+### Memory functions
+
+These functions behave as normal C function in C code with given signatures 
+(which is slightly different from C standard), but `c4wa` internally replaces
+them with Web Assembly memory operators:
+
+| Name   | Signature                               | Description  | 
+| ------ | --------------------------------------- | ------------ |
+| memset | `char * addr`, `char value`, `int size` | Same as in C |
+| memcpy | `char * dest`, `char * src`, `int size` | Same as in C |
+
+Note that if using `memset` and `memcpy`, you'll need option `--enable-bulk-memory` to use `wat2wasm`.
+Also, generated WASM module might not be compatible with some runtimes (such as `wasmer` as of this writing).
 
 ## Strings and chars
 
+Web Assembly has special DATA section and `data` instruction to store strings easily in memory. 
+All string literals in C code are placed in DATA section with terminating `\0`; 
+identical strings are assign same memory address.
+When assigned to a variable or passed as an argument to a function, string literals have type `char *`.
+
+Consecutive string literals are join together, so the following code is legal:
+
+```c
+char * file = 
+    "Line 1\n"
+    "Line 2\n"
+    "Line 3\n";
+```
+
+Unlike most C implementations, string literals remain writable. The following code will work
+in Web Assembly but will probably trigger a Bug Error with native C compiler:
+
+```c
+char * name = "peter";
+name[0] = 'P';
+```
+
+Char literals are supported, including all standard escape sequences.
+
+Note that strings and `char`s are 8-bit. If you include a Unicode character in a string, it'll be decoded 
+into bytes with UTF-8 encoding. You can't have a `char` literal with a Unicode character.
+
+You can use built-in function `memcpy` to copy string literal to string array, but remember to account for 
+terminating zero byte:
+
+```c
+char name[5];
+memcpy(name, "John", 5);
+```
+
 ## `printf`
 
-## Memory operations
+`c4wa` doesn't have any built-in support for `printf` function; if you need, you can implement it in your runtime
+and import into Web Assembly code.
+
+This however raises a problem how to deal with function with variable argument list. Normally,
+an imported function must have a specific declared signature. We solve this problem by introducing special kind
+of imported function, which could accept any number of type of arguments via memory pointers.
+
+Specifically, if you declare a function without signature (remember that a non-static declaration is considered
+an import declaration):
+
+```c
+void printf();
+```
+
+Generated WASM code would expect an imported function `printf` with **two** arguments: memory address to begin
+reading arguments from and number of arguments; every argument takes exactly 8 bytes.
+
+So if for example `printf` is actually called with 5 arguments, your implementation will receive two arguments,
+`offset` and `count`; `count` will be number of arguments, 5 in this case, and values of these arguments will be stored
+in memory:
+
+1-st argument at address `offset`;<br>
+2-nd argument at address `offset + 8`;<br>
+3-rd argument at address `offset + 16`;<br>
+4-th argument at address `offset + 24`;<br>
+5-th argument at address `offset + 32`.
+
+When passing arguments, all integer values are converted to `long`, and all float values to `double`.
 
 ## Boolean operators and values
 
+Booleans should be reasonably consistent with C: `0` is _false_, `1` is _true_, etc. We don't have any built-in
+support for `true` or `false` constants, feel free to add your own via preprocessor or globals.
+
+One thing to note, `c4wa` _does_ support proper semantics for boolean `&&` and `||` (so when evaluating
+`A && B`, if `A` evaluates to _false_, `B` is not evaluated), but at a price of generating more complex 
+WAT code (since there is no built-in support for such operations in Web Assembly). You may consider
+using bitwise `&` and `|` instead in some situations, which directly translate to WASM instructions
+resulting in simpler and faster code.
+
 ## Casts
+
+As mentioned above, almost all casts must be explicit, and integer and float literals are `int` and `double`
+respectively. `long` and `float` literals aren't supported, so to assign a constant to a float you need a cast:
+
+```c
+float x;
+x = (float) 1; // or (float) 1.0;
+double y;
+y = 2. // or (double)2, but simply 2 won't work
+```
+
+## Globals
+
+Web Assembly supports global variables, so you can freely use them in C code. However, Web Assembly requires that
+all non-imported globals be initialized.
+
+```c
+int Num_of_Points;        // imported
+extern double Volume = 0; // exported, must initialize
+static N = 10;            // internal, neither imported or exported
+const test_mode = 1;      // non-mutable, implicitly 'static' unless declared 'extern'
+```
+
+Global values could be initialized to any compile-time constant; compile-only expressions may use `sizeof`. 
+
+## Comments
+
+Both C-style `/* ... */` and C++ line comments `// ........` are supported.
