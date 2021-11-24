@@ -20,7 +20,7 @@
               (set_local $seed (i64.add (i64.mul (i64.const 3) (get_local $seed)) (i64.const 1)))))))
       (set_local $len (i32.add (get_local $len) (i32.const 1)))
       (br $@block_1_continue))
-    (return (i32.const -1)))
+    (unreachable))
   (func $main (export "main") (result i32)
     (local $@stack_entry i32)
     (local $printed i32)

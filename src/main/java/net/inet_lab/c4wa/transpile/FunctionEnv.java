@@ -133,8 +133,14 @@ public class FunctionEnv implements Partial, PostprocessContext {
 
         elements.addAll(Arrays.asList(instructions));
 
-        if (uses_stack && !(elements.get(elements.size() - 1) instanceof ParseTreeVisitor.DelayedReturn))
-            elements.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new GetLocal(NumType.I32, FunctionEnv.STACK_ENTRY_VAR)));
+        if (!(elements.size() > 0 && elements.get(elements.size() - 1) instanceof ParseTreeVisitor.DelayedReturn)) {
+            if (returnType == null) {
+                if (uses_stack)
+                    elements.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new GetLocal(NumType.I32, FunctionEnv.STACK_ENTRY_VAR)));
+            }
+            else
+                elements.add(new Unreachable());
+        }
 
         Func watCode = new Func(attributes, elements);
         return watCode.postprocessList(this).postprocessList(this).postprocessList(this);

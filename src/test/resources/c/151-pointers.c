@@ -39,7 +39,6 @@ int gen2(int * primes) {
 
 extern int main () {
     int i;
-//    int * primes = alloc(0, 50, int);
     int primes[N/2];
 
     for (int iter = 0; iter < 2; iter ++) {

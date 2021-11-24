@@ -21,8 +21,7 @@ Web Assembly environment.
 
   * Your code might successfully pass through `c4wa` but still fail `wat2wasm` compilation. 
     The plan in to eventually try to verify generated code as much as possible to avoid incorrect WAT output, 
-    but it's still very much work in progress (for example, 
-    if you fail to return a value from a non-void function, you'll get a error from `wat2wasm`, not from `c4wa`). 
+    but it's still very much work in progress. 
     Fortunately, since generated WAT code could be easily matched to the original code, 
     such errors are easy to fix in the original C code (unless it is a compiler bug)
   * Your code might successfully compile with both regular compiler and `c4wa`, generate correctly working
@@ -42,6 +41,9 @@ Web Assembly environment.
 
 ## Overview
 
+We list below most important known limitations of `c4wa` compiler, inconsistencies with standard C, or specifics of WASM
+runtime, in no particular order. Some of these we'll cover in more details further down. 
+
 Web Assembly doesn't have any memory management features, instead giving programmers access to one single memory block 
 ("linear memory"). Correspondingly, `c4wa` has only limited any dynamic memory allocation capabilities; for anything beyond
 that, developer must assign free space to all dynamic objects manually (more on that below).
@@ -54,6 +56,10 @@ pointer to an array, etc.
 
 Any integer type could be `unsigned`. `sizeof` is supported (but may return results different from native C
 compiler due to no need to use alignment in Web Assembly memory).
+
+`void` keyword is recognized, but it isn't really a type, but more like indicator of "no type". 
+For now, `void` could only be used in function
+definition or declaration to indicate "no return value". You can't have `void *`, etc.
 
 `typedef` isn't supported. You must use syntax `struct NAME` when declaring variables of type `struct`. 
 There are no `union`s.
@@ -85,10 +91,8 @@ initialize variables when you define them, e.g.
 structures (except literal strings, which are zero-terminated `char` arrays); neither arrays nor `struct`s 
 could be assigned to.
 
-Web Assembly is kind of strict about requiring explicit `return` statement at the end of non-void functions,
-even if your code is structured in a way that it could never reach the end, and value is ways returned; 
-this requirement is thus passed to code written for `c4wa` (I could perhaps add missing `return` to generated WAT code,
-but that would risk masking a real problem, so I prefer not to do it).
+If you reach the end of a non-void function without returning a value, this will trigger "RuntimeError: unreachable"
+in WASM even if return value is never actually used.
 
 Function declarations (unlike definition) can't have parameter names, only types.
 
@@ -208,8 +212,8 @@ You can't take an address of an array (since it's already the address) or a glob
 
 One peculiarity of `c4wa` is that expression `&a[1]` is interpreted as `(&a)[1]` and not `&(a[1])` as it should.
 This is related to left recursion in Antlr4, and I haven't been able to solve this yet without significant
-changes to the grammar. For any practical use, this is hardly a problem, you can always use parenthesis or
-simply replace this expression with `a + 1`, which is what it is.
+changes to the grammar. For practical use, this is hardly a problem, you can always use parenthesis or
+simply replace this expression with `a + 1`, which is what it is anyway.
 
 ### Memory functions
 
@@ -345,11 +349,6 @@ const test_mode = 1;      // non-mutable, implicitly 'static' unless declared 'e
 ```
 
 Global values could be initialized to any compile-time constant; compile-time expressions may use `sizeof`.
-
-## Void
-
-`void` isn't really a type, but more like indicator of "no type". For now, `void` could only
-be used in function definition or declaration to indicate "no return value". You can't have `void *`, etc.
 
 ## Comments
 

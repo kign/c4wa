@@ -15,7 +15,6 @@ int cycle(unsigned long seed) {
         len ++;
     }
     while(1);
-    return -1;
 }
 
 extern int main () {

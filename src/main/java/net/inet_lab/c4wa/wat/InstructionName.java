@@ -93,6 +93,8 @@ public enum InstructionName implements InstructionType {
     DATA ("data"),
     MUT ("mut"),
 
+    UNREACHABLE ("unreachable"),
+
     SPECIAL("<special>"); // fake
 
     private final String name;

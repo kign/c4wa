@@ -9,10 +9,7 @@ public class Instruction_1 extends Instruction {
     }
 
     public String toStringPretty(int indent) {
-        if (arg == null)
-            return "(" + type.getName() + ")";
-        else
-            return "(" + type.getName() + " " + arg + ")";
+        return toString();
     }
 
     @Override
