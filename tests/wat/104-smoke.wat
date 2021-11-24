@@ -18,7 +18,7 @@
         (else
           (set_local $a (get_local $c))))
       (br_if $@block_1_continue (f64.gt (f64.sub (get_local $b) (get_local $a)) (global.get $precision))))
-    (return (f64.div (f64.add (get_local $a) (get_local $b)) (f64.const 2.0))))
+    (f64.div (f64.add (get_local $a) (get_local $b)) (f64.const 2.0)))
   (func $main (export "main") (result i32)
     (local $@stack_entry i32)
     (local $i i32)
@@ -35,4 +35,4 @@
       (set_local $i (i32.add (get_local $i) (i32.const 1)))
       (br_if $@block_1_continue (i32.le_s (get_local $i) (i32.const 10))))
     (global.set $@stack (get_local $@stack_entry))
-    (return (i32.const 0))))
+    (i32.const 0)))

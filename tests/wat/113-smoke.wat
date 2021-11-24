@@ -56,4 +56,4 @@
   (func $main (export "main") (result i32)
     (call $test_1)
     (call $test_2)
-    (return (i32.const 0))))
+    (i32.const 0)))

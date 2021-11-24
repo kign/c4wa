@@ -222,4 +222,4 @@
         (br $@block_1_continue)))
     (call $print (get_local $X) (get_local $Y) (if (result i32) (i32.eqz (i32.rem_s (global.get $N) (i32.const 2))) (then (get_local $pos_0)) (else (get_local $pos_1))) (i32.const 0))
     (global.set $@stack (get_local $@stack_entry))
-    (return (i32.const 0))))
+    (i32.const 0)))

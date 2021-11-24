@@ -10,7 +10,10 @@ abstract public class Expression {
     }
 
     String fullName() {
-        return numType.name + "." + name.getName();
+        if (numType == null)
+            return name.getName();
+        else
+            return numType.name + "." + name.getName();
     }
 
     abstract public String toString();

@@ -8,10 +8,6 @@ public class Instruction_1 extends Instruction {
         this.arg = arg;
     }
 
-    public String toStringPretty(int indent) {
-        return toString();
-    }
-
     @Override
     public String toString() {
         if (arg == null)

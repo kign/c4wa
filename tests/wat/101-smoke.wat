@@ -18,4 +18,4 @@
     (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
     (call $printf (global.get $@stack) (i32.const 2))
     (global.set $@stack (get_local $@stack_entry))
-    (return (i32.const 0))))
+    (i32.const 0)))

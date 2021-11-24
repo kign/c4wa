@@ -18,7 +18,7 @@
         (else
           (set_local $a (get_local $c))))
       (br_if $@block_1_continue (f64.gt (f64.sub (get_local $b) (get_local $a)) (global.get $precision))))
-    (return (f64.div (f64.add (get_local $a) (get_local $b)) (f64.const 2.0))))
+    (f64.div (f64.add (get_local $a) (get_local $b)) (f64.const 2.0)))
   (func $solve_square_equation (param $a f64) (param $b f64) (param $c f64) (param $roots i32) (param $p_status i32)
     (local $d f64)
     (local $sqrt_d f64)
@@ -82,4 +82,4 @@
     (call $try_solving (i32.const 1) (i32.const -2) (i32.const 1))
     (call $try_solving (i32.const 10) (i32.const 11) (i32.const -7))
     (call $try_solving (i32.const 10) (i32.const 11) (i32.const 7))
-    (return (i32.const 0))))
+    (i32.const 0)))

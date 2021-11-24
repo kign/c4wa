@@ -89,7 +89,7 @@ node collatz.js 626331
 # Output: Cycle length of 626331 is 508
 ```
 
-Note that generated WASM file `collatz.wasm` **is only 100 bytes in size**.
+Note that generated WASM file `collatz.wasm` **is only 99 bytes in size**.
 
 ## Documentation
 

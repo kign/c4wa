@@ -22,8 +22,8 @@ Web Assembly environment.
   * Your code might successfully pass through `c4wa` but still fail `wat2wasm` compilation. 
     The plan in to eventually try to verify generated code as much as possible to avoid incorrect WAT output, 
     but it's still very much work in progress. 
-    Fortunately, since generated WAT code could be easily matched to the original code, 
-    such errors are easy to fix in the original C code (unless it is a compiler bug)
+    Fortunately, since generated WAT code could be easily traced to the original code, 
+    such errors are easy to fix in C code (unless it is a compiler bug).
   * Your code might successfully compile with both regular compiler and `c4wa`, generate correctly working
     native executable, but still work incorrectly in Web Assembly. This could be due to a limited number of known
     inconsistencies you should be aware of when writing code for `c4wa`.
@@ -36,8 +36,8 @@ Web Assembly environment.
   * There is no expectation that any existing C code, other than completely trivial, would pass through `c4wa`
     with no changes. Moreover, we are not making too much effort to make adaptation to `c4wa` easier,
     since it would be mostly pointless. However, for any normal C code, which doesn't rely on external functions
-    or libraries, doesn't use any compiler- or OS-specific features, and doesn't use too much certain more obscure 
-    language features, making it `c4wa`-compatible shouldn't take too much effort. 
+    or libraries, doesn't use any compiler- or OS-specific features, and doesn't use too much more obscure 
+    language features (`union`s, for one thing), making it `c4wa`-compatible shouldn't take too much effort. 
 
 ## Overview
 
@@ -45,7 +45,7 @@ We list below most important known limitations of `c4wa` compiler, inconsistenci
 runtime, in no particular order. Some of these we'll cover in more details further down. 
 
 Web Assembly doesn't have any memory management features, instead giving programmers access to one single memory block 
-("linear memory"). Correspondingly, `c4wa` has only limited any dynamic memory allocation capabilities; for anything beyond
+("linear memory"). Correspondingly, `c4wa` has only limited dynamic memory allocation capabilities; for anything beyond
 that, developer must assign free space to all dynamic objects manually (more on that below).
 
 `cw4a` supports Web Assembly primitive types (`i32`, `i64`, `f32` and `f64` which translate to C as 
@@ -111,7 +111,7 @@ Normally, when you declare function like `double atan2(double, double)` (no attr
 it is interpreted as _imported_, and
 if not provided by the run-time, this will trigger a error. You don't have to declare a function defined 
 in your code, regardless where it is defined or used; however, regular C compiler requires such 
-preliminary declarations. In this case, you can declare `static` function, so it won't be looked up in import.
+advance declarations. In this case, you can declare `static` function, so it won't be looked up in import.
 
 **Global variables** could be `static`, `extern`, or neither. `extern` variable will be _exported_, and neither `extern`
 nor `static` will be _imported_ (just like a function declaration). `static` global variables are neither 
@@ -174,7 +174,8 @@ Example:
 int * arr = alloc(10, N + 1, int);
 ```
 
-This can be used to allocate an array of `N+1` integers (note that you can also use syntax `int arr[N+1]`).
+This can be used to allocate an array of `N+1` integers (note that you can also use syntax `int arr[N+1]` 
+to allocate in the stack instead, subject to space limitation of course).
 
 Second argument `N+1` is ignored by `c4wa`, so consider it a declaration of intent. 
 It is only present for possible future implementation
@@ -197,7 +198,7 @@ actual WASM code simply refers to them by consecutive numbers). There are two ca
 
 First, this happens if you declare a variable of type array (not pointer) or `struct`. In this case,
 your variable is allocated in the _stack_ (first `module.stackSize` bytes of linear memory). Actual WASM local variable
-holds a _pointer_ to this memory (which is one case when pointer could have a numeric value 0).
+holds a _pointer_ to this memory (which is one case when pointer could have a numeric value 0, a very top of the stack).
 
 ### `&`
 
@@ -246,7 +247,7 @@ static int __memory_size = 1;
 
 Web Assembly has special DATA section and `data` instruction to store strings in memory. 
 All string literals in C code are placed in DATA section with terminating `\0`; 
-identical strings are assign same memory address.
+identical strings are assigned same memory address.
 When assigned to a variable or passed as an argument to a function, string literals have type `char *`.
 
 Consecutive string literals are joined together, so the following code is legal:
@@ -258,7 +259,7 @@ char * file =
     "Line 3\n";
 ```
 
-Unlike most C implementations, string literals remain writable. The following code will work
+Unlike most C implementations, _string literals are writable_. The following code will work
 in Web Assembly but will probably trigger a Bus Error with native C compiler:
 
 ```c
@@ -296,7 +297,7 @@ void printf();
 ```
 
 Generated WASM code would expect an imported function `printf` with **two** arguments: memory address to begin
-reading arguments from and number of arguments; every argument takes exactly 8 bytes.
+reading arguments from and number of arguments; every argument takes exactly 8 bytes (64 bits) in linear memory.
 
 So if for example `printf` is actually called with 5 arguments, your implementation will receive two arguments,
 `offset` and `count`; `count` will be number of arguments, 5 in this case, and values of these arguments will be stored
@@ -310,8 +311,8 @@ in memory:
 
 When passing arguments, all integer values are converted to `long`, and all float values to `double`.
 
-Note that if passing a string as one of the arguments (as would bethe case with actual `printf`),
-corresponding values read from memory would _itself_ be a memory address of the string.
+Note that if passing a string as one of the arguments (as would be the case with an actual `printf` adaptation),
+value stored in memory would _itself_ be a memory address of the string.
 
 ## Boolean operators and values
 

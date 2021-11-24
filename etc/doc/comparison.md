@@ -142,7 +142,7 @@ zig build-lib collatz.zig -target wasm32-freestanding -dynamic
 ```
 
 Unlike `emscripten`, there is no "glue" JavaScript; generated WASM could be immediately loaded. However, this WASM
-file is already 52K (as a reminder, `c4wa` fits this function into 100 bytes). Using again `wasm-decompile`
+file is already 52K (as a reminder, `c4wa` fits this function into 99 bytes). Using again `wasm-decompile`
 to extract code for this specific function, it appears that it is even more complicated than `emscripten` version.
 
 None of that is necessarily a deal breaker. The huge advantage of using exising compilers is that

@@ -50,6 +50,18 @@ public class Instruction_list extends Instruction {
             res.addAll(Arrays.asList(pp));
         }
 
+        if (type == InstructionName.FUNC && !res.isEmpty()) {
+            int n = res.size() - 1;
+            if (res.get(n) instanceof Return) {
+                same = false;
+                Return r = (Return) res.get(n);
+                if (r.arg == null)
+                    res.remove(n);
+                else
+                    res.set(n, new WrapExp(r.arg));
+            }
+        }
+
         if (same)
             return this;
         else if (res.size() == 0)
