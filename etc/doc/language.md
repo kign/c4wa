@@ -39,10 +39,34 @@ Web Assembly environment.
     or libraries, doesn't use any compiler- or OS-specific features, and doesn't use too much more obscure 
     language features (`union`s, for one thing), making it `c4wa`-compatible shouldn't take too much effort. 
 
-## Overview
+## TL;DR
 
-We list below most important known limitations of `c4wa` compiler, inconsistencies with standard C, or specifics of WASM
-runtime, in no particular order. Some of these we'll cover in more details further down. 
+Here are some of the most commonly used features of C language **NOT** supported by `c4wa`:
+
+  * Standard library
+  * `switch`
+  * `typedef`
+  * `union`
+  * `enum`
+  * `static` variables or functions
+  * `while() ...` loop
+  * wide chars
+  * `void *` pointers
+  * Pragmas
+  * Array initializers
+  * Assignment operators `=`, `+=`, `++` etc. in expressions
+  * Comma `,` operator
+  * Assignment of `struct`s or using `struct` as an argument
+  * `long`/`float` literals
+  * `goto`
+  * block scope
+  * Pointers to arrays, arrays of arrays
+  * Function names as variables, indirect function calls
+
+## A bit more details
+
+_We list below most important known limitations of `c4wa` compiler, inconsistencies with standard C, or specifics of WASM
+runtime, in no particular order. Some of these we'll cover in more details further down._ 
 
 Web Assembly doesn't have any memory management features, instead giving programmers access to one single memory block 
 ("linear memory"). Correspondingly, `c4wa` has only limited dynamic memory allocation capabilities; for anything beyond
@@ -94,7 +118,7 @@ could be assigned to.
 If you reach the end of a non-void function without returning a value, this will trigger "RuntimeError: unreachable"
 in WASM even if return value is never actually used.
 
-Function declarations (unlike definition) can't have parameter names, only types.
+Function declarations (unlike definitions) can't have parameter names, only types.
 
 ## Import and export
 

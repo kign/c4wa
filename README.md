@@ -91,6 +91,42 @@ node collatz.js 626331
 
 Note that generated WASM file `collatz.wasm` **is only 99 bytes in size**.
 
+There is nothing whatsoever that forces you to use `node` or JavaScript to execute WASM files.
+There are many universal runtimes with bindings available for many languages. For example, 
+using [wasmer](https://wasmer.io/) and Python3, you can run `collatz.wasm` with this simple
+script:
+
+```python
+import sys
+from wasmer import engine, Store, Module, Instance
+from wasmer_compiler_llvm import Compiler
+
+store = Store(engine.Native(Compiler))
+module = Module(store, open('collatz.wasm', 'rb').read())
+instance = Instance(module)
+
+n = int(sys.argv[1]);
+print("Cycle length of", n, "is", instance.exports.collatz(n))
+```
+
+Save it as `collatz.py`, install `wasmer` bindings and execute:
+
+```bash
+python3 -m pip install --upgrade wasmer wasmer_compiler_llvm
+python3 collatz.py 626331
+# Cycle length of 626331 is 508
+```
+
+We also provide a customized `node`-based runtime for testing, which allows you to use inside your code
+function `printf` very similar to how you would in C; it automatically calls function `main` (with no arguments).
+You can use it with any of the tests in this directory. For example
+
+```bash
+c4wa-compile -P 170-life.c
+wat2wasm --enable-bulk-memory  170-life.wat
+etc/run-wasm 170-life.wasm
+```
+
 ## Documentation
 
  * [Comparison with `emscripten` and other compilers](https://github.com/kign/c4wa/blob/master/etc/doc/comparison.md)

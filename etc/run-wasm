@@ -1,0 +1,13 @@
+#! /usr/bin/env node
+'use strict';
+
+const {wasm_printf} = require('./wasm-printf');
+
+const fs = require('fs');
+const wasm_bytes = new Uint8Array(fs.readFileSync(process.argv[2]));
+let wasm_mem;
+WebAssembly.instantiate(wasm_bytes, {c4wa: {printf: wasm_printf(() => new Uint8Array(wasm_mem.buffer))}})
+    .then(wasm => {
+        wasm_mem = wasm.instance.exports.memory;
+        wasm.instance.exports.main()
+    });
