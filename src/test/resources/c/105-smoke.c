@@ -16,6 +16,7 @@ void v1 () {
             printf(" %d", p);
     }
     printf("\n");
+    return; // inserting it here on purpose, must be dropped by compiler
 }
 void v2 () {
     printf("2");
