@@ -63,7 +63,8 @@
     (local $iter i32)
     (local $n i32)
     (set_local $@stack_entry (global.get $@stack))
-    (set_local $primes (i32.const 2048))
+    (set_local $primes (global.get $@stack))
+    (global.set $@stack (i32.add (global.get $@stack) (i32.mul (i32.div_s (global.get $N) (i32.const 2)) (i32.const 4))))
     (block $@block_1_break
       (set_local $iter (i32.const 0))
       (loop $@block_1_continue

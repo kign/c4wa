@@ -97,7 +97,7 @@ Function declarations (unlike definition) can't have parameter names, only types
 Syntax of C doesn't exactly match Web Assembly notions of "imported" and "exported" symbols (global variables, functions
 and memory); here is how we interpret some C attributes for Web Assembly:
 
-**Function definition** could be `extern`; this makes function _exported_. It is always exported under its own name. 
+**Function definition** could be `extern`; this makes function _exported_. 
 A function which is not `extern` will not be exported. Obviously, you should always have at least one `extern` function,
 but you can have as many as you want.
 
@@ -115,15 +115,16 @@ imported not exported.
 
 (Unrelated to import or export, global variable could also be `const`)
 
-Any C attribute not listed above is not allowed (so you can't have `static` function definition or `extern` declaration). 
-
 **Memory** behaviour is determined by compiler options 
 (see [here](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md)). It could be imported, 
 exported (current default), purely internal or not be present at all.
 
-All exported objects are exported and imported under there names in C (except memory, which doesn't have a C
+All exported objects are exported and imported under their names in C (except memory, which doesn't have a C
 identifier and so name is determine by compiler options). When importing, module name is also set by compiler 
 options (default is `c4wa`).
+
+Any C attribute not listed above is not allowed (so you can't have `static` function definition or `extern` declaration)
+.
 
 ## Memory
 
@@ -138,7 +139,7 @@ linear memory.
 
 ![Linear memory](https://github.com/kign/c4wa/blob/stack/etc/doc/memory.png?raw=true "Linear memory" )
 
-Generated WAT will two special blocks of linear memory with configurable sizes.
+Generated WAT will have two special blocks of linear memory with configurable sizes.
 
   * **Stack**, size `module.stackSize` (default 1024), for stack variables;
   * **Data**, size `module.dataSize` (default 1024), for string literals.
@@ -146,7 +147,7 @@ Generated WAT will two special blocks of linear memory with configurable sizes.
 The rest of memory, from byte number  `module.stackSize + module.dataSize` onwards, will only be used
 by directly calling `alloc` pseudo-macro.
 
-### `alloc`
+### `alloc` and `free`
 
 You can think of `alloc` as macro wih this definition
 
@@ -159,7 +160,7 @@ You can think of `alloc` as macro wih this definition
 ```
 
 In Web Assembly, this simply returns its first argument plus offset 
-(which is where general use memory begins, `module.stackSize + module.dataSize`) wrapped up and
+(which is where general use memory begins, `module.stackSize + module.dataSize`) wrapped up as a
 pointer to the last argument. When compiling with regular C compiler, you can invoke `malloc`
 to trigger a similar behaviour.
 
@@ -171,18 +172,28 @@ int * arr = alloc(10, N + 1, int);
 
 This can be used to allocate an array of `N+1` integers (note that you can also use syntax `int arr[N+1]`).
 
-Second argument `N+1` is ignored by `c4wa`. It is only present for possible future implementation
+Second argument `N+1` is ignored by `c4wa`, so consider it a declaration of intent. 
+It is only present for possible future implementation
 of an actual memory manager and to make it easier to compile and test with native C compiler.
+
+Function `free` basically has same semantic as in C standard library, it frees memory earlier allocated 
+with `alloc`. Since for now `alloc` doesn't really allocate anything, `free` does nothing.
+Just like 2<sup>nd</sup> argument to `alloc`, it is there for better compatibility with C compiler,
+future enhancements and to better represent programmer's intent.
+
+Note that function `free` is special in `c4wa` since it takes pointer of _any type_ as an argument.
+Normally defined (or imported) functions would only work with a specific pointer type, including
+built-in `memset` and `memcpy`.
 
 ### stack variables
 
-We b Assembly supports unlimited number of local variables, so when you have a local variable in C,
+Web Assembly supports unlimited number of local variables, so when you have a local variable in C,
 we normally map it to a local variable in Web Assembly under same name (these names are only present in WAT file,
 actual WASM code simply refers to them by consecutive numbers). There are two cases when we can't do it though.
 
 First, this happens if you declare a variable of type array (not pointer) or `struct`. In this case,
-your variable allocated in the _stack_ (first `module.stackSize` bytes of linear memory). Actual WASM local variable
-holds a pointer to this memory (which is one case when pointer could have a numeric value 0).
+your variable is allocated in the _stack_ (first `module.stackSize` bytes of linear memory). Actual WASM local variable
+holds a _pointer_ to this memory (which is one case when pointer could have a numeric value 0).
 
 ### `&`
 
@@ -203,25 +214,38 @@ simply replace this expression with `a + 1`, which is what it is.
 ### Memory functions
 
 These functions behave as normal C function in C code with given signatures 
-(which is slightly different from C standard), but `c4wa` internally replaces
-them with Web Assembly memory operators:
+(which are a bit different from C standard, effectively using `char *` as a generic pointer), 
+but `c4wa` internally replaces them with Web Assembly memory operators:
 
-| Name   | Signature                               | Description  | 
-| ------ | --------------------------------------- | ------------ |
-| memset | `char * addr`, `char value`, `int size` | Same as in C |
-| memcpy | `char * dest`, `char * src`, `int size` | Same as in C |
+| Name    | Arguments                               | Return Value | Description  | 
+| ------- | --------------------------------------- | ------------ | ------------ |
+| memset  | `char * addr`, `char value`, `int size` | _none_       | Same as in C |
+| memcpy  | `char * dest`, `char * src`, `int size` | _none_       | Same as in C |
+| memgrow | `int n_pages`                           | _none_       | Increase memory size by specified number of pages (1 page = 64K) |
+| memsize | _none_                                  | `int`        | Get current memory size in pages |
 
 Note that if using `memset` and `memcpy`, you'll need option `--enable-bulk-memory` to use `wat2wasm`.
 Also, generated WASM module might not be compatible with some runtimes (such as `wasmer` as of this writing).
 
+Since `memgrow` and `memsize` are WASM-specific, when cross-compiling with a native C compiler
+you should provide a suitable replacement, e.g.
+
+```c
+#ifndef C4WA
+static int __memory_size = 1;
+#define memgrow(size) __memory_size += (size)
+#define memsize() __memory_size
+#endif 
+```
+
 ## Strings and chars
 
-Web Assembly has special DATA section and `data` instruction to store strings easily in memory. 
+Web Assembly has special DATA section and `data` instruction to store strings in memory. 
 All string literals in C code are placed in DATA section with terminating `\0`; 
 identical strings are assign same memory address.
 When assigned to a variable or passed as an argument to a function, string literals have type `char *`.
 
-Consecutive string literals are join together, so the following code is legal:
+Consecutive string literals are joined together, so the following code is legal:
 
 ```c
 char * file = 
@@ -231,7 +255,7 @@ char * file =
 ```
 
 Unlike most C implementations, string literals remain writable. The following code will work
-in Web Assembly but will probably trigger a Bug Error with native C compiler:
+in Web Assembly but will probably trigger a Bus Error with native C compiler:
 
 ```c
 char * name = "peter";
@@ -241,9 +265,9 @@ name[0] = 'P';
 Char literals are supported, including all standard escape sequences.
 
 Note that strings and `char`s are 8-bit. If you include a Unicode character in a string, it'll be decoded 
-into bytes with UTF-8 encoding. You can't have a `char` literal with a Unicode character.
+into bytes with UTF-8 encoding. You can't have a Unicode character as `char` literal.
 
-You can use built-in function `memcpy` to copy string literal to string array, but remember to account for 
+You can use built-in function `memcpy` to copy string literal to `char` array, but remember to account for 
 terminating zero byte:
 
 ```c
@@ -258,7 +282,7 @@ and import into Web Assembly code.
 
 This however raises a problem how to deal with function with variable argument list. Normally,
 an imported function must have a specific declared signature. We solve this problem by introducing special kind
-of imported function, which could accept any number of type of arguments via memory pointers.
+of imported function, which could accept any number or type of arguments via memory pointers.
 
 Specifically, if you declare a function without signature (remember that a non-static declaration is considered
 an import declaration):
@@ -281,6 +305,9 @@ in memory:
 5-th argument at address `offset + 32`.
 
 When passing arguments, all integer values are converted to `long`, and all float values to `double`.
+
+Note that if passing a string as one of the arguments (as would bethe case with actual `printf`),
+corresponding values read from memory would _itself_ be a memory address of the string.
 
 ## Boolean operators and values
 
@@ -317,7 +344,12 @@ static N = 10;            // internal, neither imported or exported
 const test_mode = 1;      // non-mutable, implicitly 'static' unless declared 'extern'
 ```
 
-Global values could be initialized to any compile-time constant; compile-only expressions may use `sizeof`. 
+Global values could be initialized to any compile-time constant; compile-time expressions may use `sizeof`.
+
+## Void
+
+`void` isn't really a type, but more like indicator of "no type". For now, `void` could only
+be used in function definition or declaration to indicate "no return value". You can't have `void *`, etc.
 
 ## Comments
 

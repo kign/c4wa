@@ -156,23 +156,36 @@ extern int main () {
                          ".........."
                          "..........";
 
-    char * pos_0 = alloc(0, X*Y, cell_t);
+#define NO_USE_STACK
+
+#ifdef USE_STACK
+    cell_t pos_0[X* Y + 1];
+    cell_t pos_1[X* Y + 1];
+#else
+    cell_t * pos_0 = alloc(0, X*Y, cell_t);
+    cell_t * pos_1 = alloc(M*(X*Y+1), X*Y, cell_t);
+#endif
+    struct Stat stat;
+
     pos_0[X * Y] = 3;
-    char * pos_1 = alloc(M*(X*Y+1), X*Y, cell_t);
     pos_1[X * Y] = 3;
-    struct Stat * stat = alloc(M*(2*X*Y + 2), 1, struct Stat);
 
     read(X, Y, pos_0, initial_pos);
-    life_prepare(pos_0, X, Y, stat);
+    life_prepare(pos_0, X, Y, &stat);
 
     for(int iter = 0; iter < N; iter ++) {
         if (iter % 2 == 0)
-            life_step(pos_0, pos_1, X, Y, stat);
+            life_step(pos_0, pos_1, X, Y, &stat);
         else
-            life_step(pos_1, pos_0, X, Y, stat);
+            life_step(pos_1, pos_0, X, Y, &stat);
     }
 
     print(X, Y, N % 2 == 0? pos_0 : pos_1, 0);
+
+#ifndef USE_STACK
+    free(pos_0);
+    free(pos_1);
+#endif
 
     return 0;
 }

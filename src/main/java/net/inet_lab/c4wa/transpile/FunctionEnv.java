@@ -9,9 +9,8 @@ public class FunctionEnv implements Partial, PostprocessContext {
     final CType returnType;
     final List<String> params;
     final List<String> locals;
-    final boolean export;
+    final boolean is_exported;
     final Map<String, VariableDecl> variables;
-//    final Map<String, CType> varType;
     final Map<NumType, String> tempVars;
     final Deque<Block> blocks;
     final static String STACK_ENTRY_VAR = "@stack_entry";
@@ -26,7 +25,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
         this.returnType = returnType;
         this.params = new ArrayList<>();
         this.locals = new ArrayList<>();
-        this.export = export;
+        this.is_exported = export;
         variables = new HashMap<>();
         blocks = new ArrayDeque<>();
         tempVars = new HashMap<>();
@@ -109,7 +108,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
 
         attributes.add(new Special(name));
 
-        if (export)
+        if (is_exported)
             attributes.add(new Export(name));
 
         for (String p : params)

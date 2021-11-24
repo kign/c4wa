@@ -62,6 +62,12 @@ public class ModuleEnv implements Partial {
                 new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR, CType.INT}, false, false));
         addDeclaration(new FunctionDecl("memcpy", null,
                 new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR.make_pointer_to(), CType.INT}, false, false));
+        // Note that `memory.grow` actually return value (old memory size), but you are free to ignore it
+        // without invoking `drop`.
+        // I don't think this is a common design patter though, so it's easier all around to simply make
+        // `memory.grow` void.
+        addDeclaration(new FunctionDecl("memgrow", null, new CType[]{CType.INT}, false, false));
+        addDeclaration(new FunctionDecl("memsize", CType.INT, new CType[0], false, false));
     }
 
     public void addStruct(String name, Struct struct) {

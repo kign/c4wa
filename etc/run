@@ -18,7 +18,11 @@ const def_arr = ["WAT file exists (created by gradlew :test) and has been modifi
 const c_prefix = `void * malloc();
 void * memset();
 void * memcpy();
+void * free(void *);
 #define alloc(ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
+static int __memory_size = 1;
+#define memgrow(size) __memory_size += (size)
+#define memsize() __memory_size
 `;
 
 const compile = path.resolve(__dirname, '..', "build", "install", "c4wa-compile", "bin", "c4wa-compile");

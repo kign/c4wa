@@ -358,6 +358,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             moduleEnv.addFunction(functionEnv);
         }
 
+        if (functions.stream().noneMatch(f -> f.func.is_exported))
+            System.out.println("WARNING: no extern functions, nothing will be exported");
+
         return moduleEnv;
     }
 
@@ -514,6 +517,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                         ((idx == 1)?"":" (last parsed was '" + ctx.element(idx - 2).getText() + "')"));
             if (parsedElem instanceof OneInstruction)
                 res.add(((OneInstruction) parsedElem).instruction);
+            else if (parsedElem instanceof OneExpression) {
+                OneExpression exp = (OneExpression) parsedElem;
+                if (exp.expression instanceof CallExp)
+                    res.add(new Drop(exp.expression));
+                else
+                    throw fail(blockElem, "block", "the only way to include expression as a statement is function call");
+            }
             else if (!(parsedElem instanceof NoOp))
                 throw new RuntimeException("Wrong type of parsedElem = " + parsedElem);
         }
@@ -672,12 +682,21 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public Partial visitFunction_call(c4waParser.Function_callContext ctx) {
         String fname = ctx.ID().getText();
 
-        FunctionDecl decl = moduleEnv.funcDecl.get(fname);
+        ExpressionList args = (ctx.arg_list() == null)?(new ExpressionList()):(ExpressionList) visit(ctx.arg_list());
 
+        if ("free".equals(fname)) {
+            if (args.expressions.length != 1)
+                throw fail(ctx, "function_call", "function '" + fname + "' expects 1 argument, received " +
+                        args.expressions.length);
+            if (!args.expressions[0].type.is_ptr())
+                throw fail(ctx, "function_call", "Argument to `free' must be a pointer, received " + args.expressions[0].type);
+
+            return new NoOp();
+        }
+        FunctionDecl decl = moduleEnv.funcDecl.get(fname);
         if (decl == null)
             throw fail(ctx, "function call", "Function '" + fname + "' not defined or declared");
 
-        ExpressionList args = (ctx.arg_list() == null)?(new ExpressionList()):(ExpressionList) visit(ctx.arg_list());
         Expression[] call_args;
         Instruction func_call_void = null;
         Expression func_call_with_return = null;
@@ -731,6 +750,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             func_call_void = new MemoryFill(call_args[0], call_args[1], call_args[2]);
         else if ("memcpy".equals(fname))
             func_call_void = new MemoryCopy(call_args[0], call_args[1], call_args[2]);
+        else if ("memgrow".equals(fname))
+            func_call_void = new MemoryGrow(call_args[0]);
+        else if ("memsize".equals(fname))
+            func_call_with_return = new MemorySize();
         else if (!decl.anytype) {
             if (decl.returnType == null)
                 func_call_void = new Call(fname, call_args);
@@ -738,8 +761,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 func_call_with_return = new CallExp(fname, decl.returnType.asNumType(), call_args);
         }
 
-        if (decl.returnType == null)
+        if (decl.returnType == null) {
+            assert func_call_void != null;
             return new OneInstruction(func_call_void);
+        }
         else {
             assert func_call_with_return != null;
             return new OneExpression(func_call_with_return, decl.returnType);

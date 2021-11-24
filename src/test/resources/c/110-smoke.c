@@ -52,6 +52,9 @@ void try_solving(int a, int b, int c) {
         printf("one root %.6f\n", roots[0]);
     else if (*p_status == 2)
         printf("two roots, %.6f and %.6f\n", roots[0], roots[1]);
+
+    free(roots);
+    free(p_status);
 }
 
 extern int main () {
