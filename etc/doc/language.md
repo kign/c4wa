@@ -62,6 +62,7 @@ Here are some of the most commonly used features of C language **NOT** supported
   * block scope
   * Pointers to arrays, arrays of arrays
   * Function names as variables, indirect function calls
+  * Bit Fields
 
 ## A bit more details
 

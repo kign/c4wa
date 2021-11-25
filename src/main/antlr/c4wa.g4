@@ -101,7 +101,7 @@ expression
     : ptr=expression '[' idx=expression ']'        # expression_index
     | expression '->' ID                      # expression_struct_member
     | expression '.' ID                      # expression_struct_member_dot
-    | op=(NOT|MINUS|MULT) expression                 # expression_unary_op
+    | op=(NOT|MINUS|MULT|TILDA) expression                 # expression_unary_op
     | BWAND ID                                          # expression_addr_var
     | BWAND lhs                                         # expression_addr_lhs
     | SIZEOF '(' variable_type ')'                 # expression_sizeof_type
@@ -110,6 +110,7 @@ expression
     | '(' variable_type ')' expression    # expression_cast
     | expression op=(MULT | DIV | MOD) expression    # expression_binary_mult
     | expression op=(PLUS | MINUS) expression                        # expression_binary_add
+    | expression op=(LSHIFT | RSHIFT) expression                     # expression_binary_shift
     | expression op=(LTEQ | GTEQ | LT | GT | EQ | NEQ) expression    # expression_binary_cmp
     | expression op=BWAND expression           # expression_binary_bwand
     | expression op=BWXOR expression           # expression_binary_bwxor
@@ -130,6 +131,7 @@ OR : '||';
 AND : '&&';
 BWOR : '|';
 BWAND : '&';
+TILDA: '~';
 PLUS : '+';
 MINUS : '-';
 MULT : '*';
@@ -145,10 +147,10 @@ ASMOD : '%=';
 ASBWOR : '|=';
 ASBWAND : '&=';
 ASBWXOR : '^=';
-
 PLUSPLUS : '++';
 MINUSMINUS: '--';
-
+LSHIFT: '<<';
+RSHIFT: '>>';
 EQ : '==';
 NEQ : '!=';
 GT : '>';
@@ -158,7 +160,6 @@ LTEQ : '<=';
 BWXOR : '^';
 NOT : '!';
 MEMB : '->';
-
 Q: '?';
 COL: ':';
 SCOL : ';';

@@ -1249,6 +1249,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
+    public OneExpression visitExpression_binary_shift(c4waParser.Expression_binary_shiftContext ctx) {
+        OneExpression arg1 = (OneExpression) visit(ctx.expression(0));
+        OneExpression arg2 = (OneExpression) visit(ctx.expression(1));
+        return binary_op(ctx, arg1, arg2, ctx.op.getText());
+    }
+
+    @Override
     public OneExpression visitExpression_binary_mult(c4waParser.Expression_binary_multContext ctx) {
         OneExpression arg1 = (OneExpression) visit(ctx.expression(0));
         OneExpression arg2 = (OneExpression) visit(ctx.expression(1));
@@ -1393,7 +1400,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     : new Add(NumType.I32, arg2.expression, new Mul(NumType.I32, arg1.expression, new Const(type.size()))),
                     arg2.type);
         }
-        else if ("-".equals(op) && arg1.type.is_ptr() && arg2.type.is_ptr() && arg1.type.deref().same(arg2.type.deref()))
+        else if ("-".equals(op) && arg1.type.is_ptr() && arg2.type.is_ptr() && arg1.type.same(arg2.type))
             return new OneExpression(arg1.type.deref().size() == 1
                     ? new Sub(NumType.I32, arg1.expression, arg2.expression)
                     : new Div(NumType.I32, true, new Sub(NumType.I32, arg1.expression, arg2.expression), new Const(arg1.type.deref().size())),
@@ -1410,7 +1417,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         } else if (arg1.type.is_f64() && arg2.type.is_f64()) {
             numType = NumType.F64;
             resType = CType.DOUBLE;
-        } else if (arg1.type.is_ptr() && arg2.type.is_ptr() && arg1.type.same(arg2.type)) {
+        } else if (arg1.type.is_ptr() && arg2.type.is_ptr() && arg1.type.same(arg2.type) && List.of( "==", "!=").contains(op)) {
             numType = NumType.I32;
             resType = CType.INT;
         }
@@ -1449,6 +1456,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             res = new Or(numType, arg1.expression, arg2.expression);
         else if ("^".equals(op))
             res = new Xor(numType, arg1.expression, arg2.expression);
+        else if (List.of("<<", ">>").contains(op))
+            res = new Shift(numType, op.charAt(0) == '<', arg1.type.is_signed(), arg1.expression, arg2.expression);
         else
             throw fail(ctx, "binary operation", "Instruction '" + op + "' not recognized");
 
@@ -1476,7 +1485,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
             return new OneExpression(memory_load(type, exp.expression), type);
         }
-        else
+        else if (op.equals("~")) {
+            return new OneExpression(new Xor(exp.type.asNumType(), exp.expression, new Const(exp.type.asNumType(), -1)), exp.type);
+        } else
             throw fail(ctx, "unary_op", "Operation '" + op + "' not recognized");
     }
 
