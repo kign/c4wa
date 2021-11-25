@@ -193,6 +193,9 @@ public class Main {
                 int j = o.indexOf('=');
                 if (j < 0)
                     return "Invalid option " + o;
+                String p = o.substring(2, j);
+                if (prop.getProperty(p) == null)
+                    return "No such property '" + p + "'";
                 prop.setProperty(o.substring(2, j), o.substring(j + 1));
             } else if (o.charAt(0) == '-' && o.length() >= 2 && o.charAt(1) != '-') {
                 for (int j = 1; j < o.length(); j++) {

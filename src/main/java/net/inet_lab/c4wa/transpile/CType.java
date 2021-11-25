@@ -165,6 +165,7 @@ abstract public class CType implements Partial {
     public boolean is_primitive() { return false; }
     public boolean is_signed() { return true; }
     public boolean is_struct() { return false; }
+    public boolean is_struct(String name) { return false; }
 
     public CType make_signed(boolean signed) {
         throw new RuntimeException("Not applicable to " + this);

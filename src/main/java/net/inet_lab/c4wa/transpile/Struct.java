@@ -6,14 +6,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public class Struct extends CType {
-    final String name;
+public class Struct extends StructDecl {
     final Map<String,Var> m;
     final int size;
 
     public Struct(String name, VarInput[] members) {
-        this.name = name;
-
+        super(name);
         m = new HashMap<>();
 
         int offset = 0;
@@ -28,23 +26,8 @@ public class Struct extends CType {
     }
 
     @Override
-    public NumType asNumType() {
-        throw new RuntimeException("struct can't be converted to Web Assembly numeric type");
-    }
-
-    @Override
     public int size() {
         return size;
-    }
-
-    @Override
-    public String toString() {
-        return "struct " + name;
-    }
-
-    @Override
-    public boolean isValidRHS(CType rhs) {
-        return rhs instanceof Struct && name.equals(((Struct) rhs).name);
     }
 
     static class VarInput {
@@ -70,10 +53,4 @@ public class Struct extends CType {
             this.size = v.size;
         }
     }
-
-    @Override
-    public boolean is_struct() {
-        return true;
-    }
-
 }

@@ -4,7 +4,6 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const printf = require('fast-printf').printf;
 const { spawnSync } = require("child_process");
 const colors = require('colors'); // unsafe, modifies String prototype
 const { wasm_fprintf } = require('./wasm-printf');
@@ -317,7 +316,8 @@ async function run_wasm_file(fname, options) {
 
     let wasm_mem;
 
-    const wasm_instance = (await WebAssembly.instantiate(wasm_bytes, {c4wa: {printf: wasm_fprintf(() => new Uint8Array(wasm_mem.buffer), target)}})).instance;
+    const wasm_instance = (await WebAssembly.instantiate(wasm_bytes,
+        {c4wa: {printf: wasm_fprintf(() => new Uint8Array(wasm_mem.buffer), target)}})).instance;
 
     wasm_mem = wasm_instance.exports.memory;
     wasm_instance.exports.main ();

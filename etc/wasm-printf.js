@@ -1,6 +1,7 @@
 const printf = require('fast-printf').printf;
 
 const read_i32 = function (mem, offset) {
+    // not really necessary, we can use Number(read_i64(...))
     let val = 0;
 
     for (let i = 3; i >= 0; i--)
@@ -11,6 +12,8 @@ const read_i32 = function (mem, offset) {
 }
 
 const read_i64 = function (mem, offset) {
+    // have to use BigInt, since native Number doesn't have sufficient precision to support
+    // full 64-bit integer arithmetic (it works up to 53 binary digits).
     let val = 0n;
 
     if (mem[offset + 7] >= 128) {
@@ -21,7 +24,6 @@ const read_i64 = function (mem, offset) {
         for (let i = 7; i >= 0; i--)
             val = 256n * val + BigInt(mem[offset + i]);
     }
-    //console.log(offset, mem.slice(offset, offset + 7), val);
     return val;
 }
 
@@ -84,6 +86,7 @@ const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
                 else if (-(2n ** 53n) < r && r < 2n ** 53n)
                     args.push(Number(r));
                 else {
+                    // bad hack: loosing all format specifiers
                     args.push(r.toString());
                     fmt[i] = 's';
                 }
@@ -105,7 +108,7 @@ const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
         return;
     }
     const res = printf(fmt.filter(x => x !== null).join('').replaceAll('\\n', '\n'), ...args);
-    // process.stdout.write();
+
     if (target.write)
         target.write(res);
     else if (target.push)

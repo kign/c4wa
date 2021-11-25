@@ -324,6 +324,46 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
     }
 
+    /*
+    static class StructDeclaration extends CType {
+        final String name;
+
+        StructDeclaration(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public NumType asNumType() {
+            throw new RuntimeException("StructDeclaration cannot have aNumType");
+        }
+
+        @Override
+        public int size() {
+            throw new RuntimeException("StructDeclaration cannot have size");
+        }
+
+        @Override
+        public String toString() {
+            return "struct " + name;
+        }
+
+        @Override
+        public boolean isValidRHS(CType rhs) {
+            return rhs.is_struct(name);
+        }
+
+        @Override
+        public boolean is_struct() {
+            return true;
+        }
+
+        @Override
+        public boolean is_struct(String name) {
+            return this.name.equals(name);
+        }
+    }
+    */
+
     @Override
     public ModuleEnv visitModule(c4waParser.ModuleContext ctx) {
         moduleEnv = new ModuleEnv(prop);
@@ -804,6 +844,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + variableDecl.type);
         }
 
+        if (functionEnv.variables.containsKey(variableDecl.name))
+            throw fail(ctx, "init", "variable '" + variableDecl.name + "' already defined");
         functionEnv.registerVar(variableDecl.name, variableDecl.type, false);
 
         return new OneInstruction(new DelayedList(List.of(new DelayedLocalDefinition(variableDecl.name), new DelayedAssignment(ctx, new String[]{variableDecl.name}, rhs.expression, rhs.type))));
@@ -990,6 +1032,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             for (int i = 0; i < memb.ref_level; i++)
                 type = type.make_pointer_to();
 
+            if (type instanceof StructDecl)
+                throw fail(ctx, "struct", "Can't use undefined structure '" + ((StructDecl) type).name +
+                        "' as struct member; did you mean to use a pointer instead?");
+
             members.add(new Struct.VarInput(memb.name, type, memb.size));
         }
 
@@ -1075,8 +1121,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public OneExpression visitExpression_struct_member(c4waParser.Expression_struct_memberContext ctx) {
         OneExpression ptr = (OneExpression) visit(ctx.expression());
 
-        if (ptr.type.deref() == null || !ptr.type.deref().is_struct())
-            throw fail(ctx, "struct_member", "'" + ptr.type + "' is not a structure pointer");
+        if (ptr.type.deref() == null)
+            throw fail(ctx, "struct_member", "'" + ptr.type + "' is not a pointer");
+        if (!ptr.type.deref().is_struct())
+            throw fail(ctx, "struct_member", "'" + ptr.type.deref() + "' is not a defined struct");
 
         return rhs_struct_member(ctx, (Struct) ptr.type.deref(), ctx.ID().getText(), ptr.expression);
     }
@@ -1086,7 +1134,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         OneExpression str = (OneExpression) visit(ctx.expression());
 
         if (!str.type.is_struct())
-            throw fail(ctx, "struct_member_dor", "'" + str.type + "' is not a structure");
+            throw fail(ctx, "struct_member_dor", "'" + str.type + "' is not a defined struct");
 
         return rhs_struct_member(ctx, (Struct) str.type, ctx.ID().getText(), str.expression);
     }
@@ -1095,8 +1143,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public OneExpression visitLhs_struct_member(c4waParser.Lhs_struct_memberContext ctx) {
         OneExpression ptr = (OneExpression) visit(ctx.expression());
 
-        if (ptr.type.deref() == null || !ptr.type.deref().is_struct())
-            throw fail(ctx, "struct_member", "'" + ptr.type + "' is not a structure pointer");
+        if (ptr.type.deref() == null)
+            throw fail(ctx, "struct_member", "'" + ptr.type + "' is not a pointer");
+
+        if (!ptr.type.deref().is_struct())
+            throw fail(ctx, "struct_member", "'" + ptr.type.deref() + "' is not a defined struct");
 
         return lhs_struct_member(ctx, (Struct) ptr.type.deref(), ctx.ID().getText(), ptr.expression);
     }
@@ -1106,7 +1157,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         OneExpression str = (OneExpression) visit(ctx.expression());
 
         if (!str.type.is_struct())
-            throw fail(ctx, "struct_member_dor", "'" + str.type + "' is not a structure");
+            throw fail(ctx, "struct_member_dor", "'" + str.type + "' is not a defined struct");
 
         return lhs_struct_member (ctx, (Struct) str.type, ctx.ID().getText(), str.expression);
     }
@@ -1249,7 +1300,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         for (var ctx: ctxList) {
             i ++;
             exp[i] = (OneExpression) visit(ctx);
-            if (!exp[i].type.is_int())
+            if (!(exp[i].type.is_int() || exp[i].type.is_ptr()))
                 throw fail(ctx, "AND", "Type '" + exp[i].type + "' is invalid for boolean operations");
 
             condition[i] = is_and ?
@@ -1359,6 +1410,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         } else if (arg1.type.is_f64() && arg2.type.is_f64()) {
             numType = NumType.F64;
             resType = CType.DOUBLE;
+        } else if (arg1.type.is_ptr() && arg2.type.is_ptr() && arg1.type.same(arg2.type)) {
+            numType = NumType.I32;
+            resType = CType.INT;
         }
         else
             throw fail(ctx, "binary operation '" + op + "'", "Types " + arg1.type + " and " + arg2.type +
@@ -1533,7 +1587,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         Struct c_struct = moduleEnv.structs.get(name);
 
         if (c_struct == null)
-            throw fail(ctx, "struct", "No structure name '" + name + "'");
+            return new StructDecl(name);
 
         return c_struct;
     }
