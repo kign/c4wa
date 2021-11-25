@@ -12,6 +12,7 @@ public class ModuleEnv implements Partial {
     final Map<String, VariableDecl> varDecl;
     final Map<String,Integer> strings;
     final Map<String,Struct> structs;
+    final Set<String> libraryFuncs;
 
     final byte[] data;
     int data_len;
@@ -30,6 +31,7 @@ public class ModuleEnv implements Partial {
         functions = new ArrayList<>();
         strings = new HashMap<>();
         structs = new HashMap<>();
+        libraryFuncs = new HashSet<>();
 
         GLOBAL_IMPORT_NAME = prop.getProperty("module.importName");
         String memoryStatus = prop.getProperty("module.memoryStatus");
@@ -68,6 +70,11 @@ public class ModuleEnv implements Partial {
         // `memory.grow` void.
         addDeclaration(new FunctionDecl("memgrow", null, new CType[]{CType.INT}, false, false));
         addDeclaration(new FunctionDecl("memsize", CType.INT, new CType[0], false, false));
+    }
+
+    public String library(String name) {
+        libraryFuncs.add(name);
+        return name;
     }
 
     public void addStruct(String name, Struct struct) {

@@ -733,6 +733,38 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
             return new NoOp();
         }
+        else if (List.of("min", "max").contains(fname)) {
+            if (args.expressions.length != 2)
+                throw fail(ctx, "function_call", "function '" + fname + "' expects 2 arguments, received " +
+                        args.expressions.length);
+            OneExpression arg1 = args.expressions[0];
+            OneExpression arg2 = args.expressions[1];
+
+            if (!(arg1.type.is_primitive() && arg2.type.same(arg1.type)))
+                throw fail (ctx, "function_call", "Arguments to '" + fname + "' must be same primitive type");
+
+            CType type = arg1.type;
+            Expression res = type.is_int()
+                            ? new CallExp(moduleEnv.library("@" + fname + (type.is_32()? "_32": "_64")), type.asNumType(),
+                                new Expression[]{arg1.expression, arg2.expression})
+                            : new MinMax(type.asNumType(), "min".equals(fname), arg1.expression, arg2.expression);
+            return new OneExpression(res, type);
+        }
+        else if (List.of("ceil", "floor", "fabs", "sqrt").contains(fname)) {
+            if (args.expressions.length != 1)
+                throw fail(ctx, "function_call", "function '" + fname + "' expects 1 argument, received " +
+                        args.expressions.length);
+            OneExpression arg = args.expressions[0];
+            Expression res =
+                    "ceil".equals(fname) ? new Ceil(arg.type.asNumType(), arg.expression) :
+                    ("floor".equals(fname) ? new Floor(arg.type.asNumType(), arg.expression) :
+                    ("fabs".equals(fname) ? new Abs(arg.type.asNumType(), arg.expression) :
+                    ("sqrt".equals(fname) ? new Sqrt(arg.type.asNumType(), arg.expression) :
+                    null)));
+            assert res != null;
+            return new OneExpression(res, arg.type);
+        }
+
         FunctionDecl decl = moduleEnv.funcDecl.get(fname);
         if (decl == null)
             throw fail(ctx, "function call", "Function '" + fname + "' not defined or declared");

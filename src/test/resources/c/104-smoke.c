@@ -2,7 +2,7 @@ void printf();
 
 const double precision = 1.0e-9;
 
-double sqrt(double x) {
+double my_sqrt(double x) {
     double a = 0.;
     double b = x;
     do {
@@ -21,7 +21,7 @@ double sqrt(double x) {
 extern int main() {
     int i = 2;
     do {
-        printf("√%d = %.8f\n", i, sqrt((double)i));
+        printf("√%d = %.8f\n", i, my_sqrt((double)i));
         i ++;
     }
     while(i <= 10);

@@ -2,22 +2,6 @@ void printf ();
 
 const double precision = 1.0e-9;
 
-double sqrt(double x) {
-    double a = 0.;
-    double b = x;
-    do {
-        double c = (a + b)/2.;
-
-        if (c * c > x)
-            b = c;
-        else
-            a = c;
-    }
-    while(b - a > precision);
-
-    return (a + b)/2.0;
-}
-
 void solve_square_equation(double a, double b, double c, double roots[2], int * p_status) {
     double d = b*b - 4.0*a*c;
     if (d < 0.) {

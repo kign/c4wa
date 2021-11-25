@@ -11,6 +11,8 @@ public enum InstructionName implements InstructionType {
     REM ("rem"),
     REM_U ("rem_u"),
     REM_S ("rem_s"),
+    MIN ("min"),
+    MAX ("max"),
     LT_S ("lt_s"),
     LT_U ("lt_u"),
     LE_S ("le_s"),
@@ -59,6 +61,11 @@ public enum InstructionName implements InstructionType {
     ELSE ("else"),
     RETURN ("return"),
     DROP ("drop"),
+
+    SQRT ("sqrt"),
+    CEIL ("ceil"),
+    FLOOR ("floor"),
+    ABS ("abs"),
 
     WRAP_I64 ("wrap_i64"),
     EXTEND_I32_S ("extend_i32_s"),

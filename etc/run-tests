@@ -19,6 +19,7 @@ const c_prefix = `void * malloc();
 void * memset();
 void * memcpy();
 void * free(void *);
+double sqrt(double);
 #define alloc(ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
 static int __memory_size = 1;
 #define memgrow(size) __memory_size += (size)

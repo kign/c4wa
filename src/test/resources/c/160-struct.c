@@ -3,23 +3,6 @@ void printf();
 struct Point { float x; float y; char color; float z; };
 const    int M = sizeof(struct Point);
 
-double sqrt(double x) {
-    double precision = 1.0e-9;
-    double a = 0.;
-    double b = x;
-    do {
-        double c = (a + b)/2.;
-
-        if (c * c > x)
-            b = c;
-        else
-            a = c;
-    }
-    while(b - a > precision);
-
-    return (a + b)/2.0;
-}
-
 double dot(struct Point * A, struct Point * B) {
     return (double)(A->x * B->x + A->y * B->y + A->z * B->z);
 }
