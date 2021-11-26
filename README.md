@@ -16,9 +16,14 @@ but in the process they often create bloated, unnecessary, and poorly fitting We
 You may, of course, not care, as long as at the end it's working as expected. Some people who do care
 choose to write relatively simple fragments of Web Assembly in WAT (text-based) format. To make it clear,
 WAT format is more than just Web Assembly instructions written as text; it supports S-expressions and
-some other syntax sugar to make coding easier. 
-See excellent [introduction](https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format) 
-to WAT format at MDN. 
+some other syntax sugar to make coding easier (See
+excellent [introduction](https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format)
+to WAT format at MDN.) Still, you are required to write each and every Web Assembly instructions manually, 
+so that for example a simple assignment like this: `c = a*a + b*b + 1` might look like this: 
+ 
+```wat
+(set_local $c (i32.add (i32.add (i32.mul (get_local $a) (get_local $a)) (i32.mul (get_local $b) (get_local $b))) (i32.const 1)))
+```
 
 `c4wa` purports to be a middle ground between these two extremes. It allows you to write a code in a 
 relatively higher-level language (a subset of `C`) while retaining a close relation to an underlying
@@ -27,7 +32,7 @@ which is trying to be similar to what a human programmer would have written when
 
 `c4wa` is not a full C implementation and isn't trying to be one. Still, most of the typical day-to-day
 coding in `c4wa` isn't much more complicated than coding in standard C. It supports loops, conditionals,
-all of C operators, `struct`s, arrays and pointers. It can also optionally apply C preprocessor to your code
+all of C operators, `struct`s, arrays and pointers. It can also optionally apply C external preprocessor to your code
 before parsing.  
 
 ## Installation
