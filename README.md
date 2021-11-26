@@ -22,17 +22,18 @@ to WAT format at MDN.) Still, you are required to write each and every Web Assem
 so that for example a simple assignment like this: `c = a*a + b*b + 1` might look like this: 
  
 ```wat
-(set_local $c (i32.add (i32.add (i32.mul (get_local $a) (get_local $a)) (i32.mul (get_local $b) (get_local $b))) (i32.const 1)))
+(set_local $c (i32.add (i32.add (i32.mul (get_local $a) (get_local $a)) 
+                    (i32.mul (get_local $b) (get_local $b))) (i32.const 1)))
 ```
 
-`c4wa` purports to be a middle ground between these two extremes. It allows you to write a code in a 
+`c4wa` purports to be a middle ground between these two extremes. It allows you to write your code in a 
 relatively higher-level language (a subset of `C`) while retaining a close relation to an underlying
 Web Assembly. Instead of a binary WASM file, it generates a well-formatted WAT output 
 which is trying to be similar to what a human programmer would have written when solving the problem directly in WAT.
 
 `c4wa` is not a full C implementation and isn't trying to be one. Still, most of the typical day-to-day
 coding in `c4wa` isn't much more complicated than coding in standard C. It supports loops, conditionals,
-all of C operators, `struct`s, arrays and pointers. It can also optionally apply C external preprocessor to your code
+all of C operators, `struct`s, arrays and pointers. It can also optionally apply external C preprocessor to your code
 before parsing.  
 
 ## Installation

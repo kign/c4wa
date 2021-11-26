@@ -38,7 +38,7 @@
     (local $res i32)
     (local $v i32)
     (set_local $@stack_entry (global.get $@stack))
-    (set_local $res (if (result i32) (i32.load (i32.add (get_local $list) (i32.const 4))) (then (i32.load (i32.add (i32.load (i32.add (get_local $list) (i32.const 4))) (i32.const 4)))) (else (i32.const 0))))
+    (set_local $res (select (i32.load (i32.add (i32.load (i32.add (get_local $list) (i32.const 4))) (i32.const 4))) (i32.const 0) (i32.load (i32.add (get_local $list) (i32.const 4)))))
     (if (if (result i32) (i32.eqz (i32.load (i32.add (get_local $list) (i32.const 4)))) (then (i32.const 0)) (else (i32.ne (i32.eq (i32.load (i32.add (get_local $list) (i32.const 4))) (i32.load (get_local $list))) (i32.const 0))))
       (then
         (i32.store (get_local $list) (i32.const 0))

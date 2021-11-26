@@ -702,7 +702,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "ternary", "argument types '" + thenExp.type +
                     "' and '" + elseExp.type + "' are incompatible");
 
-        return new OneExpression(new IfThenElseExp(condition.expression, thenExp.type.asNumType(), thenExp.expression,
+        return new OneExpression(
+                thenExp.expression.complexity() < 6 && elseExp.expression.complexity() < 6
+                    ? new Select(condition.expression, thenExp.expression, elseExp.expression)
+                    : new IfThenElseExp(condition.expression, thenExp.type.asNumType(), thenExp.expression,
                 elseExp.expression), thenExp.type);
     }
 

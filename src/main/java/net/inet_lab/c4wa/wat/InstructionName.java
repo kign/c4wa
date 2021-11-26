@@ -59,6 +59,7 @@ public enum InstructionName implements InstructionType {
     IF ("if"),
     THEN ("then"),
     ELSE ("else"),
+    SELECT ("select"),
     RETURN ("return"),
     DROP ("drop"),
 

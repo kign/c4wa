@@ -49,7 +49,7 @@
         (br_if $@block_1_break (i32.ge_s (get_local $i) (i32.const 100)))
         (i64.store (global.get $@stack) (i64.const 1024))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.extend_i32_s (if (result i32) (i32.eqz (get_local $i)) (then (i32.const 1031)) (else (if (result i32) (i32.eqz (i32.rem_s (get_local $i) (i32.const 10))) (then (i32.const 1032)) (else (i32.const 1035)))))))
+        (i64.store (global.get $@stack) (i64.extend_i32_s (select (i32.const 1031) (select (i32.const 1032) (i32.const 1035) (i32.eqz (i32.rem_s (get_local $i) (i32.const 10)))) (i32.eqz (get_local $i)))))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
         (f64.store (global.get $@stack) (call $mulberry32))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 16)))

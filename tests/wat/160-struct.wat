@@ -13,7 +13,7 @@
     (f32.store (i32.add (get_local $C) (i32.const 4)) (f32.sub (f32.mul (f32.load (i32.add (get_local $A) (i32.const 9))) (f32.load (get_local $B))) (f32.mul (f32.load (get_local $A)) (f32.load (i32.add (get_local $B) (i32.const 9))))))
     (f32.store (i32.add (get_local $C) (i32.const 9)) (f32.sub (f32.mul (f32.load (get_local $A)) (f32.load (i32.add (get_local $B) (i32.const 4)))) (f32.mul (f32.load (i32.add (get_local $A) (i32.const 4))) (f32.load (get_local $B))))))
   (func $color (param $p i32) (result i32)
-    (if (result i32) (i32.eq (i32.load8_s (i32.add (get_local $p) (i32.const 8))) (i32.const 114)) (then (i32.const 1024)) (else (if (result i32) (i32.eq (i32.load8_s (i32.add (get_local $p) (i32.const 8))) (i32.const 103)) (then (i32.const 1028)) (else (if (result i32) (i32.eq (i32.load8_s (i32.add (get_local $p) (i32.const 8))) (i32.const 98)) (then (i32.const 1034)) (else (i32.const 1039))))))))
+    (if (result i32) (i32.eq (i32.load8_s (i32.add (get_local $p) (i32.const 8))) (i32.const 114)) (then (i32.const 1024)) (else (select (i32.const 1028) (select (i32.const 1034) (i32.const 1039) (i32.eq (i32.load8_s (i32.add (get_local $p) (i32.const 8))) (i32.const 98))) (i32.eq (i32.load8_s (i32.add (get_local $p) (i32.const 8))) (i32.const 103))))))
   (func $main (export "main") (result i32)
     (local $@stack_entry i32)
     (local $A i32)

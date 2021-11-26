@@ -36,7 +36,7 @@
     (set_local $a (i32.div_s (get_local $n) (i32.const 8)))
     (set_local $b (i32.rem_s (get_local $n) (i32.const 8)))
     (set_local $two_power_b (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $b))))
-    (i64.store (i32.add (get_local $sto) (i32.mul (get_local $a) (i32.const 8))) (if (result i64) (get_local $val) (then (i64.or (i64.load (i32.add (get_local $sto) (i32.mul (get_local $a) (i32.const 8)))) (get_local $two_power_b))) (else (i64.and (i64.load (i32.add (get_local $sto) (i32.mul (get_local $a) (i32.const 8)))) (i64.xor (get_local $two_power_b) (i64.const -1)))))))
+    (i64.store (i32.add (get_local $sto) (i32.mul (get_local $a) (i32.const 8))) (select (i64.or (i64.load (i32.add (get_local $sto) (i32.mul (get_local $a) (i32.const 8)))) (get_local $two_power_b)) (i64.and (i64.load (i32.add (get_local $sto) (i32.mul (get_local $a) (i32.const 8)))) (i64.xor (get_local $two_power_b) (i64.const -1))) (get_local $val))))
   (func $read (param $S i32) (param $n i32) (result i32)
     (local $sto i32)
     (local $a i32)

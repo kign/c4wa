@@ -12,7 +12,7 @@
       (set_local $i (i32.const 0))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $i) (i32.mul (get_local $X) (get_local $Y))))
-        (i32.store8 (i32.add (get_local $pos) (get_local $i)) (if (result i32) (i32.eq (i32.load8_s (i32.add (get_local $init) (get_local $i))) (i32.const 120)) (then (i32.const 1)) (else (i32.const 0))))
+        (i32.store8 (i32.add (get_local $pos) (get_local $i)) (select (i32.const 1) (i32.const 0) (i32.eq (i32.load8_s (i32.add (get_local $init) (get_local $i))) (i32.const 120))))
         (set_local $i (i32.add (get_local $i) (i32.const 1)))
         (br $@block_1_continue))))
   (func $print (param $X i32) (param $Y i32) (param $pos i32) (param $dbg i32)
@@ -30,7 +30,7 @@
           (loop $@block_1_1_continue
             (br_if $@block_1_1_break (i32.ge_s (get_local $x) (get_local $X)))
             (set_local $val (i32.load8_s (i32.add (get_local $pos) (i32.add (i32.mul (get_local $X) (get_local $y)) (get_local $x)))))
-            (i64.store (global.get $@stack) (i64.extend_i32_s (if (result i32) (i32.eq (get_local $val) (i32.const 1)) (then (i32.const 1024)) (else (if (result i32) (i32.and (i32.eq (get_local $val) (i32.const 2)) (get_local $dbg)) (then (i32.const 1026)) (else (i32.const 1028)))))))
+            (i64.store (global.get $@stack) (i64.extend_i32_s (select (i32.const 1024) (select (i32.const 1026) (i32.const 1028) (i32.and (i32.eq (get_local $val) (i32.const 2)) (get_local $dbg))) (i32.eq (get_local $val) (i32.const 1)))))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 0)))
             (call $printf (global.get $@stack) (i32.const 1))
             (set_local $x (i32.add (get_local $x) (i32.const 1)))
@@ -220,6 +220,6 @@
             (call $life_step (get_local $pos_1) (get_local $pos_0) (get_local $X) (get_local $Y) (get_local $stat))))
         (set_local $iter (i32.add (get_local $iter) (i32.const 1)))
         (br $@block_1_continue)))
-    (call $print (get_local $X) (get_local $Y) (if (result i32) (i32.eqz (i32.rem_s (global.get $N) (i32.const 2))) (then (get_local $pos_0)) (else (get_local $pos_1))) (i32.const 0))
+    (call $print (get_local $X) (get_local $Y) (select (get_local $pos_0) (get_local $pos_1) (i32.eqz (i32.rem_s (global.get $N) (i32.const 2)))) (i32.const 0))
     (global.set $@stack (get_local $@stack_entry))
     (i32.const 0)))

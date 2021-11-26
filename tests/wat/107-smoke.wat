@@ -43,7 +43,7 @@
             (br $@block_1_continue)))
         (i64.store (global.get $@stack) (i64.const 1027))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.extend_i32_s (if (result i32) (get_local $start) (then (i32.const 1036)) (else (global.get $sep)))))
+        (i64.store (global.get $@stack) (i64.extend_i32_s (select (i32.const 1036) (global.get $sep) (get_local $start))))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
         (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $i)))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))

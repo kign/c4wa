@@ -8,6 +8,11 @@ public class Expression_1 extends Expression {
     }
 
     @Override
+    public int complexity() {
+        return 1 + arg.complexity();
+    }
+
+    @Override
     public String toString() {
         return "(" + fullName() + " " + arg + ")";
     }
