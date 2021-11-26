@@ -24,6 +24,8 @@ double sqrt(double);
 static int __memory_size = 1;
 #define memgrow(size) __memory_size += (size)
 #define memsize() __memory_size
+#define min(a,b) ((a) < (b))?(a):(b)
+#define max(a,b) ((a) < (b))?(b):(a)
 `;
 
 const compile = path.resolve(__dirname, '..', "build", "install", "c4wa-compile", "bin", "c4wa-compile");

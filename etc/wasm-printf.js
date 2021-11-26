@@ -90,7 +90,7 @@ const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
                     args.push(r.toString());
                     fmt[i] = 's';
                 }
-            } else if (fmt[i] === 'f')
+            } else if ("feE".includes(fmt[i]))
                 args.push(read_f64(mem, offset));
             else if (fmt[i] === 's') {
                 const s = read_str(mem, Number(read_i64(mem, offset)));
@@ -107,7 +107,7 @@ const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
             "substitutions, passed", argc - 1, "arguments");
         return;
     }
-    const res = printf(fmt.filter(x => x !== null).join('').replaceAll('\\n', '\n'), ...args);
+    const res = printf(fmt.filter(x => x !== null).join(''), ...args).replaceAll('\\n', '\n');
 
     if (target.write)
         target.write(res);

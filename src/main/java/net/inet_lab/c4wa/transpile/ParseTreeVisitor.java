@@ -1064,7 +1064,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             for (int i = 0; i < memb.ref_level; i++)
                 type = type.make_pointer_to();
 
-            if (type instanceof StructDecl)
+            if (!(type instanceof Struct) && type instanceof StructDecl)
                 throw fail(ctx, "struct", "Can't use undefined structure '" + ((StructDecl) type).name +
                         "' as struct member; did you mean to use a pointer instead?");
 
