@@ -159,7 +159,7 @@ Why does it have to be a subset of C though?
 
 There are several projects to introduce a wrapper around WAT to make it easier to work with
 (for example, [wah](https://github.com/tmcw/wah)). While not a bad approach, *an advantage of using 
-a subset of C is to be able to compile in test the code also in C*.
+a subset of C is to be able to compile and test the code also in C*.
 
 Let's again go back to the original file `collatz.c`.
 
@@ -206,7 +206,8 @@ conditional compilation.
 
 (Of course, in theory, nothing could stop us from using C preprocessor,
 or any other macro processor language for that matter (like the most popular one `m4`) on top of
-another language, or even on top of plain WAT. The problem with that approach though is that we de-facto creating a new language (e.g. WAT + m4) which
+another language, or even on top of plain WAT. The problem with that approach though is that we are 
+de-facto creating a new language (e.g. WAT + m4) which
 would have no syntax or other support in any existing IDE or other common tools. By contrast, C preprocessor
-would fit perfectly with C code).
+would fit perfectly with C language).
 

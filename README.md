@@ -25,6 +25,11 @@ relatively higher-level language (a subset of `C`) while retaining a close relat
 Web Assembly. Instead of a binary WASM file, it generates a well-formatted WAT output 
 which is trying to be similar to what a human programmer would have written when solving the problem directly in WAT.
 
+`c4wa` is not a full C implementation and isn't trying to be one. Still, most of the typical day-to-day
+coding in `c4wa` isn't much more complicated than coding in standard C. It supports loops, conditionals,
+all of C operators, `struct`s, arrays and pointers. It can also optionally apply C preprocessor to your code
+before parsing.  
+
 ## Installation
 
 Download last release from [here](https://github.com/kign/c4wa/releases/); unzip to any directory

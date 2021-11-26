@@ -8,10 +8,10 @@ Obviously, details might change as work on the compiler continues.
   * **Direct translation.**<br> We try to only support features of C language which could be directly and unambiguously
     translated to WAT text format with S-expressions. This way, generated WAT code should be readable and reasonably close to what 
     a human programmer would write.
-  * **Functionality first, syntax sugar later.**<br> Implement the widest possible scope of languages features first, worry 
+  * **Functionality first, syntax sugar later.**<br> Implement the widest possible scope of C language features first, worry 
     about convenience only as necessary.
-  * **Compatibility with C standard.**<br> It shouldn't take too much effort to write code which could be compiled 
-    and tested both with `c4wm` _and_ an ordinary C compiler.
+  * **Compatibility with C standard.**<br> While some incompatibilities with standard C are unavoidable, 
+    it should be easy to write code which could be compiled and tested with both `c4wm` _and_ an ordinary C compiler.
 
 ## What this compiler is NOT
 
@@ -22,7 +22,7 @@ Web Assembly environment.
   * Your code might successfully pass through `c4wa` but still fail `wat2wasm` compilation. 
     The plan in to eventually try to verify generated code as much as possible to avoid incorrect WAT output, 
     but it's still very much work in progress. 
-    Fortunately, since generated WAT code could be easily traced to the original code, 
+    Fortunately, since generated WAT code could be easily traced to the original source in C, 
     such errors are easy to fix in C code (unless it is a compiler bug).
   * Your code might successfully compile with both regular compiler and `c4wa`, generate correctly working
     native executable, but still work incorrectly in Web Assembly. This could be due to a limited number of known
@@ -86,18 +86,22 @@ compiler due to no need to use alignment in Web Assembly memory).
 For now, `void` could only be used in function
 definition or declaration to indicate "no return value". You can't have `void *`, etc.
 
-`typedef` isn't supported. You must use syntax `struct NAME` when declaring variables of type `struct`. 
-There are no `union`s.
+`typedef` isn't supported. You must use syntax `struct NAME` when declaring variables of type `struct`.
+Recursive declarations are allowed. There are no `union`s.
 
-`c4wa` supports most C operators, but assignment isn't treated as an operator. It does support chain assignment
-`a = b = c ...` with some limitations though.
+`c4wa` supports all C operators, but assignment isn't treated as an operator, so you can't have syntax like
+`a = ptr[i ++]` etc. Chain assignments
+`a = b = c ...` _are_ supported with some limitations though.
 
 Usual pointer arithmetic is supported; `&` operator can be used with some limitations.
 
-There are no `void *` pointers and no `NULL`. If you are using a "generic" pointer, you must explicitly cast it.
-Built-in functions like `memcpy` use `char *`.  0 is a valid pointer value (not for dynamically allocated objects
-but for addresses of local variables); you can if you wish compare your pointer with `(type *) 0`, but if you fail to
-zero-test, your code will still execute and might not do what you intended.
+There are no `void *` pointers. 
+If you are using a "generic" pointer, you must explicitly cast it.
+Built-in functions like `memcpy` use `char *`.  
+
+There is no built-in `NULL`. You can of course compare your pointer with `(type *) 0` if you wish, but technically
+0 is a valid pointer value (this will be the address of your first local variable
+allocated on the top of the stack, which starts from memory address 0), so be very careful if doing something like that.
 
 Almost all arithmetic operations, function calls and assignment require explicit type cast if types are inconsistent.
 
@@ -142,7 +146,7 @@ advance declarations. In this case, you can declare `static` function, so it won
 nor `static` will be _imported_ (just like a function declaration). `static` global variables are neither 
 imported not exported.
 
-(Unrelated to import or export, global variable could also be `const`)
+(Unrelated to import or export, global variable could also be `const`).
 
 **Memory** behaviour is determined by compiler options 
 (see [here](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md)). It could be imported, 
@@ -200,13 +204,13 @@ int * arr = alloc(10, N + 1, int);
 ```
 
 This can be used to allocate an array of `N+1` integers (note that you can also use syntax `int arr[N+1]` 
-to allocate in the stack instead, subject to space limitation of course).
+to allocate in the stack instead, subject to space limitations of course).
 
 Second argument `N+1` is ignored by `c4wa`, so consider it a declaration of intent. 
 It is only present for possible future implementation
 of an actual memory manager and to make it easier to compile and test with native C compiler.
 
-Function `free` basically has same semantic as in C standard library, it frees memory earlier allocated 
+Function `free` basically has same semantic as in C standard library, it frees memory allocated earlier 
 with `alloc`. Since for now `alloc` doesn't really allocate anything, `free` does nothing.
 Just like 2<sup>nd</sup> argument to `alloc`, it is there for better compatibility with C compiler,
 future enhancements and to better represent programmer's intent.
@@ -268,6 +272,15 @@ static int __memory_size = 1;
 #endif 
 ```
 
+## Built-in functions
+
+In addition to memory functions `alloc` and `free` and memory functions, there are a few other built-in functions:
+`min`, `max`, `floor`, `ceil`, `sqrt`, `fabs`. These functions work only for `float` or `double`
+arguments, and are polymorphic (so if passed `float` value(s), they'd also return a `float`, and same for `double`).
+Logically, `min` and `max` should be supported for all numeric types, but this is still work in progress
+(there are no built-in instructions, so to property implement this support we need a small external library;
+this functionality isn't yet production ready).
+
 ## Strings and chars
 
 Web Assembly has special DATA section and `data` instruction to store strings in memory. 
@@ -304,6 +317,10 @@ terminating zero byte:
 char name[5];
 memcpy(name, "John", 5);
 ```
+
+There is a certain inconsistency between `char`s and string literals, since when publishing strings to DATA
+section we don't interpret any escape sequences (other than `\"` and `\\`); that means string `"\n"` actually
+consists of _two_ chars, `\` and `n`, whereas `'\n'` is a valid single char.
 
 ## `printf`
 
