@@ -132,6 +132,9 @@ and memory); here is how we interpret some C attributes for Web Assembly:
 A function which is not `extern` will not be exported. Obviously, you should always have at least one `extern` function,
 but you can have as many as you want.
 
+`c4wa` will only output WAT source for functions which are exported (that is, declared `extern`) or are called from an
+exported function. If you have no exported functions, you'll get an empty module and a warning would be printed.
+
 **Function declaration** could be `static`; this will cause declared function _not_ to be imported. 
 
 Normally, when you declare function like `double atan2(double, double)` (no attributes), 
@@ -146,16 +149,12 @@ imported not exported.
 
 (Unrelated to import or export, global variable could also be `const`).
 
-`c4wa` will only output WAT source for functions which are exported (that is, declared `extern`) or are
-called from an exported function. If you have have no exported functions, you'll get an empty module and
-a warning would be printed.
-
 **Memory** behaviour is determined by compiler options 
 (see [here](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md)). It could be imported, 
 exported (current default), purely internal or not be present at all.
 
 All exported objects are exported and imported under their names in C (except memory, which doesn't have a C
-identifier and so name is determine by compiler options). When importing, module name is also set by compiler 
+identifier and so name is determined by compiler options). When importing, module name is also set by compiler 
 options (default is `c4wa`).
 
 Any C attribute not listed above is not allowed (so you can't have `static` function definition or `extern` declaration)
@@ -269,7 +268,7 @@ for (int i = 0; i < N; i ++
     arr[i] = i; 
 ```
 
-in the 2<sup>nd/sup> version you don't need to worry about memory being available, not used by another object, and
+in the 2<sup>nd</sup> version you don't need to worry about memory being available, not used by another object, and
 marked as available again when no longer needed; however, you need however to be mindful of available stack size (see above);
 we are _not_ checking for stack overflow, so if you take too much memory you'd start overwriting your DATA section. 
 
