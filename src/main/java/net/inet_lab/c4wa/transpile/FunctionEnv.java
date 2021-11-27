@@ -15,6 +15,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
     final Deque<Block> blocks;
     final static String STACK_ENTRY_VAR = "@stack_entry";
     final ModuleEnv moduleEnv;
+    final Set<String> calls;
 
     Instruction[] instructions;
     boolean uses_stack;
@@ -29,6 +30,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
         variables = new HashMap<>();
         blocks = new ArrayDeque<>();
         tempVars = new HashMap<>();
+        calls = new HashSet<>();
 
         blocks.push(new Block());
         uses_stack = false;

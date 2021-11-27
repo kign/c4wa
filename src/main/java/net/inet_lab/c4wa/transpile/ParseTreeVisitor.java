@@ -398,9 +398,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             moduleEnv.addFunction(functionEnv);
         }
 
-        if (functions.stream().noneMatch(f -> f.func.is_exported))
-            System.out.println("WARNING: no extern functions, nothing will be exported");
-
         return moduleEnv;
     }
 
@@ -573,6 +570,17 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
+    public Partial visitStatement(c4waParser.StatementContext ctx) {
+        if (ctx.getChildCount() == 1)
+            return visitChildren(ctx);
+
+        OneInstruction e1 = (OneInstruction) visit(ctx.statement(0));
+        OneInstruction e2 = (OneInstruction) visit(ctx.statement(1));
+
+        return new OneInstruction(new DelayedList(List.of(e1.instruction, e2.instruction)));
+    }
+
+    @Override
     public OneInstruction visitElement_do_while(c4waParser.Element_do_whileContext ctx) {
         OneExpression condition = (OneExpression) visit(ctx.expression());
 
@@ -703,7 +711,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     "' and '" + elseExp.type + "' are incompatible");
 
         return new OneExpression(
-                thenExp.expression.complexity() < 6 && elseExp.expression.complexity() < 6
+                thenExp.expression.complexity() < ModuleEnv.IF_THEN_ELSE_SHORT_CIRCUIT_THRESHOLD &&
+                elseExp.expression.complexity() < ModuleEnv.IF_THEN_ELSE_SHORT_CIRCUIT_THRESHOLD
                     ? new Select(condition.expression, thenExp.expression, elseExp.expression)
                     : new IfThenElseExp(condition.expression, thenExp.type.asNumType(), thenExp.expression,
                 elseExp.expression), thenExp.type);
@@ -771,6 +780,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         FunctionDecl decl = moduleEnv.funcDecl.get(fname);
         if (decl == null)
             throw fail(ctx, "function call", "Function '" + fname + "' not defined or declared");
+
+        functionEnv.calls.add(fname);
 
         Expression[] call_args;
         Instruction func_call_void = null;

@@ -64,11 +64,10 @@ int popTail(struct LinkedList * list) {
 
 void print_list(struct LinkedList * list) {
     int i = 0;
-    for (struct Node * v = list->head; v; v = v->next) {
+    for (struct Node * v = list->head; v; i ++, v = v->next) {
         if (i > 0)
             printf(", ");
         printf("%d", v->val);
-        i ++;
     }
 
     if (i == 0)

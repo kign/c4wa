@@ -68,6 +68,7 @@ statement
     | complex_increment
     | function_call
     | return_expression
+    | statement ',' statement
     ;
 
 mult_variable_decl : primitive local_variable (',' local_variable)* ;

@@ -24,6 +24,9 @@ public class ModuleEnv implements Partial {
     final String MEMORY_NAME;
 
     final static String STACK_VAR_NAME = "@stack";
+    // `A? B: C` translates to (if A (then B) (else C)) if other B or C has complexity greater or equal than this value;
+    // otherwise, (select B C A) is used (which will evaluate all arguments regardless)
+    final static int IF_THEN_ELSE_SHORT_CIRCUIT_THRESHOLD = 6;
 
     public ModuleEnv (Properties prop) {
         funcDecl = new HashMap<>();
@@ -138,8 +141,41 @@ public class ModuleEnv implements Partial {
         NONE
     }
 
+    private Set<String> dependencyList() {
+        Map<String, FunctionEnv> fmap = new HashMap<>();
+        for (FunctionEnv f : functions)
+                fmap.put(f.name, f);
+
+        Deque<String> stack = new ArrayDeque<>();
+        for (FunctionEnv f : functions)
+            if (f.is_exported)
+                stack.push(f.name);
+
+        Set<String> res = new HashSet<>();
+
+        while(!stack.isEmpty()) {
+            String fname = stack.pop();
+            if (res.contains(fname))
+                continue;
+
+            res.add(fname);
+            FunctionEnv f = fmap.get(fname);
+            if (f == null)
+                continue;
+
+            for (String x: f.calls)
+                stack.push(x);
+        }
+        return res;
+    }
+
     public Module wat () {
-        boolean need_stack = functions.stream().anyMatch(f -> f.uses_stack);
+        Set<String> included = dependencyList();
+
+        if (included.isEmpty())
+            System.err.println("WARNING: empty module, make sure you have at least one extern function");
+
+        boolean need_stack = functions.stream().filter(f -> included.contains(f.name)).anyMatch(f -> f.uses_stack);
         if (need_stack) {
             VariableDecl stackDecl = new VariableDecl(CType.INT, STACK_VAR_NAME);
             stackDecl.imported = false;
@@ -177,7 +213,8 @@ public class ModuleEnv implements Partial {
             elements.add(new Data(STACK_SIZE, data, data_len));
 
         for (FunctionEnv f : functions)
-            elements.add(f.wat());
+            if(included.contains(f.name))
+                elements.add(f.wat());
 
         return new Module(elements);
     }
