@@ -109,7 +109,9 @@ const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
     }
     const res = printf(fmt.filter(x => x !== null).join(''), ...args).replaceAll('\\n', '\n');
 
-    if (target.write)
+    if (!target)
+        console.log(res.trim());
+    else if (target.write)
         target.write(res);
     else if (target.push)
         target.push(res);
