@@ -19,7 +19,6 @@
     (call $printf (global.get $@stack) (i32.const 3))
     (set_local $sto (i32.const 2048))
     (block $@block_1_break
-      (set_local $i (i32.const 0))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $i) (get_local $s)))
         (i64.store (i32.add (get_local $sto) (i32.mul (get_local $i) (i32.const 8))) (i64.const 0))
@@ -52,7 +51,6 @@
     (local $n i32)
     (set_local $@stack_entry (global.get $@stack))
     (block $@block_1_break
-      (set_local $n (i32.const 0))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $n) (get_local $N)))
         (i64.store (global.get $@stack) (i64.const 1072))
@@ -115,7 +113,6 @@
     (global.set $@stack (i32.sub (global.get $@stack) (i32.const 0)))
     (call $printf (global.get $@stack) (i32.const 1))
     (block $@block_2_break
-      (set_local $i (i32.const 0))
       (loop $@block_2_continue
         (br_if $@block_2_break (i32.ge_s (get_local $i) (get_local $N)))
         (if (i32.eqz (call $read (get_local $S) (get_local $i)))

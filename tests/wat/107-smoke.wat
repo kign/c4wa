@@ -7,7 +7,6 @@
   (data (i32.const 1024) ", \00%s%d->%d\00\00\5Cn\00")
   (func $cycle (param $seed i64) (result i32)
     (local $len i32)
-    (set_local $len (i32.const 0))
     (loop $@block_1_continue
       (if (i64.eq (get_local $seed) (i64.const 1))
         (then
@@ -29,7 +28,6 @@
     (local $i i32)
     (local $v i32)
     (set_local $@stack_entry (global.get $@stack))
-    (set_local $printed (i32.const 0))
     (set_local $max (i32.const -1))
     (set_local $start (i32.const 1))
     (block $@block_1_break

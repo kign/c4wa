@@ -66,7 +66,6 @@
     (set_local $primes (global.get $@stack))
     (global.set $@stack (i32.add (global.get $@stack) (i32.mul (i32.div_s (global.get $N) (i32.const 2)) (i32.const 4))))
     (block $@block_1_break
-      (set_local $iter (i32.const 0))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $iter) (i32.const 2)))
         (set_local $n (if (result i32) (i32.eqz (get_local $iter)) (then (call $gen1 (get_local $primes))) (else (call $gen2 (get_local $primes)))))

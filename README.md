@@ -60,7 +60,7 @@ We start from this C code, which we save to file `collatz.c` :
 
 ```c
 extern int collatz(int N) {
-    int len;
+    int len = 0;
     unsigned long n = (unsigned long) N;
     do {
         if (n == 1)

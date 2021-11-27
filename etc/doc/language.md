@@ -133,7 +133,7 @@ A function which is not `extern` will not be exported. Obviously, you should alw
 but you can have as many as you want.
 
 `c4wa` will only output WAT source for functions which are exported (that is, declared `extern`) or are called from an
-exported function. If you have no exported functions, you'll get an empty module and a warning would be printed.
+exported function. If you have no exported functions, you'll get an empty module and a warning.
 
 **Function declaration** could be `static`; this will cause declared function _not_ to be imported. 
 
@@ -269,7 +269,7 @@ for (int i = 0; i < N; i ++
 ```
 
 in the 2<sup>nd</sup> version you don't need to worry about memory being available, not used by another object, and
-marked as available again when no longer needed; however, you need however to be mindful of available stack size (see above);
+marked as available again when no longer needed; however, you need to be mindful of available stack size (see above);
 we are _not_ checking for stack overflow, so if you take too much memory you'd start overwriting your DATA section. 
 
 ### Memory functions

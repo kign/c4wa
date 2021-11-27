@@ -31,7 +31,6 @@
     (local $i i32)
     (set_local $arr (i32.const 2048))
     (block $@block_1_break
-      (set_local $i (i32.const 0))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $i) (get_local $N)))
         (f64.store (i32.add (get_local $arr) (i32.mul (get_local $i) (i32.const 8))) (call $mulberry32))

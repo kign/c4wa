@@ -31,7 +31,6 @@
     (local $n i32)
     (local $a i64)
     (set_local $@stack_entry (global.get $@stack))
-    (set_local $n (i32.const 0))
     (block $@block_1_break
       (set_local $a (i64.const 1))
       (loop $@block_1_continue

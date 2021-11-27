@@ -65,7 +65,6 @@
     (local $i i32)
     (local $v i32)
     (set_local $@stack_entry (global.get $@stack))
-    (set_local $i (i32.const 0))
     (block $@block_1_break
       (set_local $v (i32.load (get_local $list)))
       (loop $@block_1_continue

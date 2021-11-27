@@ -203,12 +203,14 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         final Expression rhs;
         final CType type;
         final ParserRuleContext ctx;
+        final boolean init;
 
-        DelayedAssignment(ParserRuleContext ctx, String[] names, Expression rhs, CType type) {
+        DelayedAssignment(ParserRuleContext ctx, boolean init, String[] names, Expression rhs, CType type) {
             this.ctx = ctx;
             this.names = names;
             this.rhs = rhs;
             this.type = type;
+            this.init = init;
         }
 
         @Override
@@ -219,6 +221,19 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         @Override
         public Instruction[] postprocess(PostprocessContext ppctx) {
             FunctionEnv functionEnv = (FunctionEnv) ppctx;
+
+            if (init && rhs instanceof Const && ((Const)rhs).is_int() && ((Const) rhs).longValue == 0) {
+                // WASM local variables are initialized to 0
+                if (names.length != 1)
+                    throw new RuntimeException("names.length = " + names.length);
+                VariableDecl decl = functionEnv.variables.get(names[0]);
+                if (decl == null)
+                    throw new RuntimeException("Missing varitable " + names[0]);
+
+                if (!decl.inStack)
+                    return new Instruction[0];
+            }
+
             ModuleEnv moduleEnv = functionEnv.moduleEnv;
             final char GLOBAL = 'G';
             final char LOCAL = 'L';
@@ -323,46 +338,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             need_block = false;
         }
     }
-
-    /*
-    static class StructDeclaration extends CType {
-        final String name;
-
-        StructDeclaration(String name) {
-            this.name = name;
-        }
-
-        @Override
-        public NumType asNumType() {
-            throw new RuntimeException("StructDeclaration cannot have aNumType");
-        }
-
-        @Override
-        public int size() {
-            throw new RuntimeException("StructDeclaration cannot have size");
-        }
-
-        @Override
-        public String toString() {
-            return "struct " + name;
-        }
-
-        @Override
-        public boolean isValidRHS(CType rhs) {
-            return rhs.is_struct(name);
-        }
-
-        @Override
-        public boolean is_struct() {
-            return true;
-        }
-
-        @Override
-        public boolean is_struct(String name) {
-            return this.name.equals(name);
-        }
-    }
-    */
 
     @Override
     public ModuleEnv visitModule(c4waParser.ModuleContext ctx) {
@@ -894,7 +869,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "init", "variable '" + variableDecl.name + "' already defined");
         functionEnv.registerVar(variableDecl.name, variableDecl.type, false);
 
-        return new OneInstruction(new DelayedList(List.of(new DelayedLocalDefinition(variableDecl.name), new DelayedAssignment(ctx, new String[]{variableDecl.name}, rhs.expression, rhs.type))));
+        return new OneInstruction(
+                new DelayedList(List.of(
+                    new DelayedLocalDefinition(variableDecl.name),
+                    new DelayedAssignment(ctx, blockStack.size() == 1, new String[]{variableDecl.name}, rhs.expression, rhs.type))));
     }
 
     @Override
@@ -957,7 +935,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         OneExpression rhs = (OneExpression) visit(ctx.expression());
 
         String[] names = ctx.ID().stream().map(ParseTree::getText).toArray(String[]::new);
-        return new OneInstruction(new DelayedAssignment(ctx, names, rhs.expression, rhs.type));
+        return new OneInstruction(new DelayedAssignment(ctx, false, names, rhs.expression, rhs.type));
     }
 
     @Override

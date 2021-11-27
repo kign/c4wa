@@ -21,7 +21,6 @@
     (i32.store (i32.add (get_local $a) (i32.const 4)) (i32.const -10))
     (i32.store (i32.add (get_local $a) (i32.const 8)) (i32.const 0))
     (block $@block_1_break
-      (set_local $i (i32.const 0))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $i) (i32.const 3)))
         (i64.store (global.get $@stack) (i64.const 1024))

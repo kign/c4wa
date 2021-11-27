@@ -9,7 +9,6 @@
   (func $read (param $X i32) (param $Y i32) (param $pos i32) (param $init i32)
     (local $i i32)
     (block $@block_1_break
-      (set_local $i (i32.const 0))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $i) (i32.mul (get_local $X) (get_local $Y))))
         (i32.store8 (i32.add (get_local $pos) (get_local $i)) (select (i32.const 1) (i32.const 0) (i32.eq (i32.load8_s (i32.add (get_local $init) (get_local $i))) (i32.const 120))))
@@ -22,7 +21,6 @@
     (local $val i32)
     (set_local $@stack_entry (global.get $@stack))
     (block $@block_1_break
-      (set_local $y (i32.const 0))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $y) (get_local $Y)))
         (block $@block_1_1_break
@@ -50,10 +48,7 @@
     (local $dx i32)
     (local $dy i32)
     (local $didx i32)
-    (set_local $cnt (i32.const 0))
-    (set_local $hash (i32.const 0))
     (block $@block_1_break
-      (set_local $y (i32.const 0))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $y) (get_local $Y)))
         (block $@block_1_1_break
@@ -113,8 +108,6 @@
     (local $cnt i32)
     (local $hash i32)
     (local $p i32)
-    (set_local $cnt (i32.const 0))
-    (set_local $hash (i32.const 0))
     (set_local $p (i32.sub (get_local $cells) (i32.const 1)))
     (memory.fill (get_local $cellsnew) (i32.const 0) (i32.mul (get_local $X) (get_local $Y)))
     (block $@block_1_break
@@ -210,7 +203,6 @@
     (call $read (get_local $X) (get_local $Y) (get_local $pos_0) (get_local $initial_pos))
     (call $life_prepare (get_local $pos_0) (get_local $X) (get_local $Y) (get_local $stat))
     (block $@block_1_break
-      (set_local $iter (i32.const 0))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $iter) (global.get $N)))
         (if (i32.eqz (i32.rem_s (get_local $iter) (i32.const 2)))

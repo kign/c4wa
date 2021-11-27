@@ -9,7 +9,6 @@
     (local $sum i32)
     (local $i i32)
     (set_local $@stack_entry (global.get $@stack))
-    (set_local $sum (i32.const 0))
     (set_local $i (i32.const 1))
     (loop $@block_1_continue
       (set_local $sum (i32.add (get_local $sum) (i32.mul (get_local $i) (get_local $i))))

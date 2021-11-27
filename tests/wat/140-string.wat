@@ -5,7 +5,6 @@
   (data (i32.const 1024) "Hello!\00String <%s> consists of %d characters: \00'%c'\00, \00.\5Cn\00")
   (func $strlen (param $str i32) (result i32)
     (local $n i32)
-    (set_local $n (i32.const 0))
     (loop $@block_1_continue
       (set_local $str (i32.add (get_local $str) (i32.const 1)))
       (set_local $n (i32.add (get_local $n) (i32.const 1)))
