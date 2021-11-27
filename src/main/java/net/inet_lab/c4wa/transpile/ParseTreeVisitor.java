@@ -222,16 +222,20 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         public Instruction[] postprocess(PostprocessContext ppctx) {
             FunctionEnv functionEnv = (FunctionEnv) ppctx;
 
-            if (init && rhs instanceof Const && ((Const)rhs).is_int() && ((Const) rhs).longValue == 0) {
-                // WASM local variables are initialized to 0
-                if (names.length != 1)
-                    throw new RuntimeException("names.length = " + names.length);
-                VariableDecl decl = functionEnv.variables.get(names[0]);
-                if (decl == null)
-                    throw new RuntimeException("Missing varitable " + names[0]);
+            if (init && rhs instanceof Const) {
+                Const c = (Const) rhs;
+                if (c.is_int() && c.longValue == 0 || !c.is_int() && c.doubleValue == 0.0) {
+                    // WASM local variables are initialized to 0
+                    if (names.length != 1)
+                        throw new RuntimeException("names.length = " + names.length);
 
-                if (!decl.inStack)
-                    return new Instruction[0];
+                    VariableDecl decl = functionEnv.variables.get(names[0]);
+                    if (decl == null)
+                        throw new RuntimeException("Missing varitable " + names[0]);
+
+                    if (!decl.inStack)
+                        return new Instruction[0];
+                }
             }
 
             ModuleEnv moduleEnv = functionEnv.moduleEnv;

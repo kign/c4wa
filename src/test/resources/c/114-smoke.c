@@ -6,7 +6,7 @@ int set_value_of_a_to_57(long * a) {
 }
 
 extern int main() {
-    long a;
+    long a = 0; // must be retained by compiler, stack variable
 
     set_value_of_a_to_57(&a);
 

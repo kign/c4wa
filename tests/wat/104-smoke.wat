@@ -8,7 +8,6 @@
     (local $a f64)
     (local $b f64)
     (local $c f64)
-    (set_local $a (f64.const 0.0))
     (set_local $b (get_local $x))
     (loop $@block_1_continue
       (set_local $c (f64.div (f64.add (get_local $a) (get_local $b)) (f64.const 2.0)))

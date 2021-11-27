@@ -12,6 +12,7 @@
     (set_local $@stack_entry (global.get $@stack))
     (set_local $a (global.get $@stack))
     (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
+    (i64.store (get_local $a) (i64.const 0))
     (drop (call $set_value_of_a_to_57 (get_local $a)))
     (i64.store (global.get $@stack) (i64.const 1024))
     (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
