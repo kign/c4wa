@@ -21,10 +21,8 @@ char * long_to_string(unsigned long a) {
 
 extern int main () {
     int n = 0;
-    for (unsigned long a = 1; n < 64; a *= 2) {
-        n ++;
-        printf("2^%d = %ld, as string: '%s'\n", n-1, a, long_to_string(a));
-    }
+    for (unsigned long a = 1; n < 64; a *= 2, n ++)
+        printf("2^%d = %ld, as string: '%s'\n", n, a, long_to_string(a));
 
     return 0;
 }
