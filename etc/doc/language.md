@@ -55,7 +55,6 @@ Here are some of the most commonly used features of C language **NOT** supported
   * Pragmas
   * Array initializers
   * Assignment operators `=`, `+=`, `++` etc. in expressions
-  * Comma `,` operator
   * Assignment of `struct`s or using `struct` as an argument
   * `long`/`float` literals
   * `goto`
@@ -111,8 +110,7 @@ block-level locals.
 The ony "native" loop type in Web Assembly is `do ... while()`; you are encouraged to use it whenever practical 
 since this creates cleaner and simpler WAT/WASM code. Since it is so common C, we do 
 nevertheless support a regular `for` loop, but not `while() {   }` loop. Use `for(; ... ;)` syntax if you must.
-
-There is no comma `,` operator in `c4wa` (so you can't for example have multiple initializations in `for` loop).
+You can use comma `,` to have multiple initializations or increments.
 
 You can define multiple variables in one definition like `int *a, b, c[2]` and you can 
 initialize variables when you define them, e.g.
@@ -147,6 +145,10 @@ nor `static` will be _imported_ (just like a function declaration). `static` glo
 imported not exported.
 
 (Unrelated to import or export, global variable could also be `const`).
+
+`c4wa` will only output WAT source for functions which are exported (that is, declared `extern`) or are
+called from an exported function. If you have have no exported functions, you'll get an empty module and
+a warning would be printed.
 
 **Memory** behaviour is determined by compiler options 
 (see [here](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md)). It could be imported, 
@@ -244,6 +246,32 @@ One peculiarity of `c4wa` is that expression `&a[1]` is interpreted as `(&a)[1]`
 This is related to left recursion in Antlr4, and I haven't been able to solve this yet without significant
 changes to the grammar. For practical use, this is hardly a problem, you can always use parenthesis or
 simply replace this expression with `a + 1`, which is what it is anyway.
+
+### stack arrays
+
+You can bypass manual memory allocation by using stack. When you declare a stack array, `type variabne[size]`,
+`size` doesn't have to be a compile-time constant, it could be any valid integer expression.
+
+For example, if you need to allocate integer array of size `N` and fill it in with consecutive numbers `0 ... N-1`,
+either of these two alternatives will work:
+
+```c
+int * arr = alloc(0, N, int);
+for (int i = 0; i < N; i ++
+    arr[i] = i; 
+```
+
+or
+
+```c
+int arr[N];
+for (int i = 0; i < N; i ++
+    arr[i] = i; 
+```
+
+in the 2<sup>nd/sup> version you don't need to worry about memory being available, not used by another object, and
+marked as available again when no longer needed; however, you need however to be mindful of available stack size (see above);
+we are _not_ checking for stack overflow, so if you take too much memory you'd start overwriting your DATA section. 
 
 ### Memory functions
 
