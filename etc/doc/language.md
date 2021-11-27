@@ -272,6 +272,8 @@ in the 2<sup>nd</sup> version you don't need to worry about memory being availab
 marked as available again when no longer needed; however, you need to be mindful of available stack size (see above);
 we are _not_ checking for stack overflow, so if you take too much memory you'd start overwriting your DATA section. 
 
+Arrays are permitted in `struct`s, but must have fixed (= known at compile time) size. 
+
 ### Memory functions
 
 These functions behave as normal C function in C code with given signatures 
@@ -383,7 +385,19 @@ When passing arguments, all integer values are converted to `long`, and all floa
 Note that if passing a string as one of the arguments (as would be the case with an actual `printf` adaptation),
 value stored in memory would _itself_ be a memory address of the string.
 
-## Boolean operators and values
+## Operators
+
+`c4wa` supports all 40+ C operators, with only minimal and mostly inconsequential differences with standard C. 
+Known inconsistencies and bugs are:
+
+  * Possibly incorrect prioritization of `&` and associativity of `?:`;
+  * Assignment operators: `=`, `++`, `--`, `+=`, `-=`, `*=`, `/=`, `%=`, `>>=`, `<<=`, `&=`, `^=`, `|=` could 
+    not be re-used in an expression; operators in `c4wa` have no immediate side effects (that is, other than via
+    function calls). Thus, operators `++` and `--` are only postfix (`a ++` is valid, `++ a` is not);
+  * Comma `,` isn't technically an operator, it's an alternative to block `{ ... }` to make a composite statement.
+   `a = b, c` is illegal, but `a = b, c = d` or `i ++, j ++` is ok. 
+
+### Boolean operators and values
 
 Booleans should be reasonably consistent with C: `0` is _false_, `1` is _true_, etc. We don't have any built-in
 support for `true` or `false` constants, feel free to add your own via preprocessor or globals.
@@ -412,13 +426,48 @@ Web Assembly supports global variables, so you can freely use them in C code. Ho
 all non-imported globals be initialized.
 
 ```c
-int Num_of_Points;        // imported
+int Num_of_Points;        // imported, can't initialize
 extern double Volume = 0; // exported, must initialize
 static N = 10;            // internal, neither imported or exported
 const test_mode = 1;      // non-mutable, implicitly 'static' unless declared 'extern'
 ```
 
 Global values could be initialized to any compile-time constant; compile-time expressions may use `sizeof`.
+
+## C Preprocessor
+
+While preprocessor is not part of `c4wa`, it can optionally run your code through external preprocessor
+if available at the host, with `-P` command line option. Add command line options which begin with `-D` 
+would be directly passed to the preprocessor (or ignored if `-P` isn't present). We also add `-DC4WA`.
+
+Current implementation does NOT recognize `#line` directives by default inserted by C Preprocessor.
+If you run through C preprocessor manually, please make sure to remove them (usually `-P`).
+
+## Cross-compiling with C
+
+Cross-compiling the code with standard C compiler is listed above as one of the design goals, and it should be simple
+and straightforward. Nevertheless, you may need a few adjustments:
+
+  * `cw4a` is using some built-in functions not known to standard C: `alloc`, `memgrow`, `memsize` 
+  * Other build-in functions are part of C library, but must be declared directly or via an include file;
+  * `cw4a` is tolerant to functions calling each other in any order.
+
+This is an example of the header which you can include into your program:
+
+```c
+#ifndef C4WA
+void * memset(); 
+void * memcpy(); 
+void * free(void *); 
+double sqrt(double);
+#define alloc(ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
+static int __memory_size = 1;
+#define memgrow(size) __memory_size += (size)
+#define memsize() __memory_size
+#define min(a,b) ((a) < (b))?(a):(b)
+#define max(a,b) ((a) < (b))?(b):(a)
+#endif
+```
 
 ## Comments
 
