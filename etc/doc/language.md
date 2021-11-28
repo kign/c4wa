@@ -171,7 +171,7 @@ Any C attribute not listed above is not allowed (so you can't have `static` func
 ## Memory
 
 A simple C program might not require a linear memory at all; you can use 
-[compiler option](https://github.com/kign/c4wa/blob/stack/etc/doc/properties.md) `module.memoryStatus=none`
+[compiler option](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md) `module.memoryStatus=none`
 to not add any memory declaration to generated WAT file. However, many features, such as 
 taking address of a local variable, using `struct`s or arrays, calling imported function with 
 arbitrary number of arguments (like `printf`), and obviosuly allocating memory directly, won't work without 
@@ -179,7 +179,7 @@ linear memory.
 
 ### Composition of linear memory
 
-![Linear memory](https://github.com/kign/c4wa/blob/stack/etc/doc/memory.png?raw=true "Linear memory" )
+![Linear memory](https://github.com/kign/c4wa/blob/master/etc/doc/memory.png?raw=true "Linear memory" )
 
 Generated WAT will have two special blocks of linear memory with configurable sizes.
 
