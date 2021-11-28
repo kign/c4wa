@@ -2,27 +2,33 @@ void printf ();
 
 static int __get_index_cnt = 0;
 
+static int N = 100;
+
 int get_index() {
     __get_index_cnt ++;
     printf("[%d] Calling get_index()\n", __get_index_cnt);
-    return 99;
+    return N - 1;
 }
-static int N = 100;
 
 extern int main() {
     int a[N];
+    int b[10];
 
     for (int i = 0; i < N; i ++)
         a[i] = 10;
 
-    memset((char *)a, '\0', N * sizeof(int));
+    b[0] = 3;
+
+    memset((char *)a, '\0', N * sizeof(int)); // make sure it updates `a`, but not `b`
 
     a[get_index()] ++; // how many time will we call get_index?
+    b[0] |= 1 << 10;
 
-    printf("Result is %d\n", a[get_index()]);
+    printf("a[%d] = %d, b[0] = %d\n", get_index(), a[get_index()], b[0]);
 
     return 0;
 }
 // [1] Calling get_index()
 // [2] Calling get_index()
-// Result is 1
+// [3] Calling get_index()
+// a[99] = 1, b[0] = 1027
