@@ -36,8 +36,8 @@ Web Assembly environment.
   * There is no expectation that any existing C code, other than completely trivial, would pass through `c4wa`
     with no changes. Moreover, we are not making too much effort to make adaptation to `c4wa` easier,
     since it would be mostly pointless. However, for any normal C code, which doesn't rely on external functions
-    or libraries, doesn't use any compiler- or OS-specific features, and doesn't use too much more obscure 
-    language features (`union`s, for one thing), making it `c4wa`-compatible shouldn't take too much effort. 
+    or libraries, doesn't use any compiler- or OS-specific features, and doesn't make too much use of the more obscure 
+    language features (`union`s, `goto`s, etc.), making it `c4wa`-compatible shouldn't take too much effort. 
 
 ## TL;DR
 
@@ -55,13 +55,20 @@ Here are some of the most commonly used features of C language **NOT** supported
   * Pragmas
   * Array initializers
   * Assignment operators `=`, `+=`, `++` etc. in expressions
-  * Assignment of `struct`s or using `struct` as an argument
+  * Assignment of `struct`s or using `struct` (not pointer) as an argument
   * `long`/`float` literals
-  * `goto`
-  * block scope
+  * labels and `goto`
+  * block scope for local variables
   * Pointers to arrays, arrays of arrays
   * Function names as variables, indirect function calls
   * Bit Fields
+
+## One module, one file
+
+Currently, the expectation is that all your source code will be in one file (though of course you can use C preprocessor
+to structure your code differently if you wish). We don't directly support any libraries or cross-calling between WASM modules.
+There are no "standard includes". If you are calling any functions not already defined in your file, and it's not one
+of the few built-in utilities, you must import it from your runtime.
 
 ## A bit more details
 
@@ -100,9 +107,10 @@ Built-in functions like `memcpy` use `char *`.
 
 There is no built-in `NULL`. You can of course compare your pointer with `(type *) 0` if you wish, but technically
 0 is a valid pointer value (this will be the address of your first local variable
-allocated on the top of the stack, which starts from memory address 0), so be very careful if doing something like that.
+allocated on the top of the stack, which starts from memory address 0), so be very careful when 
+doing something like that.
 
-Almost all arithmetic operations, function calls and assignment require explicit type cast if types are inconsistent.
+Almost all arithmetic operations, function calls and assignment require explicit type cast if types are different.
 
 Local variables can be introduced anywhere in the program, but all share scope of the function. There aren't 
 block-level locals.
@@ -125,7 +133,7 @@ Function declarations (unlike definitions) can't have parameter names, only type
 
 ## Import and export
 
-Syntax of C doesn't exactly match Web Assembly notions of "imported" and "exported" symbols (global variables, functions
+Syntax of C doesn't exactly match Web Assembly concepts of "imported" and "exported" symbols (global variables, functions
 and memory); here is how we interpret some C attributes for Web Assembly:
 
 **Function definition** could be `extern`; this makes function _exported_. 
@@ -195,7 +203,7 @@ You can think of `alloc` as macro wih this definition
 
 In Web Assembly, this simply returns its first argument plus offset 
 (which is where general use memory begins, `module.stackSize + module.dataSize`) wrapped up as a
-pointer to the last argument. When compiling with regular C compiler, you can invoke `malloc`
+pointer to the last argument (a type). When compiling with regular C compiler, you can invoke `malloc`
 to trigger a similar behaviour.
 
 Example:
@@ -205,7 +213,7 @@ int * arr = alloc(10, N + 1, int);
 ```
 
 This can be used to allocate an array of `N+1` integers (note that you can also use syntax `int arr[N+1]` 
-to allocate in the stack instead, subject to space limitations of course).
+to allocate in the stack instead, subject to space limitations of course; see "stack arrays" below).
 
 Second argument `N+1` is ignored by `c4wa`, so consider it a declaration of intent. 
 It is only present for possible future implementation
@@ -220,11 +228,18 @@ Note that function `free` is special in `c4wa` since it takes pointer of _any ty
 Normally defined (or imported) functions would only work with a specific pointer type, including
 built-in `memset` and `memcpy`.
 
+Note also that while `alloc` is technically _not_ a function but a _pseudo-macro_ (it's last argument is type,
+not a value), from this point on I'll be referring to it as one of the "built-in _functions_" for brevity.
+
 ### stack variables
 
 Web Assembly supports unlimited number of local variables, so when you have a local variable in C,
-we normally map it to a local variable in Web Assembly under same name (these names are only present in WAT file,
-actual WASM code simply refers to them by consecutive numbers). There are two cases when we can't do it though.
+we directly map it to a local variable in Web Assembly under same name (these names are only present in WAT file,
+actual WASM code simply refers to them by consecutive numbers). 
+
+In some situations though we have to store value in the _stack_, keeping its _address_ as a local variable.
+When this happens, 
+There are two cases when we can't do it though.
 
 First, this happens if you declare a variable of type array (not pointer) or `struct`. In this case,
 your variable is allocated in the _stack_ (first `module.stackSize` bytes of linear memory). Actual WASM local variable
@@ -395,7 +410,7 @@ Known inconsistencies and bugs are:
     not be re-used in an expression; operators in `c4wa` have no immediate side effects (that is, other than via
     function calls). Thus, operators `++` and `--` are only postfix (`a ++` is valid, `++ a` is not);
   * Comma `,` isn't technically an operator, it's an alternative to block `{ ... }` to make a composite statement.
-   `a = b, c` is illegal, but `a = b, c = d` or `i ++, j ++` is ok. 
+   `a = b, c` is illegal, but `a = b, c = d` or `i ++, j ++` are ok. 
 
 ### Boolean operators and values
 
@@ -437,22 +452,24 @@ Global values could be initialized to any compile-time constant; compile-time ex
 ## C Preprocessor
 
 While preprocessor is not part of `c4wa`, it can optionally run your code through external preprocessor
-if available at the host, with `-P` command line option. Add command line options which begin with `-D` 
-would be directly passed to the preprocessor (or ignored if `-P` isn't present). We also add `-DC4WA`.
+if available on the host, with `-P` command line option. Any command line option which begins with `-D` 
+will be directly passed to the preprocessor (or ignored if `-P` isn't present). `-DC4WA` is always added.
 
 Current implementation does NOT recognize `#line` directives by default inserted by C Preprocessor.
 If you run through C preprocessor manually, please make sure to remove them (usually `-P`).
 
 ## Cross-compiling with C
 
-Cross-compiling the code with standard C compiler is listed above as one of the design goals, and it should be simple
-and straightforward. Nevertheless, you may need a few adjustments:
+Cross-compiling the code with standard C compiler is listed above as one of the design goals, 
+and it should indeed be simple and straightforward; `c4wa` does not use any special syntax or markers 
+not known to a C compiler. Nevertheless, you may need a few adjustments:
 
-  * `cw4a` is using some built-in functions not known to standard C: `alloc`, `memgrow`, `memsize` 
-  * Other build-in functions are part of C library, but must be declared directly or via an include file;
+  * `cw4a` is using some built-in functions specific to WASM and thus not present in standard library: 
+    `alloc`, `memgrow`, `memsize` 
+  * Other built-in functions while are part of C library, must be declared directly or via an include file;
   * `cw4a` is tolerant to functions calling each other in any order.
 
-This is an example of the header which you can include into your program:
+This is an example of the header you can include into your program:
 
 ```c
 #ifndef C4WA
