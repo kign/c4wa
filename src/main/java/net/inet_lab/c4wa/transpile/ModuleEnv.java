@@ -12,7 +12,7 @@ public class ModuleEnv implements Partial {
     final Map<String, VariableDecl> varDecl;
     final Map<String,Integer> strings;
     final Map<String,Struct> structs;
-    final Set<String> libraryFuncs;
+    final Set<String> libraryFunctions;
 
     final byte[] data;
     int data_len;
@@ -34,7 +34,7 @@ public class ModuleEnv implements Partial {
         functions = new ArrayList<>();
         strings = new HashMap<>();
         structs = new HashMap<>();
-        libraryFuncs = new HashSet<>();
+        libraryFunctions = new HashSet<>();
 
         GLOBAL_IMPORT_NAME = prop.getProperty("module.importName");
         String memoryStatus = prop.getProperty("module.memoryStatus");
@@ -76,7 +76,7 @@ public class ModuleEnv implements Partial {
     }
 
     public String library(String name) {
-        libraryFuncs.add(name);
+        libraryFunctions.add(name);
         return name;
     }
 
@@ -216,7 +216,26 @@ public class ModuleEnv implements Partial {
             if(included.contains(f.name))
                 elements.add(f.wat());
 
+        for (String libf: libraryFunctions) {
+            String code = library.get(libf);
+            if (code == null)
+                System.err.println("Library function '" + libf + "' isn't available");
+            else
+                elements.add(new FuncWat(libf, code));
+        }
+
         return new Module(elements);
     }
+
+    static final Map<String, String> library = Map.ofEntries(
+            Map.entry("@max_32s", "(param $a i32) (param $b i32) (result i32) (select (get_local $a) (get_local $b) (i32.gt_s (get_local $a) (get_local $b)))"),
+            Map.entry("@min_32s", "(param $a i32) (param $b i32) (result i32) (select (get_local $b) (get_local $a) (i32.gt_s (get_local $a) (get_local $b)))"),
+            Map.entry("@max_32u", "(param $a i32) (param $b i32) (result i32) (select (get_local $a) (get_local $b) (i32.gt_u (get_local $a) (get_local $b)))"),
+            Map.entry("@min_32u", "(param $a i32) (param $b i32) (result i32) (select (get_local $b) (get_local $a) (i32.gt_u (get_local $a) (get_local $b)))"),
+            Map.entry("@max_64s", "(param $a i64) (param $b i64) (result i64) (select (get_local $a) (get_local $b) (i64.gt_s (get_local $a) (get_local $b)))"),
+            Map.entry("@min_64s", "(param $a i64) (param $b i64) (result i64) (select (get_local $b) (get_local $a) (i64.gt_s (get_local $a) (get_local $b)))"),
+            Map.entry("@max_64u", "(param $a i64) (param $b i64) (result i64) (select (get_local $a) (get_local $b) (i64.gt_u (get_local $a) (get_local $b)))"),
+            Map.entry("@min_64u", "(param $a i64) (param $b i64) (result i64) (select (get_local $b) (get_local $a) (i64.gt_u (get_local $a) (get_local $b)))")
+    );
 
 }
