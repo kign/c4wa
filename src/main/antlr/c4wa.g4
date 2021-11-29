@@ -118,7 +118,7 @@ expression
     | expression op=BWOR expression           # expression_binary_bwor
     | <assoc=right>left=expression AND right=expression           # expression_binary_and
     | <assoc=right>left=expression OR right=expression            # expression_binary_or
-    | expression '?' expression ':' expression # expression_if_else
+    | <assoc=right>expression '?' expression ':' expression # expression_if_else
     | CONSTANT                            # expression_const
     | ID                                  # expression_variable
     | STRING+                              # expression_string
