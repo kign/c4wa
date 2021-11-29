@@ -6,11 +6,11 @@ public class Cmp extends Expression_2 {
                         bLess?(bEqual?InstructionName.LE:InstructionName.LT):(bEqual ? InstructionName.GE : InstructionName.GT)):
                         (bLess ? (bEqual ? (bSigned?InstructionName.LE_S: InstructionName.LE_U) : (bSigned?InstructionName.LT_S: InstructionName.LT_U)) :
                                         (bEqual ? (bSigned ?InstructionName.GE_S: InstructionName.GE_U) : (bSigned ?InstructionName.GT_S: InstructionName.GT_U))),
-                numType, lhs, rhs, null, null);
+                numType, lhs, rhs, new IConstCmp(bLess, bEqual, bSigned), null);
     }
 
     public Cmp(NumType numType, boolean bEqual, Expression lhs, Expression rhs) {
-        super(bEqual?InstructionName.EQ:InstructionName.NE, numType, lhs, rhs, null, null);
+        super(bEqual?InstructionName.EQ:InstructionName.NE, numType, lhs, rhs, (a, b) -> (a==b) == bEqual? 1 : 0, null);
     }
 
     public Cmp(Cmp o) {
@@ -34,6 +34,25 @@ public class Cmp extends Expression_2 {
 
                 null
                 ))))))))))))), o.numType, o.arg1, o.arg2, null, null);
+    }
+
+    private static class IConstCmp implements Const.TwoArgIntOperator {
+        final boolean bLess;
+        final boolean bEqual;
+        final boolean bSigned;
+        IConstCmp(boolean bLess, boolean bEqual, boolean bSigned) {
+            this.bLess = bLess;
+            this.bEqual = bEqual;
+            this.bSigned = bSigned;
+        }
+        @Override
+        public long op(long a, long b) {
+            if (bEqual && a == b)
+                return 1;
+
+            long res = bSigned? Long.compare(a, b) : Long.compareUnsigned(a, b);
+            return (res > 0) == !bLess ? 1 : 0;
+        }
     }
 
     @Override
