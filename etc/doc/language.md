@@ -10,8 +10,12 @@ Obviously, details might change as work on the compiler continues.
     a human programmer would write.
   * **Functionality first, syntax sugar later.**<br> Implement the widest possible scope of C language features first, worry 
     about convenience only as necessary.
-  * **Compatibility with C standard.**<br> While some incompatibilities with standard C are unavoidable, 
-    it should be easy to write code which could be compiled and tested with both `c4wm` _and_ an ordinary C compiler.
+  * **Cross compilation.**<br> It should be easy to write code which could be compiled and tested 
+     with both `c4wm` _and_ an ordinary C compiler. All features which are in some way WASM-specific
+    are introduced in a way to make them understood by C compiler as good as possible.
+  * **Minor Incompatibilities**<br> On the other hand, since there is no goal to provide full implementation
+    of C standard, we are not worried about minor or inconsequential incompatibilities which have little impact
+    on everyday programming. All known incompatibilities are documented below.
 
 ## What this compiler is NOT
 
@@ -108,7 +112,8 @@ Built-in functions like `memcpy` use `char *`.
 There is no built-in `NULL`. You can of course compare your pointer with `(type *) 0` if you wish, but technically
 0 is a valid pointer value (this will be the address of your first local variable
 allocated on the top of the stack, which starts from memory address 0), so be very careful when 
-doing something like that.
+doing something like that; it's ok to use pointers in conditionals `if (ptr} { *ptr = ... ` if you do want 
+to compare with 0.
 
 Almost all arithmetic operations, function calls and assignment require explicit type cast if types are different.
 
@@ -319,11 +324,14 @@ static int __memory_size = 1;
 ## Built-in functions
 
 In addition to memory functions `alloc` and `free` and memory functions, there are a few other built-in functions:
-`min`, `max`, `floor`, `ceil`, `sqrt`, `fabs`. These functions work only for `float` or `double`
-arguments, and are polymorphic (so if passed `float` value(s), they'd also return a `float`, and same for `double`).
-Logically, `min` and `max` should be supported for all numeric types, but this is still work in progress
-(there are no built-in instructions, so to property implement this support we need a small external library;
-this functionality isn't yet production ready).
+
+  * `min` and `max` work with any numerical arguments (of the same type), and will return result of the same type as arguments;
+  * `floor`, `ceil`, `sqrt`, `fabs`. These functions work for `float` or `double` arguments, and will return same type arguments as passed;
+  * `abort` triggers "RuntimeError: unreachable" exception;
+  * `__builtin_clz`, `__builtin_ctz`, `__builtin_clzl`, `__builtin_ctzl` 
+    (see GNU C [documentation](https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html)). Note that while
+    in GNU C behaviour is explicitly undefined if argument is 0 (in practice, implementations typically return 0), 
+    in WASM these functions return full number of bits in the arguments (so 32 for first two, 64 for the last). 
 
 ## Strings and chars
 
@@ -369,7 +377,7 @@ consists of _two_ chars, `\` and `n`, whereas `'\n'` is a valid single char.
 ## `printf`
 
 `c4wa` doesn't have any built-in support for `printf` function; if you need, you can implement it in your runtime
-and import into Web Assembly code.
+and import into Web Assembly code. 
 
 This however raises a problem how to deal with function with variable argument list. Normally,
 an imported function must have a specific declared signature. We solve this problem by introducing special kind
@@ -400,6 +408,11 @@ When passing arguments, all integer values are converted to `long`, and all floa
 Note that if passing a string as one of the arguments (as would be the case with an actual `printf` adaptation),
 value stored in memory would _itself_ be a memory address of the string.
 
+There is a sample `node.js` runtime implementation of `printf` [here](https://github.com/kign/c4wa/blob/master/etc/wasm-printf.js), which you can re-use. 
+It doesn't archive 100% compatibility with C standard, but it is reasonably close.
+File [run-wasm](https://github.com/kign/c4wa/blob/master/etc/run-wasm) 
+is an example of how it could be used in a runtime if WASM code is exporting memory.
+
 ## Operators
 
 `c4wa` supports all 40+ C operators, with only minimal and mostly inconsequential differences with standard C. 
@@ -410,7 +423,9 @@ Known inconsistencies and bugs are:
     not be re-used in an expression; operators in `c4wa` have no immediate side effects (that is, other than via
     function calls). Thus, operators `++` and `--` are only postfix (`a ++` is valid, `++ a` is not);
   * Comma `,` isn't technically an operator, it's an alternative to block `{ ... }` to make a composite statement.
-   `a = b, c` is illegal, but `a = b, c = d` or `i ++, j ++` are ok. 
+   `a = b, c` is illegal, but `a = b, c = d` or `i ++, j ++` are ok;
+  * Boolean expressions `!!x`, `!(x == 0)`, `!x == 0`, `x != 0`, `(x == 0) == 0` are always simplified to `x`, whereas
+    it should be 1 if `x` ≠ 0.
 
 ### Boolean operators and values
 
@@ -418,8 +433,9 @@ Booleans should be reasonably consistent with C: `0` is _false_, `1` is _true_, 
 support for `true` or `false` constants, feel free to add your own via preprocessor or globals.
 
 One thing to note, `c4wa` _does_ support proper semantics for boolean `&&` and `||` (so when evaluating
-`A && B`, if `A` evaluates to _false_, `B` is not evaluated), but at a price of generating more complex 
-WAT code (since there is no built-in support for such operations in Web Assembly). You may consider
+`A && B`, if `A` evaluates to _false_, `B` is not evaluated, similarly for `A || B`), 
+but at a price of generating more complex  WAT code 
+(since there is no built-in support for such operations in Web Assembly). You may consider
 using bitwise `&` and `|` instead in some situations, which directly translate to WASM instructions
 resulting in simpler and faster code.
 
