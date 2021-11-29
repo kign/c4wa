@@ -29,7 +29,7 @@ public class RunAllTests {
         String fileName;
         Files.createDirectories(Paths.get("tests", "wat"));
 
-        final var needs_pp = List.of("170-life.c");
+        final var needs_pp = List.of("121-smoke.c", "170-life.c");
 
         while ((fileName = br.readLine()) != null) {
             final String fname = fileName;
