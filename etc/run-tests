@@ -8,7 +8,7 @@ const { spawnSync } = require("child_process");
 const colors = require('colors'); // unsafe, modifies String prototype
 const { wasm_fprintf } = require('./wasm-printf');
 
-const def_arr = ["WAT file exists (created byƒ gradlew :test) and has been modified after C file",
+const def_arr = ["WAT file exists (created by gradlew :test) and has been modified after C file",
     "WAT file compiled to WASM file",
     "Extracted expected output from C file",
     "WASM file generated expected output",
@@ -56,7 +56,7 @@ async function run_all_tests() {
 
     console.log("\nNumber of tests:", files.length);
 
-    console.log("\n⦿ Legend of stages used".cyan);
+    console.log("\n⦿ Legend of stages used\n".cyan);
 
     def_arr.forEach((msg, idx) => console.log(idx + 1, msg));
     console.log("\n" + def_arr.map((_, idx) => ` ${1 + idx} `).join(''));
