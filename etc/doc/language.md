@@ -139,7 +139,8 @@ Function declarations (unlike definitions) can't have parameter names, only type
 ## Import and export
 
 Syntax of C doesn't exactly match Web Assembly concepts of "imported" and "exported" symbols (global variables, functions
-and memory); here is how we interpret some C attributes for Web Assembly:
+and memory); instead of introducing new incompatible syntax, 
+`c4wa` solves this problem by reinterpreting existing attributes, as follows: 
 
 **Function definition** could be `extern`; this makes function _exported_. 
 A function which is not `extern` will not be exported. Obviously, you should always have at least one `extern` function,
@@ -160,18 +161,24 @@ advance declarations. In this case, you can declare `static` function, so it won
 nor `static` will be _imported_ (just like a function declaration). `static` global variables are neither 
 imported not exported.
 
-(Unrelated to import or export, global variable could also be `const`).
+(Global variable could also be `const`, it which case it is implicitly `static` unless declared as `extern`).
 
 **Memory** behaviour is determined by compiler options 
 (see [here](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md)). It could be imported, 
 exported (current default), purely internal or not be present at all.
 
-All exported objects are exported and imported under their names in C (except memory, which doesn't have a C
-identifier and so name is determined by compiler options). When importing, module name is also set by compiler 
-options (default is `c4wa`).
+All objects are exported and imported under their actual names in C (except memory, which doesn't have a C
+identifier and so export/import name is determined by compiler option `module.memoryStatus`). 
+When importing, module name is set by compiler option `module.importName` (default is `c4wa`). So for example,
+if you want to import function `atan2` from JavaScript runtime, you declare it in C source as
+`double atan2(double, double)`, and then use this code in JavaScript to import:
 
-Any C attribute not listed above is not allowed (so you can't have `static` function definition or `extern` declaration)
-.
+```javascript
+WebAssembly.instantiate(wasm_bytes, {c4wa: {atan2: Math.atan2}});
+```
+
+Any C attribute not listed above is not allowed 
+(so you can't have `static` function definition or `extern` declaration).
 
 ## Memory
 
@@ -323,15 +330,17 @@ static int __memory_size = 1;
 
 ## Built-in functions
 
-In addition to memory functions `alloc` and `free` and memory functions, there are a few other built-in functions:
+In addition to memory functions `alloc` and `free` and memory functions `memset`, `memcpy`, `memgrow`, `memsize`, 
+there are a few other built-in functions:
 
   * `min` and `max` work with any numerical arguments (of the same type), and will return result of the same type as arguments;
-  * `floor`, `ceil`, `sqrt`, `fabs`. These functions work for `float` or `double` arguments, and will return same type arguments as passed;
-  * `abort` triggers "RuntimeError: unreachable" exception;
+  * `floor`, `ceil`, `sqrt`, `fabs`. These functions work for `float` or `double` arguments, and will return same type as passed;
+  * `abort` triggers "_RuntimeError: unreachable_" exception;
   * `__builtin_clz`, `__builtin_ctz`, `__builtin_clzl`, `__builtin_ctzl` 
-    (see GNU C [documentation](https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html)). Note that while
-    in GNU C behaviour is explicitly undefined if argument is 0 (in practice, implementations typically return 0), 
-    in WASM these functions return full number of bits in the arguments (so 32 for first two, 64 for the last). 
+    (see gcc [documentation](https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html)). Note that while
+    in gcc behaviour is explicitly undefined if argument is 0 (in practice, implementations typically return 0), 
+    in WASM these functions return full number of bits in the argument (so 32 for first two, 64 for the last). Note also
+    that in GNU C compiler, builtin functions don't need to be declared. 
 
 ## Strings and chars
 
@@ -418,7 +427,7 @@ is an example of how it could be used in a runtime if WASM code is exporting mem
 `c4wa` supports all 40+ C operators, with only minimal and mostly inconsequential differences with standard C. 
 Known inconsistencies and bugs are:
 
-  * Possibly incorrect prioritization of `&` and associativity of `?:`;
+  * Incorrect prioritization of `&`;
   * Assignment operators: `=`, `++`, `--`, `+=`, `-=`, `*=`, `/=`, `%=`, `>>=`, `<<=`, `&=`, `^=`, `|=` could 
     not be re-used in an expression; operators in `c4wa` have no immediate side effects (that is, other than via
     function calls). Thus, operators `++` and `--` are only postfix (`a ++` is valid, `++ a` is not);
@@ -469,7 +478,8 @@ Global values could be initialized to any compile-time constant; compile-time ex
 
 While preprocessor is not part of `c4wa`, it can optionally run your code through external preprocessor
 if available on the host, with `-P` command line option. Any command line option which begins with `-D` 
-will be directly passed to the preprocessor (or ignored if `-P` isn't present). `-DC4WA` is always added.
+will be directly passed to the preprocessor (or ignored if `-P` isn't present). `-DC4WA` is always added;
+use `-Ph` for the full list of predefined symbols.
 
 Current implementation does NOT recognize `#line` directives by default inserted by C Preprocessor.
 If you run through C preprocessor manually, please make sure to remove them (usually `-P`).

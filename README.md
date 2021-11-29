@@ -143,6 +143,30 @@ See [Language Spec](https://github.com/kign/c4wa/blob/master/etc/doc/language.md
 for in-depth discussion of implementing `printf` in WASM environment, 
 and also the [source code](https://github.com/kign/c4wa/blob/master/etc/wasm-printf.js).
 
+## Examples
+
+### Test suite
+
+There is large (and growing) set of tests, from trivial to rather complicated, in 
+[this directory](https://github.com/kign/c4wa/tree/master/src/test/resources/c).
+For each of these files, you can find generated WAT code [here](https://github.com/kign/c4wa/tree/master/tests/wat).
+
+### Game of life
+
+Previously, I wrote a native WAT implementation for Conway's game of life (on a final toroidal board); 
+later I used original implementation in C and compiled with `c4wa`.
+
+  * [Original implementation in C](https://github.com/kign/life/blob/master/lib/lifestep.c)
+  * [Original and independent implementation in WAT](https://github.com/kign/life/blob/master/wasm/life.wat)
+  * [C source adapted for `c4wa`](https://github.com/kign/life/blob/master/wasm/life-wasm.c) (note: this was based on release 0.1 of the compiler, stack variables were not yet available)
+  * [WAT compiled from the above C source](https://github.com/kign/life/blob/master/wasm/life-wasm.wat)
+
+Results:
+
+  * `c4wa` compiler yields comparable though a bit larger WASM file (1415 bytes vs 1187);
+  * Performance of `c4wa` is pretty much same as the original implementation, except for `wasmer` runtime,
+    where it is significantly better.
+
 ## Documentation
 
  * [Comparison with `emscripten` and other compilers](https://github.com/kign/c4wa/blob/master/etc/doc/comparison.md)

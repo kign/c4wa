@@ -13,7 +13,7 @@ our function slightly (so that `emscripten` would include it in the generated We
 #include <emscripten/emscripten.h>
 
 EMSCRIPTEN_KEEPALIVE int collatz(int N) {
-    int len;
+    int len = 0;
     unsigned long n = (unsigned long) N;
     do {
         if (n == 1)
@@ -30,11 +30,12 @@ EMSCRIPTEN_KEEPALIVE int collatz(int N) {
 ```
 
 Emscripten creates relatively small WASM file (under 1K) and ...  124K (2300 lines) accompanying 
-JavaScript file "containing glue code to translate between the native C functions, and JavaScript/wasm".
+JavaScript file "containing glue code to translate between the native C functions, and JavaScript/wasm", 
+per documentation. So if you want to use other non-JS runtime you're out of luck.
 
-Regardless, let's try to look a the generated code for out function. That's not trivial, since we only have 
+Regardless, let's try to look at the generated code for out function. That's not trivial, since we only have 
 WASM, not WAT file. We can use tool `wasm-decompile` which translates WASM to some semblance of C code. Here is
-out collatz() function:
+out `collatz` function:
 
 ```c
 export function collatz(a:int):int {
@@ -109,13 +110,13 @@ export function collatz(a:int):int {
 
 Pretty much same logic we had originally.
 
-On top of that, to run this WASM file one only needs 3 lines of JavaScript code (or any other Web Assembly runtime), to
-read the file, to instantiate `WebAssembly` object, and to call exported function. Nothing else.
+On top of that, to run this WASM file one only needs 3 lines of JavaScript code (or any other Web Assembly runtime): 
+to read the file, to instantiate `WebAssembly` object, and to call exported function. Nothing else.
 
 **zig**
 
-As another experiment, consider [Zig language](https://ziglang.org/), which comes prepackages with Web Assembly compiler.
-First, we re-write our function in `Zig`:
+As another experiment, consider [Zig language](https://ziglang.org/), which conveniently comes 
+prepackages with Web Assembly compiler. First, we re-write our function in `Zig`:
 
 ```zig
 export fn collatz(N: i32) i32 {
@@ -141,19 +142,22 @@ We can compile to Web Assembly like this:
 zig build-lib collatz.zig -target wasm32-freestanding -dynamic
 ```
 
-Unlike `emscripten`, there is no "glue" JavaScript; generated WASM could be immediately loaded. However, this WASM
-file is already 52K (as a reminder, `c4wa` fits this function into 99 bytes). Using again `wasm-decompile`
-to extract code for this specific function, it appears that it is even more complicated than `emscripten` version.
+The good news is, unlike `emscripten`, there is no "glue" JavaScript; generated WASM could be immediately loaded. 
+However, this WASM file is already 52K (as a reminder, `c4wa` fits this function into 99 bytes). 
+Using again `wasm-decompile` to extract code for this specific function `collatz`, 
+it appears to be similar to `emscripten` version above except even more bloated.
+
+-------
 
 None of that is necessarily a deal breaker. The huge advantage of using exising compilers is that
 they fully implement each and every feature of the language, and often significant part of standard library. 
 For example, [Assembly Script](https://www.assemblyscript.org/) compiler (a higher level language specifically 
-created for Web Assembly, as a sibling of TypeScript) embeds into generated WebAssembly a garbage collector.
-This allows a developer to compile into Web Assembly with few, if any, changes, almost any existing code
-in a supported language.
+created for Web Assembly, as a sibling of TypeScript) embeds into generated WebAssembly full implementation of 
+a garbage collector. This allows a developer to compile into Web Assembly with few, if any, changes, 
+almost any existing code in a supported language.
 
 When writing a new code, however, full feature support is less important. What you want is to generate
-reasonably efficient Web Assembly code, and to do in a reasonably high-level language.
+reasonably efficient Web Assembly code, and to do in a reasonably high-level language. That's what `c4wa` is for.
 
 Why does it have to be a subset of C though?
 
@@ -201,13 +205,13 @@ gcc -Wno-incompatible-library-redeclaration main-collatz.c -o collatz
 # Cycle length of 626331 is 508
 ```
 
-In addition to testing, using C language automatically gives us C preprocessor, a useful tool for inlining or
-conditional compilation. 
+In addition to cross-compiling like this, using C language automatically gives us C preprocessor, 
+a useful tool for inlining or conditional compilation. 
 
 (Of course, in theory, nothing could stop us from using C preprocessor,
 or any other macro processor language for that matter (like the most popular one `m4`) on top of
 another language, or even on top of plain WAT. The problem with that approach though is that we are 
 de-facto creating a new language (e.g. WAT + m4) which
 would have no syntax or other support in any existing IDE or other common tools. By contrast, C preprocessor
-would fit perfectly with C language).
+would fit perfectly with C language, and you can use any of the existing editors with C support).
 
