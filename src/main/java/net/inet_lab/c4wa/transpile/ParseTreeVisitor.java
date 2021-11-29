@@ -755,6 +755,29 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             assert res != null;
             return new OneExpression(res, arg.type);
         }
+        else if (List.of("__builtin_clz", "__builtin_ctz", "__builtin_clzl", "__builtin_ctzl").contains(fname)) {
+            boolean isClz = fname.startsWith("__builtin_clz");
+            boolean is64 = fname.endsWith("l");
+
+            if (args.expressions.length != 1)
+                throw fail(ctx, "function_call", "function '" + fname + "' expects 1 argument, received " +
+                        args.expressions.length);
+            OneExpression arg = args.expressions[0];
+            if (is64 && !arg.type.is_i64() || !is64 && !arg.type.is_i32())
+                throw fail(ctx, "function_call", "Argument to '" + fname + "' must be '" + (is64? "long":"int") + "', received " + args.expressions[0].type);
+            return new OneExpression(
+                    isClz
+                        ? new Clz(arg.type.asNumType(), arg.expression)
+                        : new Ctz(arg.type.asNumType(), arg.expression),
+                    arg.type
+            );
+        }
+        else if ("abort".equals(fname)) {
+            if (args.expressions.length != 0)
+                throw fail(ctx, "function_call", "function '" + fname + "' expects 0 argument, received " +
+                        args.expressions.length);
+            return new OneInstruction(new Unreachable());
+        }
 
         FunctionDecl decl = moduleEnv.funcDecl.get(fname);
         if (decl == null)
