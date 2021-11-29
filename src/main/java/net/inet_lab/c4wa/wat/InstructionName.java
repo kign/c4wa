@@ -34,6 +34,8 @@ public enum InstructionName implements InstructionType {
     SHL ("shl"),
     SHR_S ("shr_s"),
     SHR_U ("shr_u"),
+    CLZ ("clz"),
+    CTZ ("ctz"),
     GET_LOCAL ("get_local"),
     SET_LOCAL ("set_local"),
     TEE_LOCAL ("tee_local"),
