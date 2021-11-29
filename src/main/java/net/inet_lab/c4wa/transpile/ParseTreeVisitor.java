@@ -231,7 +231,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
                     VariableDecl decl = functionEnv.variables.get(names[0]);
                     if (decl == null)
-                        throw new RuntimeException("Missing varitable " + names[0]);
+                        throw new RuntimeException("Missing variable " + names[0]);
 
                     if (!decl.inStack)
                         return new Instruction[0];
@@ -588,12 +588,12 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitElement_for(c4waParser.Element_forContext ctx) {
-        OneInstruction prestat = (OneInstruction) visit(ctx.pre);
+        OneInstruction initializationStatement = (OneInstruction) visit(ctx.pre);
 
-        OneExpression condition = (OneExpression) visit(ctx.expression());
-        OneInstruction poststat = (OneInstruction) visit(ctx.post);
+        OneExpression testExpression = (OneExpression) visit(ctx.expression());
+        OneInstruction updateStatement = (OneInstruction) visit(ctx.post);
 
-        String block_id = functionEnv.pushBlock(poststat == null?null:poststat.instruction);
+        String block_id = functionEnv.pushBlock(updateStatement == null?null:updateStatement.instruction);
         String block_id_cont = block_id + CONT_SUFFIX;
         String block_id_break = block_id + BREAK_SUFFIX;
 
@@ -601,16 +601,16 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         functionEnv.popBlock();
 
         List<Instruction> loop_elems = new ArrayList<>();
-        if (condition != null)
-            loop_elems.add(new BrIf(block_id_break, condition.expression.Not(condition.type.asNumType())));
+        if (testExpression != null)
+            loop_elems.add(new BrIf(block_id_break, testExpression.expression.Not(testExpression.type.asNumType())));
         loop_elems.addAll(Arrays.asList(body.instructions));
-        if (poststat != null)
-            loop_elems.add(poststat.instruction);
+        if (updateStatement != null)
+            loop_elems.add(updateStatement.instruction);
         loop_elems.add(new Br(block_id_cont));
 
         List<Instruction> block_elems = new ArrayList<>();
-        if (prestat != null)
-            block_elems.add(prestat.instruction);
+        if (initializationStatement != null)
+            block_elems.add(initializationStatement.instruction);
         block_elems.add(new Loop(block_id_cont, loop_elems.toArray(Instruction[]::new)));
 
         return new OneInstruction(
@@ -736,7 +736,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
             CType type = arg1.type;
             Expression res = type.is_int()
-                            ? new CallExp(moduleEnv.library("@" + fname + (type.is_32()? "_32": "_64")), type.asNumType(),
+                            ? new CallExp(moduleEnv.library("@" + fname + (type.is_32()? "_32": "_64") + (type.is_signed()? "s": "u")), type.asNumType(),
                                 new Expression[]{arg1.expression, arg2.expression})
                             : new MinMax(type.asNumType(), "min".equals(fname), arg1.expression, arg2.expression);
             return new OneExpression(res, type);
@@ -875,7 +875,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         if (!functionEnv.returnType.isValidRHS(expression.type))
             throw fail(ctx, "return", "Cannot return type '" + expression.type +
-                    "' from a functiоn which is expected to return '" + functionEnv.returnType + "'");
+                    "' from a function which is expected to return '" + functionEnv.returnType + "'");
 
         return new OneInstruction(new DelayedReturn(expression.expression));
     }
@@ -1479,7 +1479,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (arg1.type.is_signed() != arg2.type.is_signed())
             throw fail(ctx, "binary operation '" + op + "'", "cannot combined signed and unsigned types");
 
-        resType = resType.make_signed(arg1.type.is_signed());
+        if (List.of("<", "<=", ">", ">=", "==", "!=").contains(op))
+            resType = CType.INT;
+        else
+            resType = resType.make_signed(arg1.type.is_signed());
 
         Expression res;
         if ("+".equals(op))
@@ -1527,7 +1530,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 return new OneExpression(new Neg(exp.type.asNumType(), exp.expression), exp.type);
         }
         else if (op.equals("!")) {
-            return new OneExpression(exp.expression.Not(exp.type.asNumType()), exp.type);
+            return new OneExpression(exp.expression.Not(exp.type.asNumType()), CType.INT);
         }
         else if (op.equals("*")) {
             CType type = exp.type.deref();
@@ -1569,6 +1572,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             signed = castToType.is_signed();
         else
             signed = true;
+
+        if (exp.type.is_struct() || castToType.is_struct())
+            throw fail(ctx, "cast", "cannot cast from struct or to struct");
 
         return new OneExpression(GenericCast.cast(exp.type.asNumType(), castToType.asNumType(), signed, exp.expression), castToType);
     }
