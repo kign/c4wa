@@ -74,6 +74,7 @@ const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
                 return;
             }
 
+            const is_long = fmt[i] === 'l';
             if (fmt[i] === 'l') {
                 fmt[i] = null;
                 i++;
@@ -83,11 +84,14 @@ const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
                 const r = read_i64(mem, offset);
                 if (fmt[i] === 'c')
                     args.push(String.fromCharCode(Number(r)));
-                else if (-(2n ** 53n) < r && r < 2n ** 53n)
+                else if (-(2n ** 53n) < r && r < 2n ** 53n && (!'xu'.includes(fmt[i]) || r >= 0n))
                     args.push(Number(r));
                 else {
                     // bad hack: loosing all format specifiers
-                    args.push(r.toString());
+                    if (r < 0n && 'xu'.includes(fmt[i]))
+                        args.push((r + (is_long? 2n ** 64n : 2n ** 32n)).toString(fmt[i] === 'x'? 16: 10));
+                    else
+                        args.push(r.toString());
                     fmt[i] = 's';
                 }
             } else if ("feE".includes(fmt[i]))
