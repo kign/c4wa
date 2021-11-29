@@ -46,6 +46,8 @@ public class Main {
         Map<String, String> parsedArgs = new HashMap<>();
         List<String> fileArgs = new ArrayList<>();
 
+        addPreprocessorSymbolsFromProperties(ppOptions, prop);
+
         String error = parseCommandLineArgs(args,
                 List.of(new Option('o', "output", true),
                         new Option('h', "help"),
@@ -59,7 +61,12 @@ public class Main {
 
         String usage = "Usage: " + appName + " [OPTIONS] <FILE.c>";
         if (parsedArgs.containsKey("help")) {
-            printUsage(prop, usage);
+            if (parsedArgs.containsKey("P")) {
+                for (String x: ppOptions)
+                    System.out.println(x);
+            }
+            else
+                printUsage(prop, usage);
             System.exit(0);
         }
 
@@ -133,9 +140,12 @@ public class Main {
     // to be used from tests
     public static void runAndSave(String programText, boolean usePreprocessor, Path watFileName) throws IOException {
         Properties prop = defaultProperties();
+        List<String> ppOptions = new ArrayList<>();
+
+        addPreprocessorSymbolsFromProperties(ppOptions, prop);
 
         if (usePreprocessor)
-            programText = String.join("\n", runTextThroughCPreprocessor(programText, List.of()));
+            programText = String.join("\n", runTextThroughCPreprocessor(programText, ppOptions));
 
         ParseTree tree = buildParseTree(programText);
         String wat = generateWAT(tree, prop);
@@ -151,6 +161,13 @@ public class Main {
         return prop;
     }
 
+    private static void addPreprocessorSymbolsFromProperties(List<String> ppOptions, Properties prop) {
+        ppOptions.add("-DC4WA");
+        ppOptions.add("-DC4WA_VERSION=" + prop.getProperty("appVersion"));
+        ppOptions.add("-DC4WA_STACK_SIZE=" + prop.getProperty("module.stackSize"));
+        ppOptions.add("-DC4WA_DATA_SIZE=" + prop.getProperty("module.dataSize"));
+    }
+
     private static void printUsage(Properties prop, String usage) {
         String appVersion = prop.getProperty("appVersion");
         String appDate = prop.getProperty("appDate");
@@ -161,7 +178,7 @@ public class Main {
                 "\n" +
                 "Options are: \n" +
                 "\n" +
-                " -P            invoke C preprocessor via GCC\n" +
+                " -P            invoke C preprocessor via GCC (use -Ph to print predefined symbols)\n" +
                 " -Dname=value  when option -P is used, pass definition to C preprocessor\n" +
                 " -Xname=value  define compiler property (see below)\n" +
                 " -o, --output <FILE>  specify output files, either .wat or .wasm (or - for stdout)\n" +
@@ -246,7 +263,7 @@ public class Main {
         // -E invokes preprocessor
         // -P inhibits line markers
         // -C preserves comments
-        String command = "gcc -E -P -C " + String.join(" ", ppOptions) + " -DC4WA " + fileName;
+        String command = "gcc -E -P -C " + String.join(" ", ppOptions) + " " + fileName;
         Process process = Runtime.getRuntime().exec(command);
         return new BufferedReader(new InputStreamReader(process.getInputStream()))
                 .lines().collect(Collectors.toUnmodifiableList());
