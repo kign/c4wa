@@ -31,6 +31,7 @@ abstract public class Expression {
     }
 
     public Expression Not(NumType numType) {
+        // NOTE: The type of the result is always I32. `numType` is the type of "this"
         if (numType == NumType.I32 || numType == NumType.I64)
             return new Eqz(numType, this);
         else
