@@ -165,8 +165,8 @@ later I used original implementation in C and compiled with `c4wa`.
 
   * Only minimal changes to the code were necessary for make it compatible with `c4wa` (and some of these changes wouldn't be necessary in version 0.2);
   * `c4wa` compiler yields comparable though a bit larger WASM file (1415 bytes vs 1187);
-  * Performance of `c4wa` is pretty much same as the original implementation, except for `wasmer` runtime,
-    where it is significantly better.
+  * Performance of `c4wa`-generated implementation is pretty much same as the original implementation directly in WAT, 
+    except for `wasmer` runtime, where it is significantly better.
 
 ## Documentation
 
