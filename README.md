@@ -161,8 +161,9 @@ later I used original implementation in C and compiled with `c4wa`.
   * [C source adapted for `c4wa`](https://github.com/kign/life/blob/master/wasm/life-wasm.c) (note: this was based on release 0.1 of the compiler, stack variables were not yet available)
   * [WAT compiled from the above C source](https://github.com/kign/life/blob/master/wasm/life-wasm.wat)
 
-Results:
+**Conclusions**:
 
+  * Only minimal changes to the code were necessary for make it compatible with `c4wa` (and some of these changes wouldn't be necessary in version 0.2);
   * `c4wa` compiler yields comparable though a bit larger WASM file (1415 bytes vs 1187);
   * Performance of `c4wa` is pretty much same as the original implementation, except for `wasmer` runtime,
     where it is significantly better.

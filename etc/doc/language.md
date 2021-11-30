@@ -250,8 +250,7 @@ we directly map it to a local variable in Web Assembly under same name (these na
 actual WASM code simply refers to them by consecutive numbers). 
 
 In some situations though we have to store value in the _stack_, keeping its _address_ as a local variable.
-When this happens, 
-There are two cases when we can't do it though.
+In this case we refer to this variable as _stack variable_. This happens in these two cases:
 
 First, this happens if you declare a variable of type array (not pointer) or `struct`. In this case,
 your variable is allocated in the _stack_ (first `module.stackSize` bytes of linear memory). Actual WASM local variable
@@ -259,8 +258,8 @@ holds a _pointer_ to this memory (which is one case when pointer could have a nu
 
 ### `&`
 
-However, `cw4a` would also assign a regular primitive type variable to the stack if you attempt to take an
-address of this variable. If everything works as it should, whether a local variable allocated in the stack
+However, `cw4a` would also assign a regular primitive type variable to the stack _if you attempt to take an
+address of this variable_. If everything works as it should, whether a local variable is allocated in the stack
 or not should make no difference on the C code; however, constantly accessing and saving memory could 
 have a performance hit and also generate larger and more complex WAT code. It is therefore recommended to
 limit use of stack variables to get better results.
@@ -275,7 +274,7 @@ simply replace this expression with `a + 1`, which is what it is anyway.
 
 ### stack arrays
 
-You can bypass manual memory allocation by using stack. When you declare a stack array, `type variabne[size]`,
+You can bypass manual memory allocation by using stack. When you declare a stack array, `type variable[size]`,
 `size` doesn't have to be a compile-time constant, it could be any valid integer expression.
 
 For example, if you need to allocate integer array of size `N` and fill it in with consecutive numbers `0 ... N-1`,
@@ -340,7 +339,8 @@ there are a few other built-in functions:
     (see gcc [documentation](https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html)). Note that while
     in gcc behaviour is explicitly undefined if argument is 0 (in practice, implementations typically return 0), 
     in WASM these functions return full number of bits in the argument (so 32 for first two, 64 for the last). Note also
-    that in GNU C compiler, builtin functions don't need to be declared. 
+    that in GNU C compiler, builtin functions don't need to be declared, thus you don't need anything extra glue to
+    cross-compile (just be mindful of argument 0).
 
 ## Strings and chars
 
@@ -383,6 +383,10 @@ There is a certain inconsistency between `char`s and string literals, since when
 section we don't interpret any escape sequences (other than `\"` and `\\`); that means string `"\n"` actually
 consists of _two_ chars, `\` and `n`, whereas `'\n'` is a valid single char.
 
+With all of that, it must be acknowledged that `c4wa` isn't a good environment to write a code which deals with strings. 
+This is in part because C itself isn't, and in part because working with strings means often 
+allocation and freeing up memory, and you do need a decent memory manager for that.
+
 ## `printf`
 
 `c4wa` doesn't have any built-in support for `printf` function; if you need, you can implement it in your runtime
@@ -392,19 +396,20 @@ This however raises a problem how to deal with function with variable argument l
 an imported function must have a specific declared signature. We solve this problem by introducing special kind
 of imported function, which could accept any number or type of arguments via memory pointers.
 
-Specifically, if you declare a function without signature (remember that a non-static declaration is considered
+Specifically, if you declare a function _without signature_ (remember that a non-static declaration is considered
 an import declaration):
 
 ```c
 void printf();
 ```
 
-Generated WASM code would expect an imported function `printf` with **two** arguments: memory address to begin
-reading arguments from and number of arguments; every argument takes exactly 8 bytes (64 bits) in linear memory.
+generated WASM code would expect an imported function `printf` with **two** arguments: **memory address** to begin
+reading arguments from and actual **number of arguments**; 
+every argument takes exactly 8 bytes (64 bits) in linear memory.
 
 So if for example `printf` is actually called with 5 arguments, your implementation will receive two arguments,
-`offset` and `count`; `count` will be number of arguments, 5 in this case, and values of these arguments will be stored
-in memory:
+let's call them `offset` and `count`; 
+`count` will be number of arguments, 5 in this case, and values of these arguments will be stored in memory as follows:
 
 1-st argument at address `offset`;<br>
 2-nd argument at address `offset + 8`;<br>
@@ -430,7 +435,7 @@ Known inconsistencies and bugs are:
   * Incorrect prioritization of `&`;
   * Assignment operators: `=`, `++`, `--`, `+=`, `-=`, `*=`, `/=`, `%=`, `>>=`, `<<=`, `&=`, `^=`, `|=` could 
     not be re-used in an expression; operators in `c4wa` have no immediate side effects (that is, other than via
-    function calls). Thus, operators `++` and `--` are only postfix (`a ++` is valid, `++ a` is not);
+    function calls). Thus, operators `++` and `--` are postfix only (`a ++` is valid, `++ a` is not);
   * Comma `,` isn't technically an operator, it's an alternative to block `{ ... }` to make a composite statement.
    `a = b, c` is illegal, but `a = b, c = d` or `i ++, j ++` are ok;
   * Boolean expressions `!!x`, `!(x == 0)`, `!x == 0`, `x != 0`, `(x == 0) == 0` are always simplified to `x`, whereas
@@ -482,7 +487,8 @@ will be directly passed to the preprocessor (or ignored if `-P` isn't present). 
 use `-Ph` for the full list of predefined symbols.
 
 Current implementation does NOT recognize `#line` directives by default inserted by C Preprocessor.
-If you run through C preprocessor manually, please make sure to remove them (usually `-P`).
+If you run through C preprocessor manually, please make sure to tell your preprocessor not to insert 
+them (usually command line option `-P`).
 
 ## Cross-compiling with C
 
