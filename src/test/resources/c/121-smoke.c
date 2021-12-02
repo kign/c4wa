@@ -47,9 +47,9 @@ extern int main () {
     test_long(B|C);
     test_long(A|B|C);
 
-    unsigned long x = (unsigned long)1 << (unsigned long)63;
-    unsigned long y = 63;
-    unsigned long z = (unsigned long)1 << y;
+    const unsigned long x = (unsigned long)1 << (unsigned long)63;
+    const unsigned long y = 63;
+    const unsigned long z = (unsigned long)1 << y;
 
     printf("%d, %d, %d, %d\n", clzl(x), ctzl(x), clzl(z), ctzl(z));
 
@@ -58,18 +58,18 @@ extern int main () {
 
     printf("[signed:32] v = %d, w = %d, min = %d, max = %d\n", v, w,  min(v, w), max(v, w));
 
-    unsigned int uv = 1 << 30;
-    unsigned int uw = 1 << 31;
+    const unsigned int uv = 1 << 30;
+    const unsigned int uw = 1 << 31;
 
     printf("[unsigned:32] v = %u, w = %u, min = %u, max = %u\n", uv, uw,  min(uv, uw), max(uv, uw));
 
-    long r = (long)1 << 62;
-    long s = (long)1 << 63;
+    const long r = (long)1 << 62;
+    const long s = (long)1 << 63;
 
     printf("[signed:64] r = %ld, s = %ld, min = %ld, max = %ld\n", r, s,  min(r, s), max(r, s));
 
-    unsigned long ur = (unsigned long)1 << 62;
-    unsigned long us = (unsigned long)1 << 63;
+    const unsigned long ur = (unsigned long)1 << 62;
+    const unsigned long us = (unsigned long)1 << 63;
 
     printf("[unsigned:64] r = %lu, s = %lu, min = %lu, max = %lu\n", ur, us,  min(ur, us), max(ur, us));
 

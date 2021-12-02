@@ -479,6 +479,17 @@ const test_mode = 1;      // non-mutable, implicitly 'static' unless declared 'e
 
 Global values could be initialized to any compile-time constant; compile-time expressions may use `sizeof`.
 
+## `const`
+
+Unlike standard C, `const` attribute isn't part of type definition, but optional attribute of variable
+initialization (remember what in `c4wa` you can initialize only one variable, `int a = 1, b = 1` isn't valid).
+
+```c
+const int x = N + 1;         // OK, `x` can no longer be assigned to
+const int x;                 // invalid
+void main(const char * []);  // invalid 
+```
+
 ## C Preprocessor
 
 While preprocessor is not part of `c4wa`, it can optionally run your code through external preprocessor

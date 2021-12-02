@@ -13,11 +13,11 @@ class VariableDecl implements Partial {
     boolean isArray;
     Const initialValue;
 
-    VariableDecl(CType type, String name) {
+    VariableDecl(CType type, String name, boolean is_mutable) {
         this.type = type;
         this.name = name;
         imported = exported = inStack = isArray = false;
-        mutable = true;
+        mutable = is_mutable;
         initialValue = null;
     }
 

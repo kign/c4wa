@@ -40,10 +40,10 @@ public class FunctionEnv implements Partial, PostprocessContext {
         uses_stack = true;
     }
 
-    public void registerVar(String name, CType type, boolean is_param) {
+    public void registerVar(String name, CType type, boolean is_param, boolean is_mutable) {
         if (variables.containsKey(name))
             throw new RuntimeException("Variable " + name + " already defined");
-        variables.put(name, new VariableDecl(type, name));
+        variables.put(name, new VariableDecl(type, name, is_mutable));
         if (is_param)
             params.add(name);
         else

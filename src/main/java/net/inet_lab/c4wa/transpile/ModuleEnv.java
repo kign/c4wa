@@ -177,10 +177,9 @@ public class ModuleEnv implements Partial {
 
         boolean need_stack = functions.stream().filter(f -> included.contains(f.name)).anyMatch(f -> f.uses_stack);
         if (need_stack) {
-            VariableDecl stackDecl = new VariableDecl(CType.INT, STACK_VAR_NAME);
+            VariableDecl stackDecl = new VariableDecl(CType.INT, STACK_VAR_NAME, true);
             stackDecl.imported = false;
             stackDecl.exported = false;
-            stackDecl.mutable = true;
             stackDecl.initialValue = new Const(0);
             addDeclaration(stackDecl);
         }

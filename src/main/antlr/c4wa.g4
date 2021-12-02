@@ -73,7 +73,7 @@ statement
 
 mult_variable_decl : primitive local_variable (',' local_variable)* ;
 
-variable_init : variable_decl '=' expression;
+variable_init : CONST? variable_decl '=' expression;
 
 return_expression : RETURN expression?;
 
