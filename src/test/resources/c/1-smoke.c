@@ -1,15 +1,11 @@
 void printf();
 
-void foo(void a) {
-}
-
 extern int add (int a, int b) {
     printf("a = %d, b = %d\n", a, b);
     return a + b;
 }
 extern int main() {
     int a = 7;
-    foo(a);
     int b = 14;
     printf("%d + %d = %d\n", a, b, add(a,b));
     return 0;
