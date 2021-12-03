@@ -59,7 +59,7 @@ public class Main {
             System.exit(1);
         }
 
-        String usage = "Usage: " + appName + " [OPTIONS] <FILE.c>";
+        String usage = "Usage: " + appName + " [OPTIONS] <FILE.c> [<FILE_2.c> .... <FILE_N.c>]";
         if (parsedArgs.containsKey("help")) {
             if (parsedArgs.containsKey("P")) {
                 for (String x: ppOptions)
@@ -70,71 +70,74 @@ public class Main {
             System.exit(0);
         }
 
-        if (fileArgs.size() != 1) {
-            if (fileArgs.isEmpty())
-                System.err.println(usage);
-            else
-                System.err.println("There must be exactly one argument, " + fileArgs.size() + " found\nUse "
-                        + appName + " -help for help");
+        if (fileArgs.isEmpty()) {
+            System.err.println(usage);
             System.exit(1);
         }
 
-        String fileName = fileArgs.get(0);
+        final boolean usePP = parsedArgs.containsKey("output");
 
-        if (!((new File(fileName)).exists())) {
-            System.err.println("File " + fileName + " doesn't exist");
-            System.exit(1);
-        }
-
-        String output = parsedArgs.containsKey("output")
-            ? parsedArgs.get("output")
-            : Paths.get(fileName).getFileName().toString().replaceFirst("[.][^.]+$", "") + ".wat";
+        String output =
+                parsedArgs.containsKey("output") ? parsedArgs.get("output") :
+                fileArgs.size() == 1 ? Paths.get(fileArgs.get(0)).getFileName().toString().replaceFirst("[.][^.]+$", "") + ".wat" :
+                "bundle.wat";
 
         boolean makeWasm = output.endsWith(".wasm");
 
-        List<String> programLines = parsedArgs.containsKey("P")
-            ? runFileThroughCPreprocessor(fileName, ppOptions)
-            : Files.lines(Paths.get(fileName), StandardCharsets.UTF_8).collect(Collectors.toUnmodifiableList());
-
-        if (programLines.size() == 0) {
-            System.err.println("No text");
+        if (makeWasm) {
+            System.err.println("Compiling WAT to WASM is not yet implemented");
             System.exit(1);
         }
 
-        String programText = String.join("\n", programLines);
-
-        if (!parsedArgs.containsKey("P") && hasPreprocessorDirectives(programText))
-            System.err.println("WARNING: your source file contains preprocessor directives, use -P option");
-
-        try {
-            ParseTree tree = buildParseTree(programText);
-            String wat = generateWAT(tree, prop);
-
-            if (makeWasm) {
-                System.err.println("Compiling WAT to WASM is not yet implemented");
+        ModuleEnv moduleEnv = new ModuleEnv(prop);
+        for (String fileName: fileArgs) {
+            if (!((new File(fileName)).exists())) {
+                System.err.println("File " + fileName + " doesn't exist");
                 System.exit(1);
             }
 
-            if ("-".equals(output))
-                System.out.println(wat);
-            else {
-                (new PrintStream(output)).println(wat);
-            }
-        }
-        catch(SyntaxError err) {
-            if (err.line_st != err.line_en) {
-                System.err.println("Error: " + err.msg);
-                System.out.println("Error begins at line " + err.line_st + "(position " + err.pos_st + ") and ends at line " +
-                        err.line_en + "(position " + err.pos_en + "); we can't handle it yet");
-            }
-            else {
-                System.out.println(programLines.get(err.line_st - 1));
-                System.out.println(" ".repeat(err.pos_st) + "^".repeat(1 + err.pos_en - err.pos_st));
-                System.err.println("Syntax error[" + err.line_st + ":" + err.pos_st + "]: " + err.msg);
+            List<String> programLines = usePP
+                    ? runFileThroughCPreprocessor(fileName, ppOptions)
+                    : Files.lines(Paths.get(fileName), StandardCharsets.UTF_8).collect(Collectors.toUnmodifiableList());
+
+            if (programLines.size() == 0) {
+                System.err.println("file '" + fileName + "': no text, could be preprocessor error");
+                System.exit(1);
             }
 
-            System.exit(1);
+            String programText = String.join("\n", programLines);
+
+            if (!usePP && hasPreprocessorDirectives(programText))
+                System.err.println("WARNING: file '" + fileName + "' contains preprocessor directives, use -P option");
+
+            try {
+                ParseTree tree = buildParseTree(programText);
+                ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
+                v.visit(tree);
+            } catch (SyntaxError err) {
+                String realName = fileName;
+                int lineno = err.line_st;
+                if (usePP) {
+                    err.locate(programLines);
+                    realName = err.fileName;
+                    lineno = err.lineno;
+                }
+
+                System.out.println(programLines.get(err.line_st - 1));
+                System.out.println(" ".repeat(err.pos_st) + "^".repeat(1 + err.pos_en - err.pos_st));
+                System.err.println("[" + realName + ":" + lineno + "] " + err.msg);
+
+                if (err.line_st != err.line_en)
+                    System.out.println("(Actual reported error location is " + (err.line_en - err.line_st + 1) + " lines long)");
+                System.exit(1);
+            }
         }
+
+        String wat = moduleEnv.wat().toStringPretty(2);
+        if ("-".equals(output))
+            System.out.println(wat);
+        else
+            (new PrintStream(output)).println(wat);
     }
 
     // to be used from tests
@@ -261,9 +264,9 @@ public class Main {
     private static List<String> runFileThroughCPreprocessor(String fileName, List<String> ppOptions) throws IOException {
         // https://gcc.gnu.org/onlinedocs/gcc/Preprocessor-Options.html
         // -E invokes preprocessor
-        // -P inhibits line markers
+        // -P inhibits line markers [no longer needed]
         // -C preserves comments
-        String command = "gcc -E -P -C " + String.join(" ", ppOptions) + " " + fileName;
+        String command = "gcc -E -C " + String.join(" ", ppOptions) + " " + fileName;
         Process process = Runtime.getRuntime().exec(command);
         return new BufferedReader(new InputStreamReader(process.getInputStream()))
                 .lines().collect(Collectors.toUnmodifiableList());
@@ -317,8 +320,9 @@ public class Main {
 
     private static String generateWAT(ParseTree tree, Properties prop) {
             //System.out.println("Parser returned \n" + tree.toStringTree(parser));
-            ParseTreeVisitor v = new ParseTreeVisitor(prop);
-            ModuleEnv result = (ModuleEnv) v.visit(tree);
-            return result.wat().toStringPretty(2);
+            ModuleEnv moduleEnv = new ModuleEnv(prop);
+            ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
+            v.visit(tree);
+            return moduleEnv.wat().toStringPretty(2);
     }
 }

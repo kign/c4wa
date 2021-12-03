@@ -1,5 +1,8 @@
 void printf();
 
+static void test3_int(int, int, int);
+static void test3_long(long, long, long);
+
 int foo32(int ret) {
     printf("called foo(%d); ", ret);
     return ret;
@@ -29,6 +32,11 @@ void test2(int a, int b) {
     test2_long((long)a, (long)b);
 }
 
+void test3(int a, int b, int c) {
+    test3_int(a, b, c);
+    test3_long((long)a, (long)b, (long)c);
+}
+
 void test3_int(int a, int b, int c) {
     int res = foo32(a) && foo32(b) && foo32(c);
     printf("➾ %d && %d && %d = %d\n", a, b, c, res);
@@ -41,11 +49,6 @@ void test3_long(long a, long b, long c) {
     printf("➾ [64] %d && %d && %d = %d\n", a, b, c, res);
     res = foo64(a) || foo64(b) || foo64(c);
     printf("➾ [64] %d || %d || %d = %d\n", a, b, c, res);
-}
-
-void test3(int a, int b, int c) {
-    test3_int(a, b, c);
-    test3_long((long)a, (long)b, (long)c);
 }
 
 extern int main () {

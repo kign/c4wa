@@ -12,17 +12,16 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     private FunctionEnv functionEnv;
-    private ModuleEnv moduleEnv;
+    final private ModuleEnv moduleEnv;
     final private Deque<BlockEnv> blockStack;
-    final private Properties prop;
 
     final private static String CONT_SUFFIX = "_continue";
     final private static String BREAK_SUFFIX = "_break";
     static final private boolean print_stack_trace_on_errors = false;
 
-    public ParseTreeVisitor(Properties prop) {
+    public ParseTreeVisitor(ModuleEnv moduleEnv) {
         blockStack = new ArrayDeque<>();
-        this.prop = prop;
+        this.moduleEnv = moduleEnv;
     }
 
     static class ParamList implements Partial {
@@ -345,17 +344,20 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public ModuleEnv visitModule(c4waParser.ModuleContext ctx) {
-        moduleEnv = new ModuleEnv(prop);
-
         List<OneFunction> functions = new ArrayList<>();
 
         for (var g : ctx.global_decl()) {
             Partial parseGlobalDecl = visit(g);
 
-            if (parseGlobalDecl instanceof FunctionDecl)
-                moduleEnv.addDeclaration((FunctionDecl) parseGlobalDecl);
+            if (parseGlobalDecl instanceof FunctionDecl) {
+                String err = moduleEnv.addDeclaration((FunctionDecl) parseGlobalDecl);
+                if (err != null)
+                    throw fail(g, "module", err);
+            }
             else if (parseGlobalDecl instanceof OneFunction) {
-                moduleEnv.addDeclaration(((OneFunction) parseGlobalDecl).func.makeDeclaration());
+                String err = moduleEnv.addDeclaration(((OneFunction) parseGlobalDecl).func.makeDeclaration());
+                if (err != null)
+                    throw fail(g, "module", err);
                 functions.add((OneFunction) parseGlobalDecl);
             }
             else if (parseGlobalDecl instanceof VariableDecl) {
@@ -420,13 +422,25 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public FunctionDecl visitGlobal_decl_function(c4waParser.Global_decl_functionContext ctx) {
         VariableDecl variableDecl = (VariableDecl) visit(ctx.variable_decl());
         CType[] params = ctx.variable_type().stream().map(this::visit).toArray(CType[]::new);
-        boolean anytype = params.length == 0;
-        if (params.length == 1 && params[0] == null) // no_arg_func(void)
-            params = new CType[0];
+
+        FunctionDecl.SType storage = ctx.EXTERN() != null? FunctionDecl.SType.EXTERNAL :
+                                     ctx.STATIC() != null? FunctionDecl.SType.STATIC :
+                                        FunctionDecl.SType.IMPORTED;
+        boolean anytype = false;
+
+        if (storage == FunctionDecl.SType.IMPORTED) {
+            anytype = params.length == 0;
+            if (params.length == 1 && params[0] == null) // no_arg_func(void)
+                params = new CType[0];
+        }
+
+        if (Arrays.stream(params).anyMatch(Objects::isNull))
+            throw fail(ctx, "function_decl", "can't have void argument (unless it's the only one");
+
 
         return anytype
-                ? new FunctionDecl(variableDecl.name, variableDecl.type, null, true, true)
-                : new FunctionDecl(variableDecl.name, variableDecl.type, params, false, true)
+                ? new FunctionDecl(variableDecl.name, variableDecl.type, null, true, storage)
+                : new FunctionDecl(variableDecl.name, variableDecl.type, params, false, storage)
                 ;
     }
 

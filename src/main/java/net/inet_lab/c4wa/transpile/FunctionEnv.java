@@ -56,7 +56,8 @@ public class FunctionEnv implements Partial, PostprocessContext {
 
     public FunctionDecl makeDeclaration() {
         return new FunctionDecl(name, returnType,
-                params.stream().map(p -> variables.get(p).type).toArray(CType[]::new), false, false);
+                params.stream().map(p -> variables.get(p).type).toArray(CType[]::new), false,
+                is_exported? FunctionDecl.SType.EXPORTED : FunctionDecl.SType.INTERNAL);
     }
 
     public void setCode(Instruction[] instructions) {

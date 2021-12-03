@@ -64,15 +64,15 @@ public class ModuleEnv implements Partial {
         data_len = 0;
 
         addDeclaration(new FunctionDecl("memset", null,
-                new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR, CType.INT}, false, false));
+                new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR, CType.INT}, false, FunctionDecl.SType.BUILTIN));
         addDeclaration(new FunctionDecl("memcpy", null,
-                new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR.make_pointer_to(), CType.INT}, false, false));
+                new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR.make_pointer_to(), CType.INT}, false, FunctionDecl.SType.BUILTIN));
         // Note that `memory.grow` actually return value (old memory size), but you are free to ignore it
         // without invoking `drop`.
         // I don't think this is a common design patter though, so it's easier all around to simply make
         // `memory.grow` void.
-        addDeclaration(new FunctionDecl("memgrow", null, new CType[]{CType.INT}, false, false));
-        addDeclaration(new FunctionDecl("memsize", CType.INT, new CType[0], false, false));
+        addDeclaration(new FunctionDecl("memgrow", null, new CType[]{CType.INT}, false, FunctionDecl.SType.BUILTIN));
+        addDeclaration(new FunctionDecl("memsize", CType.INT, new CType[0], false, FunctionDecl.SType.BUILTIN));
     }
 
     public String library(String name) {
@@ -90,18 +90,27 @@ public class ModuleEnv implements Partial {
         functions.add(f);
     }
 
-    public void addDeclaration(FunctionDecl functionDecl) {
+    public String addDeclaration(FunctionDecl functionDecl) {
         String name = functionDecl.name;
 
         FunctionDecl decl = funcDecl.get(name);
 
         if (decl != null) {
-            if (!decl.equals(functionDecl))
-                throw new RuntimeException("Inconsistent declaration of function '" + name + "'; was " +
-                        decl.signature() + ", now " + functionDecl.signature());
+            if (!decl.sameSignature(functionDecl))
+                return "Inconsistent declaration of function '" + name + "'; was " +
+                        decl.signature() + ", now " + functionDecl.signature();
+
+            int r = decl.legalInAnotherFile(functionDecl);
+
+            if (r == 0 && !decl.canBeReplacedWith(functionDecl))
+                return "Function '" + name + "' already defined or declared (" + decl.storage + " => " + functionDecl.storage + ")";
+
+            if (r == -1)
+                return null;
         }
 
         funcDecl.put(name, functionDecl);
+        return null;
     }
 
     public void addDeclaration(VariableDecl variableDecl) {
@@ -188,7 +197,7 @@ public class ModuleEnv implements Partial {
 
         // Everything imported must go first
         for (FunctionDecl f : funcDecl.values())
-            if (f.imported)
+            if (f.storage == FunctionDecl.SType.IMPORTED)
                 elements.add(new Import(GLOBAL_IMPORT_NAME, f.name, f.wat()));
 
         for (VariableDecl v : varDecl.values())

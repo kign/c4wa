@@ -10,17 +10,29 @@ public class FunctionDecl implements Partial {
     final CType returnType;
     final CType[] params;
     final boolean anytype;
-    final boolean imported;
+    final SType storage;
 
-    FunctionDecl(String name, CType returnType, CType[] params, boolean anytype, boolean imported) {
+    enum SType {
+        INTERNAL, // Present in this module. Could be declared "static" to please C compiler
+        EXPORTED, // Present and exported; must be defined as "extern" and optionally declared as "static"
+        STATIC,   // One of the above, we don't know which one yet
+        IMPORTED, // imported, must be declared with no qualifiers
+        EXTERNAL, // present in another source file, must be declared as "extern"
+        BUILTIN   // built-in functions
+    }
+
+    FunctionDecl(String name, CType returnType, CType[] params, boolean anytype, SType storage) {
         this.name = name;
         this.returnType = returnType;
         this.anytype = anytype;
+        this.storage = storage;
         this.params = anytype? null : params;
-        this.imported = imported;
     }
 
     public String signature () {
+        if (anytype)
+            return "anytype";
+
         StringBuilder b = new StringBuilder();
 
         b.append(returnType).append(" ").append(name).append('(');
@@ -33,7 +45,24 @@ public class FunctionDecl implements Partial {
         return b.toString();
     }
 
-    public boolean equals(FunctionDecl o) {
+    public boolean canBeReplacedWith(FunctionDecl o) {
+        return  storage == SType.STATIC &&
+                (o.storage == SType.INTERNAL || o.storage == SType.EXPORTED);
+    }
+
+    public int legalInAnotherFile(FunctionDecl o) {
+        // returns 0 if not legal, -1 if old declaration stands, 1 if new declaration rules
+        if (storage == SType.IMPORTED && o.storage == SType.IMPORTED)
+            return -1;
+        if (storage == SType.EXTERNAL && o.storage == SType.INTERNAL)
+            return 1;
+        if (storage == SType.INTERNAL && o.storage == SType.EXTERNAL)
+            return -1;
+
+        return 0;
+    }
+
+    public boolean sameSignature(FunctionDecl o) {
         return o.signature().equals(signature());
     }
 

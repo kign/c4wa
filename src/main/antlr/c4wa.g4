@@ -12,7 +12,7 @@ module
 
 global_decl
     : (STATIC|EXTERN)? CONST? variable_decl ('=' expression)? ';'                   # global_decl_variable
-    | STATIC? variable_decl '(' (variable_type (',' variable_type)* )? ')' ';'    # global_decl_function
+    | (STATIC|EXTERN)? variable_decl '(' (variable_type (',' variable_type)* )? ')' ';'    # global_decl_function
     | EXTERN? variable_decl '(' param_list? ')' composite_block                   # function_definition
     | STRUCT ID '{' (struct_mult_members_decl ';')+ '}'  ';'                                 # struct_definition
     ;
@@ -321,5 +321,19 @@ BlockComment
 
 LineComment
     :   '//' ~[\r\n]*
+        -> skip
+    ;
+
+// These two line directives are copy-pasted from C.g4 (see above), but I don't get the logic
+// behind including "#line". Isn't it a preprocessor instruction? What is it doing here?
+LineAfterPreprocessing
+    :   '#line' Whitespace* ~[\r\n]*
+        -> skip
+    ;
+
+// These are inserted by C preprocessor. We ignore it here, but use
+// these markers to map line numbers reported by parser to "real" line numbers
+LineDirective
+    :   '#' Whitespace? DecimalConstant Whitespace? STRING ~[\r\n]*
         -> skip
     ;

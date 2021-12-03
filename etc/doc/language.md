@@ -66,14 +66,7 @@ Here are some of the most commonly used features of C language **NOT** supported
   * Pointers to arrays, arrays of arrays
   * Function names as variables, indirect function calls
   * Bit Fields
-
-## One module, one file
-
-Currently, the expectation is that all your source code will be in one file (though of course you can use C preprocessor
-to structure your code differently if you wish). We don't directly support any libraries or cross-calling between WASM modules.
-There are no "standard includes". If you are calling any functions not already defined in your file, and it's not one
-of the few built-in utilities, you must import it from your runtime.
-
+  
 ## A bit more details
 
 _We list below most important known limitations of `c4wa` compiler, inconsistencies with standard C, or specifics of WASM
@@ -136,6 +129,13 @@ in WASM even if return value is never actually used.
 
 Function declarations (unlike definitions) can't have parameter names, only types.
 
+## Compiling multiple source files
+
+If you specify more than one source files, compiler will yield one "bundle" WAT file.
+Functions called from a file they aren't defined in must be declared `extern`; 
+more on this below. You can't currently have a global variables shared between multiple
+files in a way which would be consistent with C compiler, so better don't try.
+
 ## Import and export
 
 Syntax of C doesn't exactly match Web Assembly concepts of "imported" and "exported" symbols (global variables, functions
@@ -149,13 +149,17 @@ but you can have as many as you want.
 `c4wa` will only output WAT source for functions which are exported (that is, declared `extern`) or are called from an
 exported function. If you have no exported functions, you'll get an empty module and a warning.
 
-**Function declaration** could be `static`; this will cause declared function _not_ to be imported. 
+**Function declaration** could be `static` or `extern`; either attribute will cause declared function _not_ 
+to be imported. If neither attribute is present, it will be considered imported. 
 
-Normally, when you declare function like `double atan2(double, double)` (no attributes), 
+For example, hen you declare function like `double atan2(double, double)` (no attributes), 
 it is interpreted as _imported_, and
-if not provided by the run-time, this will trigger a error. You don't have to declare a function defined 
-in your code, regardless where it is defined or used; however, regular C compiler requires such 
-advance declarations. In this case, you can declare `static` function, so it won't be looked up in import.
+if not provided by the run-time, this will trigger a error. 
+
+`static` and `extern` declarations are for functions defined elswhere in the same file (in case of `static`)
+or in another file (`extern`). You never need `static` declaration to compile with `c4wa` , but you might
+need it for compatibility ith standard C compiler. `extern` declaration could come handy if you have more
+than one source file to compile.
 
 **Global variables** could be `static`, `extern`, or neither. `extern` variable will be _exported_, and neither `extern`
 nor `static` will be _imported_ (just like a function declaration). `static` global variables are neither 
@@ -497,9 +501,8 @@ if available on the host, with `-P` command line option. Any command line option
 will be directly passed to the preprocessor (or ignored if `-P` isn't present). `-DC4WA` is always added;
 use `-Ph` for the full list of predefined symbols.
 
-Current implementation does NOT recognize `#line` directives by default inserted by C Preprocessor.
-If you run through C preprocessor manually, please make sure to tell your preprocessor not to insert 
-them (usually command line option `-P`).
+`c4wa` is fully aware of so-called "line directives" inserted by a preprocessor and will use 
+proper line numbers when reporting syntax errors.
 
 ## Cross-compiling with C
 
