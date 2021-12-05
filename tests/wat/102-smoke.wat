@@ -3,7 +3,7 @@
   (global $@stack (mut i32) (i32.const 0))
   (global $N i32 (i32.const 100))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "1^2 + 2^2 + ... + %d^2 = %d\5Cn\00")
+  (data (i32.const 1024) "1^2 + 2^2 + ... + %d^2 = %d\0A\00")
   (func $main (export "main") (result i32)
     (local $@stack_entry i32)
     (local $sum i32)

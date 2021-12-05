@@ -3,7 +3,7 @@
   (global $@stack (mut i32) (i32.const 0))
   (global $N i32 (i32.const 100))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "2\00 %d\00\5Cn\00")
+  (data (i32.const 1024) "2\00 %d\00\0A\00")
   (func $v1
     (local $@stack_entry i32)
     (local $p i32)

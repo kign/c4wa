@@ -1,4 +1,11 @@
+#ifdef C4WA
 void printf();
+#else
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define alloc(ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
+#endif
 
 struct Stat {unsigned int hash; int count; };
 #define cell_t char

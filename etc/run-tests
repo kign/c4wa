@@ -20,6 +20,7 @@ void * memset();
 void * memcpy();
 void * free(void *);
 double sqrt(double);
+void abort ();
 #define alloc(ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
 static int __memory_size = 1;
 #define memgrow(size) __memory_size += (size)
@@ -172,7 +173,8 @@ async function run_one_test(test, verbose) {
     const tmp_exe = path.resolve(tmp_dir, 'tmp_exe');
     fs.rmSync(tmp_exe, {force: true});
     const tmp_c = path.resolve(tmp_dir, 'tmp.c');
-    fs.writeFileSync(tmp_c,c_prefix + fs.readFileSync(cfile, 'utf8'));
+    const c_program = fs.readFileSync(cfile, 'utf8');
+    fs.writeFileSync(tmp_c, (/^#/m.test(c_program)? "" : c_prefix) + c_program);
 
     const res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c], spawn_options);
     if (verbose)
@@ -247,7 +249,8 @@ async function run_c_file(cfile) {
     const wat = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wat'));
     const wasm = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wasm'));
     const tmp_c = path.resolve(tmp_dir, 'tmp.c');
-    fs.writeFileSync(tmp_c, c_prefix + fs.readFileSync(cfile, 'utf8'));
+    const c_program = fs.readFileSync(cfile, 'utf8');
+    fs.writeFileSync(tmp_c, (/^#/m.test(c_program) ? "" : c_prefix) + c_program);
 
     await build ();
 
@@ -271,7 +274,7 @@ async function run_c_file(cfile) {
 
     fs.rmSync(tmp_exe, {force: true});
 
-    res = spawnSync(compile, ['-P', cfile, '-o', wat], {stdio: 'inherit'});
+    res = spawnSync(compile, ['-P', cfile, '-o', wat].concat(cfile.endsWith('171-life.c')?['-Xmodule.dataSize=2048']:[]), {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ c4wa compilation failed, not proceeding");
@@ -307,7 +310,10 @@ async function run_c_file(cfile) {
         process.stdout.write(wasm_output);
         process.stdout.write("-----------------  The End ----------------\n");
 
-        console.error("❌ Output different");
+        console.error("❌ Output different, saved as /tmp/c  /tmp/wasm");
+
+        fs.writeFileSync('/tmp/c', c_output);
+        fs.writeFileSync('/tmp/wasm', wasm_output);
     }
 
 }

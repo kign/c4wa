@@ -84,12 +84,14 @@ const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
                 const r = read_i64(mem, offset);
                 if (fmt[i] === 'c')
                     args.push(String.fromCharCode(Number(r)));
-                else if (-(2n ** 53n) < r && r < 2n ** 53n && (!'xu'.includes(fmt[i]) || r >= 0n))
+                else if (-(2n ** 53n) < r && r < 2n ** 53n && (!'xu'.includes(fmt[i]) || (r >= 0n && r < 4294967296n)))
                     args.push(Number(r));
                 else {
                     // bad hack: loosing all format specifiers
                     if (r < 0n && 'xu'.includes(fmt[i]))
                         args.push((r + (is_long? 2n ** 64n : 2n ** 32n)).toString(fmt[i] === 'x'? 16: 10));
+                    else if (r >= 4294967296n && 'xu'.includes(fmt[i]))
+                        args.push(r.toString(fmt[i] === 'x'? 16: 10));
                     else
                         args.push(r.toString());
                     fmt[i] = 's';
@@ -111,7 +113,7 @@ const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
             "substitutions, passed", argc - 1, "arguments");
         return;
     }
-    const res = printf(fmt.filter(x => x !== null).join(''), ...args).replaceAll('\\n', '\n');
+    const res = printf(fmt.filter(x => x !== null).join(''), ...args);
 
     if (!target)
         console.log(res.trim());

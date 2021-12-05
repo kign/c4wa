@@ -5,7 +5,7 @@
   (global $end i32 (i32.const 40))
   (global $base i32 (i32.const 3))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "2^%d = %ld, (%d)^%d = %ld\5Cn\00")
+  (data (i32.const 1024) "2^%d = %ld, (%d)^%d = %ld\0A\00")
   (func $pow2 (param $n i32) (result i64)
     (local $res i64)
     (set_local $res (i64.const 1))

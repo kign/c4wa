@@ -3,7 +3,7 @@
   (global $d (mut i32) (i32.const 3))
   (global $@stack (mut i32) (i32.const 0))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "x   x%%%d  floor ceil\5Cn=====================\5Cn\00%2d  %2d   %2d    %2d\5Cn\00")
+  (data (i32.const 1024) "x   x%%%d  floor ceil\0A=====================\0A\00%2d  %2d   %2d    %2d\0A\00")
   (func $mod_ceiling (param $x i32) (result i32)
     (select (get_local $x) (select (i32.sub (i32.add (get_local $x) (global.get $d)) (i32.rem_s (get_local $x) (global.get $d))) (i32.sub (get_local $x) (i32.rem_s (get_local $x) (global.get $d))) (i32.gt_s (get_local $x) (i32.const 0))) (i32.eqz (i32.rem_s (get_local $x) (global.get $d)))))
   (func $mod_floor (param $x i32) (result i32)
@@ -21,7 +21,7 @@
       (set_local $i (i32.const -7))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.gt_s (get_local $i) (i32.const 7)))
-        (i64.store (global.get $@stack) (i64.const 1071))
+        (i64.store (global.get $@stack) (i64.const 1069))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
         (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $i)))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))

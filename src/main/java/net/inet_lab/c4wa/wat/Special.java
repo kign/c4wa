@@ -54,7 +54,7 @@ public class Special extends Instruction {
             StringBuilder res = new StringBuilder();
             res.append('"');
             for (byte b : bytes) {
-                if (0x20 <= b && b <= 0x7e && b != '\\')
+                if (0x20 <= b && b <= 0x7e && b != '\\' && b != '"')
                     res.append((char) b);
                 else
                     res.append(String.format("\\%02X", b));

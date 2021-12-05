@@ -3,7 +3,7 @@
   (global $precision f64 (f64.const 1.0E-9))
   (global $@stack (mut i32) (i32.const 0))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "a = %d, b = %d, c = %d: \00no roots\5Cn\00one root %.6f\5Cn\00two roots, %.6f and %.6f\5Cn\00")
+  (data (i32.const 1024) "a = %d, b = %d, c = %d: \00no roots\0A\00one root %.6f\0A\00two roots, %.6f and %.6f\0A\00")
   (func $solve_square_equation (param $a f64) (param $b f64) (param $c f64) (param $roots i32) (param $p_status i32)
     (local $d f64)
     (local $sqrt_d f64)
@@ -47,7 +47,7 @@
       (else
         (if (i32.eq (i32.load (get_local $p_status)) (i32.const 1))
           (then
-            (i64.store (global.get $@stack) (i64.const 1060))
+            (i64.store (global.get $@stack) (i64.const 1059))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
             (f64.store (global.get $@stack) (f64.load (get_local $roots)))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
@@ -55,7 +55,7 @@
           (else
             (if (i32.eq (i32.load (get_local $p_status)) (i32.const 2))
               (then
-                (i64.store (global.get $@stack) (i64.const 1076))
+                (i64.store (global.get $@stack) (i64.const 1074))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
                 (f64.store (global.get $@stack) (f64.load (get_local $roots)))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))

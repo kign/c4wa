@@ -5,7 +5,7 @@
   (global $M i32 (i32.const 1))
   (global $N i32 (i32.const 100))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "x\002\00.\00\5Cn\00................x.......xxx........x................................................................\00")
+  (data (i32.const 1024) "x\002\00.\00\0A\00................x.......xxx........x................................................................\00")
   (func $read (param $X i32) (param $Y i32) (param $pos i32) (param $init i32)
     (local $i i32)
     (block $@block_1_break
@@ -193,7 +193,7 @@
     (set_local $@stack_entry (global.get $@stack))
     (set_local $X (i32.const 10))
     (set_local $Y (i32.const 10))
-    (set_local $initial_pos (i32.const 1033))
+    (set_local $initial_pos (i32.const 1032))
     (set_local $pos_0 (i32.const 2048))
     (set_local $pos_1 (i32.add (i32.mul (global.get $M) (i32.add (i32.mul (get_local $X) (get_local $Y)) (i32.const 1))) (i32.const 2048)))
     (set_local $stat (global.get $@stack))

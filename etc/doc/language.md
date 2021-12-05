@@ -47,7 +47,7 @@ Web Assembly environment.
 
 Here are some of the most commonly used features of C language **NOT** supported by `c4wa`:
 
-  * Standard library
+  * No standard library; other than a handful of built-in utilities, all functions must be implemented or imported
   * `switch`
   * `typedef`
   * `union`
@@ -349,6 +349,9 @@ there are a few other built-in functions:
 ## Strings and chars
 
 Web Assembly has special DATA section and `data` instruction to store strings in memory. 
+The capacity of DATA section is determined by `module.dataSize` compiler option; trying to
+exceed this capacity will trigger a compiler error.
+
 All string literals in C code are placed in DATA section with terminating `\0`; 
 identical strings are assigned same memory address.
 When assigned to a variable or passed as an argument to a function, string literals have type `char *`.
@@ -363,7 +366,7 @@ char * file =
 ```
 
 Unlike most C implementations, _string literals are writable_. The following code will work
-in Web Assembly but will probably trigger a Bus Error with native C compiler:
+in Web Assembly but will probably trigger a _Bus Error_ with native C compiler:
 
 ```c
 char * name = "peter";
@@ -382,10 +385,6 @@ terminating zero byte:
 char name[5];
 memcpy(name, "John", 5);
 ```
-
-There is a certain inconsistency between `char`s and string literals, since when publishing strings to DATA
-section we don't interpret any escape sequences (other than `\"` and `\\`); that means string `"\n"` actually
-consists of _two_ chars, `\` and `n`, whereas `'\n'` is a valid single char.
 
 With all of that, it must be acknowledged that `c4wa` isn't a good environment to write a code which deals with strings. 
 This is in part because C itself isn't, and in part because working with strings means often 

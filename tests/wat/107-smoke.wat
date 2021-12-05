@@ -4,7 +4,7 @@
   (global $N i32 (i32.const 50))
   (global $sep i32 (i32.const 1024))
   (memory (export "memory") 1)
-  (data (i32.const 1024) ", \00%s%d->%d\00\00\5Cn\00")
+  (data (i32.const 1024) ", \00%s%d->%d\00\00\0A\00")
   (func $cycle (param $seed i64) (result i32)
     (local $len i32)
     (loop $@block_1_continue

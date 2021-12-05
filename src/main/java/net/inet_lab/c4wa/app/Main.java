@@ -141,8 +141,11 @@ public class Main {
     }
 
     // to be used from tests
-    public static void runAndSave(String programText, boolean usePreprocessor, Path watFileName) throws IOException {
+    public static void runAndSave(String programText, boolean usePreprocessor, Integer dataSize, Path watFileName) throws IOException {
         Properties prop = defaultProperties();
+        if (dataSize != null)
+            prop.setProperty("module.dataSize", dataSize.toString());
+
         List<String> ppOptions = new ArrayList<>();
 
         addPreprocessorSymbolsFromProperties(ppOptions, prop);
@@ -268,8 +271,17 @@ public class Main {
         // -C preserves comments
         String command = "gcc -E -C " + String.join(" ", ppOptions) + " " + fileName;
         Process process = Runtime.getRuntime().exec(command);
-        return new BufferedReader(new InputStreamReader(process.getInputStream()))
+        List<String> output = new BufferedReader(new InputStreamReader(process.getInputStream()))
                 .lines().collect(Collectors.toUnmodifiableList());
+
+        String error = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+        if (error.length() > 0) {
+            System.err.println("Preprocessor encountered errors");
+            System.out.println(error);
+            System.exit(1);
+        }
+
+        return output;
     }
 
     private static List<String> runTextThroughCPreprocessor(String src, List<String> ppOptions) throws IOException {

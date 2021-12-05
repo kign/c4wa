@@ -3,7 +3,7 @@
   (global $@stack (mut i32) (i32.const 0))
   (global $N i32 (i32.const 100))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "%d \00%d\5Cn\00")
+  (data (i32.const 1024) "%d \00%d\0A\00")
   (func $gen1 (param $primes i32) (result i32)
     (local $i i32)
     (local $n i32)

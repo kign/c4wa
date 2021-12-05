@@ -29,15 +29,15 @@ public class RunAllTests {
         String fileName;
         Files.createDirectories(Paths.get("tests", "wat"));
 
-        final var needs_pp = List.of("121-smoke.c", "170-life.c");
-
+        final var needs_pp = List.of("121-smoke.c", "170-life.c", "171-life.c");
+        final var needs_extra_data = List.of("171-life.c");
         while ((fileName = br.readLine()) != null) {
             final String fname = fileName;
             if (!fname.endsWith(".c"))
                 continue;
             tests.add(DynamicTest.dynamicTest(fileName, () -> {
                 String programText = Files.readString(Path.of(Objects.requireNonNull(loader.getResource(ctests + "/" + fname)).getPath()));
-                Main.runAndSave(programText, needs_pp.contains(fname), Paths.get("tests", "wat", fname.replace(".c", ".wat")));
+                Main.runAndSave(programText, needs_pp.contains(fname), needs_extra_data.contains(fname)?2048:null, Paths.get("tests", "wat", fname.replace(".c", ".wat")));
             }));
         }
 

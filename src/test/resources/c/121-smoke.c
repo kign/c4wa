@@ -3,14 +3,19 @@
 #define ctz(x) __builtin_ctz(x)
 #define clzl(x) __builtin_clzl(x)
 #define ctzl(x) __builtin_ctzl(x)
+
+void printf();
 #else
+#include <stdio.h>
+#define min(a,b) ((a) < (b))?(a):(b)
+#define max(a,b) ((a) < (b))?(b):(a)
+
 #define clz(x) ((x)? __builtin_clz(x) : 32)
 #define ctz(x) ((x)? __builtin_ctz(x) : 32)
 #define clzl(x) ((x)? __builtin_clzl(x) : 64)
 #define ctzl(x) ((x)? __builtin_ctzl(x) : 64)
 #endif
 
-void printf();
 
 void test_int(int x) {
     printf("x = %d, left = %d, right = %d\n", x, clz(x), ctz(x));

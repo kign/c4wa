@@ -2,7 +2,7 @@
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $@stack (mut i32) (i32.const 0))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "Point %s: [%.6f, %.6f, %.6f]\5Cn\00green\00")
+  (data (i32.const 1024) "Point %s: [%.6f, %.6f, %.6f]\0A\00green\00")
   (func $strlen (param $str i32) (result i32)
     (local $n i32)
     (loop $@block_1_continue
@@ -39,7 +39,7 @@
     (f32.store (i32.add (get_local $a) (i32.const 10)) (f32.const 1.0))
     (i32.store8 (get_local $a) (i32.const 97))
     (i32.store8 (i32.add (get_local $a) (i32.const 1)) (i32.const 98))
-    (call $init_point (get_local $a) (i32.const 1055) (f64.const -3.5) (f64.const 8.6) (f64.const 4.2))
+    (call $init_point (get_local $a) (i32.const 1054) (f64.const -3.5) (f64.const 8.6) (f64.const 4.2))
     (call $print_point (get_local $a))
     (global.set $@stack (get_local $@stack_entry))
     (i32.const 0)))

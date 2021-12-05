@@ -1,5 +1,6 @@
 package net.inet_lab.c4wa.transpile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -839,6 +840,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             func_call_void = new DelayedList(func_call_elms);
         }
         else {
+            assert decl.params != null;
             if (decl.params.length != args.expressions.length)
                 throw fail(ctx, "function call", "Function '" + fname +
                         "' expects " + decl.params.length + " arguments, provided " + args.expressions.length);
@@ -1632,20 +1634,23 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneExpression visitExpression_string(c4waParser.Expression_stringContext ctx) {
-        StringBuilder b = new StringBuilder();
-        for (var s : ctx.STRING())
-            b.append(unescape(s.getText()));
+        List<Byte> bytes = new ArrayList<>();
 
-        //String str = unescape(ctx.STRING().getText());
-        return new OneExpression(new Const(moduleEnv.addString(b.toString())), CType.CHAR.make_pointer_to());
+        for (var s : ctx.STRING())
+            bytes.addAll(unescapeString(ctx, s.getText()));
+
+        OptionalInt str_id = moduleEnv.addString(bytes);
+
+        if (str_id.isEmpty())
+            throw fail(ctx, "string", "DATA section overflow; consider bumping 'module.dataSize'");
+
+        return new OneExpression(new Const(str_id.getAsInt()), CType.CHAR.make_pointer_to());
     }
 
     @Override
     public OneExpression visitExpression_character(c4waParser.Expression_characterContext ctx) {
         String s = ctx.CHARACTER().getText();
-        Integer val = unescapeChar(s);
-        if (val == null)
-            throw fail(ctx, "character", "Invalid character definition " + s);
+        byte val = unescapeChar(ctx, s);
         return new OneExpression(new Const(val), CType.CHAR);
     }
 
@@ -1723,52 +1728,95 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return nextResult;
     }
 
-    static Integer unescapeChar(String str) {
-        byte[] bytes = str.substring(1, str.length() - 1).getBytes();
+    private static byte unescapeChar(ParserRuleContext ctx, String str) {
+        Byte res = unescapeBytes(str.substring(1, str.length() - 1).getBytes(StandardCharsets.UTF_8));
+        if (res == null)
+            throw fail(ctx, "character", "Invalid character '" + str + "'");
+        return res;
+    }
 
+    private static Byte unescapeBytes(byte[] bytes) {
         if (bytes.length == 1)
-            return (int)bytes[0];
+            return bytes[0];
         else if (bytes[0] != '\\')
             return null;
-        else if (bytes[1] == 'a')
+        else if (bytes[1] == 'a' && bytes.length == 2)
             return 0x07;
-        else if (bytes[1] == 'b')
+        else if (bytes[1] == 'b' && bytes.length == 2)
             return 0x08;
-        else if (bytes[1] == 'e')
+        else if (bytes[1] == 'e' && bytes.length == 2)
             return 0x1B;
-        else if (bytes[1] == 'f')
+        else if (bytes[1] == 'f' && bytes.length == 2)
             return 0x0C;
-        else if (bytes[1] == 'n')
+        else if (bytes[1] == 'n' && bytes.length == 2)
             return 0x0A;
-        else if (bytes[1] == 'r')
+        else if (bytes[1] == 'r' && bytes.length == 2)
             return 0x0D;
-        else if (bytes[1] == 't')
+        else if (bytes[1] == 't' && bytes.length == 2)
             return 0x09;
-        else if (bytes[1] == 'v')
+        else if (bytes[1] == 'v' && bytes.length == 2)
             return 0x0B;
-        else if (bytes[1] == '\\')
+        else if (bytes[1] == '\\' && bytes.length == 2)
             return 0x5C;
-        else if (bytes[1] == '\'')
+        else if (bytes[1] == '\'' && bytes.length == 2)
             return 0x27;
-        else if (bytes[1] == '"')
+        else if (bytes[1] == '"' && bytes.length == 2)
             return 0x22;
-        else if (bytes[1] == '?')
+        else if (bytes[1] == '?' && bytes.length == 2)
             return 0x3F;
         else if ('0' <= bytes[1] && bytes[1] <= '7' && bytes.length <= 4) {
             int res = bytes.length == 4 ? (bytes[1] - '0')*64 + (bytes[2] - '0') * 8 + (bytes[3] - '0')
                     : (bytes.length == 3 ? (bytes[1] - '0')*8 + (bytes[2] - '0') : bytes[1] - '0');
             if (res >= 256)
                 return null;
-            return res;
+            return (byte)res;
         }
         else if (bytes[1] == 'x' && bytes.length == 4) {
-            return Integer.parseInt(Character.toString(bytes[2]) + Character.toString(bytes[3]), 16);
+            try {
+                return (byte)Integer.parseInt(Character.toString(bytes[2]) + Character.toString(bytes[3]), 16);
+            }
+            catch (NumberFormatException _ignore) {
+                return null;
+            }
         }
         else
             return null;
     }
 
-    static String unescape(String str) {
+    private static List<Byte> unescapeString(ParserRuleContext ctx, String str) {
+        int N = str.length() - 1;
+        List<Byte> res = new ArrayList<>();
+        int i = 1;
+        while(i < N) {
+            if (str.charAt(i) == '\\') {
+                byte escSymbol = -1;
+                int i1 = -1;
+                for (int j = i + 1; j < N && j < i + 5; j ++) {
+                    Byte t = unescapeBytes(str.substring(i, j + 1).getBytes(StandardCharsets.UTF_8));
+                    if (t != null) {
+                        escSymbol = t;
+                        i1 = j + 1;
+                    }
+                }
+                if (i1 < 0)
+                    throw fail(ctx, "string", "Invalid escape at position " + (i + 1));
+
+                res.add(escSymbol);
+                i = i1;
+            }
+            else {
+                int j;
+                for (j = i + 1; j < N && str.charAt(j) != '\\'; j++);
+                byte[] bytes = str.substring(i, j).getBytes(StandardCharsets.UTF_8);
+                for (byte b: bytes)
+                    res.add(b);
+                i = j;
+            }
+        }
+        return res;
+    }
+
+    static String unescape_TBR(String str) {
         // we process \" and \\, but the rest of escape sequences are passed as-is
         // so "\n" is just a regular two-char sequence, <\> and <n>.
         StringBuilder b = new StringBuilder();

@@ -2,7 +2,7 @@
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $@stack (mut i32) (i32.const 0))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "a = [%d, %d], stat = %.6f\5Cn\00")
+  (data (i32.const 1024) "a = [%d, %d], stat = %.6f\0A\00")
   (func $foo (param $p_a i32) (param $p_b i32) (param $p_s i32)
     (i32.store (get_local $p_a) (i32.const 11))
     (i32.store (get_local $p_b) (i32.const -13))

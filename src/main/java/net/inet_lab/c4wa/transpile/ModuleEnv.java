@@ -10,7 +10,7 @@ public class ModuleEnv implements Partial {
     final List<FunctionEnv> functions;
     final Map<String, FunctionDecl> funcDecl;
     final Map<String, VariableDecl> varDecl;
-    final Map<String,Integer> strings;
+    final Map<Integer,Integer> strings;
     final Map<String,Struct> structs;
     final Set<String> libraryFunctions;
 
@@ -122,25 +122,34 @@ public class ModuleEnv implements Partial {
         varDecl.put(name, variableDecl);
     }
 
-    public int addString(String str) {
-        if (strings.containsKey(str))
-            return strings.get(str);
+    public OptionalInt addString(List<Byte> bytes) {
+        int hash = bytes.hashCode();
 
-        int res = _addString(str);
+        Integer current_id = strings.get(hash);
+        if (current_id != null)
+            return OptionalInt.of(current_id);
 
-        strings.put(str, res);
+        OptionalInt res = _addString(bytes);
+
+        if (res.isEmpty())
+            return res;
+
+        strings.put(hash, res.getAsInt());
 
         return res;
     }
 
-    private int _addString(String str) {
+    private OptionalInt _addString(List<Byte> bytes) {
         int res = STACK_SIZE + data_len;
 
-        for(byte b: str.getBytes(StandardCharsets.UTF_8))
+        if (data_len + bytes.size() + 1 > DATA_SIZE)
+            return OptionalInt.empty();
+
+        for(byte b: bytes)
             data[data_len ++] = b;
         data[data_len++] = '\0';
 
-        return res;
+        return OptionalInt.of(res);
     }
 
     private enum MemoryState {
