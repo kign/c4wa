@@ -8,7 +8,7 @@
     (loop $@block_1_continue
       (set_local $str (i32.add (get_local $str) (i32.const 1)))
       (set_local $n (i32.add (get_local $n) (i32.const 1)))
-      (br_if $@block_1_continue (i32.ne (i32.load8_s (get_local $str)) (i32.const 0))))
+      (br_if $@block_1_continue (i32.load8_s (get_local $str))))
     (get_local $n))
   (func $main (export "main") (result i32)
     (local $@stack_entry i32)

@@ -176,7 +176,7 @@ async function run_one_test(test, verbose) {
     const c_program = fs.readFileSync(cfile, 'utf8');
     fs.writeFileSync(tmp_c, (/^#/m.test(c_program)? "" : c_prefix) + c_program);
 
-    const res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c], spawn_options);
+    const res = spawnSync('clang', ['-g', '-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c], spawn_options);
     if (verbose)
         results[tid] = (res.status === 0) ? 2 : 1;
     else
@@ -254,7 +254,7 @@ async function run_c_file(cfile) {
 
     await build ();
 
-    let res = spawnSync('gcc', ['-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c], {stdio: 'inherit'});
+    let res = spawnSync('clang', ['-g', '-O0', '-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c], {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ GCC compilation failed, not proceeding");

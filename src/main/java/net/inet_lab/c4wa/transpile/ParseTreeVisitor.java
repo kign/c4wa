@@ -1108,7 +1108,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             for (int i = 0; i < memb.ref_level; i++)
                 type = type.make_pointer_to();
 
-            if (!(type instanceof Struct) && type instanceof StructDecl)
+            if (type.is_undefined_struct())
                 throw fail(ctx, "struct", "Can't use undefined structure '" + ((StructDecl) type).name +
                         "' as struct member; did you mean to use a pointer instead?");
 
@@ -1303,11 +1303,17 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (type == null)
             throw fail(ctx, "index", "trying to dereference '" + ptr.type + "' which is not a reference");
 
+        if (type.is_undefined_struct())
+            type = resolveStruct(ctx, type);
+
         Expression memAddress = (type.size() == 1)
                 ? new Add(NumType.I32, ptr.expression, idx.expression)
                 : new Add(NumType.I32, ptr.expression, new Mul(NumType.I32, idx.expression, new Const(type.size())));
 
-        return new OneExpression(memory_load(type, memAddress), type);
+        if (type.is_struct())
+            return new OneExpression(memAddress, type);
+        else
+            return new OneExpression(memory_load(type, memAddress), type);
     }
 
     @Override
@@ -1457,6 +1463,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         if ("+".equals(op) && arg2.type.same(CType.INT) && arg1.type.deref() != null) {
             CType type = arg1.type.deref();
+            if (type.is_undefined_struct())
+                type = resolveStruct(ctx, type);
             return new OneExpression((type.size() == 1)
                     ? new Add(NumType.I32, arg1.expression, arg2.expression)
                     : new Add(NumType.I32, arg1.expression, new Mul(NumType.I32, arg2.expression, new Const(type.size()))),
@@ -1464,6 +1472,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
         if ("-".equals(op) && arg2.type.same(CType.INT) && arg1.type.deref() != null) {
             CType type = arg1.type.deref();
+            if (type.is_undefined_struct())
+                type = resolveStruct(ctx, type);
             return new OneExpression((type.size() == 1)
                     ? new Sub(NumType.I32, arg1.expression, arg2.expression)
                     : new Sub(NumType.I32, arg1.expression, new Mul(NumType.I32, arg2.expression, new Const(type.size()))),
@@ -1471,6 +1481,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
         else if ("+".equals(op) && arg1.type.same(CType.INT) && arg2.type.deref() != null) {
             CType type = arg2.type.deref();
+            if (type.is_undefined_struct())
+                type = resolveStruct(ctx, type);
             return new OneExpression((type.size() == 1)
                     ? new Add(NumType.I32, arg2.expression, arg1.expression)
                     : new Add(NumType.I32, arg2.expression, new Mul(NumType.I32, arg1.expression, new Const(type.size()))),
@@ -1616,7 +1628,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         VariableDecl decl = functionEnv.variables.get(name);
 
         if (decl != null)
-//            return new OneExpression(new GetLocal(decl.type.asNumType(), name), decl.type);
             return new OneExpression(new DelayedLocalAccess(name), decl.type);
 
         decl = moduleEnv.varDecl.get(name);
@@ -1726,6 +1737,14 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return aggregate;
         else
             return nextResult;
+    }
+
+    private Struct resolveStruct(ParserRuleContext ctx, CType type) {
+        String name = ((StructDecl) type).name;
+        Struct realStruct = moduleEnv.structs.get(name);
+        if (realStruct == null)
+            throw fail(ctx, "type", type + " is not defined");
+        return realStruct;
     }
 
     private static byte unescapeChar(ParserRuleContext ctx, String str) {

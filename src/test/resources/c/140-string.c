@@ -6,7 +6,7 @@ int strlen(char * str) {
         str ++;
         n ++;
     }
-    while(*str != '\0');
+    while(*str);
     return n;
 }
 

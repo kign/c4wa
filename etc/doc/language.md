@@ -83,7 +83,7 @@ pointers, structures and arrays. Not all possible combinations are supported tho
 pointer to an array, etc.
 
 Any integer type could be `unsigned`. `sizeof` is supported (but may return results different from native C
-compiler due to no need to use alignment in Web Assembly memory).
+compiler due to different pointer size and no alignment in WASM).
 
 `void` keyword is recognized, but it isn't really a type, but more like indicator of "no type". 
 For now, `void` could only be used in function
@@ -152,7 +152,7 @@ exported function. If you have no exported functions, you'll get an empty module
 **Function declaration** could be `static` or `extern`; either attribute will cause declared function _not_ 
 to be imported. If neither attribute is present, it will be considered imported. 
 
-For example, hen you declare function like `double atan2(double, double)` (no attributes), 
+For example, then you declare function like `double atan2(double, double)` (no attributes), 
 it is interpreted as _imported_, and
 if not provided by the run-time, this will trigger a error. 
 
@@ -219,7 +219,7 @@ You can think of `alloc` as macro wih this definition
 
 In Web Assembly, this simply returns its first argument plus offset 
 (which is where general use memory begins, `module.stackSize + module.dataSize`) wrapped up as a
-pointer to the last argument (a type). When compiling with regular C compiler, you can invoke `malloc`
+pointer to the last argument (a type). When cross-compiling with regular C compiler, you can invoke `malloc`
 to trigger a similar behaviour.
 
 Example:
@@ -234,6 +234,33 @@ to allocate in the stack instead, subject to space limitations of course; see "s
 Second argument `N+1` is ignored by `c4wa`, so consider it a declaration of intent. 
 It is only present for possible future implementation
 of an actual memory manager and to make it easier to compile and test with native C compiler.
+
+It's really up to you how you want to interpret `alloc` when cross-compiling with a native C compiler.
+The easiest solution could be simply call `malloc` :
+
+```c
+#ifndef C4WA
+#define alloc(_ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
+#endif
+```
+
+However, you may also choose to stay closer to Web Assembly linear memory model and do something like that:
+
+```c
+#ifndef C4WA
+static void * __linear_memory;
+#define alloc(addr, size, type) (type *)(__linear_memory + C4WA_STACK_SIZE  + C4WA_DATA_SIZE + addr)
+#define free(addr)
+#endif
+
+//.........
+extern int main () {
+#ifndef C4WA
+    __linear_memory = malloc(64000);
+#endif
+//.........
+}
+```
 
 Function `free` basically has same semantic as in C standard library, it frees memory allocated earlier 
 with `alloc`. Since for now `alloc` doesn't really allocate anything, `free` does nothing.
@@ -386,7 +413,21 @@ char name[5];
 memcpy(name, "John", 5);
 ```
 
-With all of that, it must be acknowledged that `c4wa` isn't a good environment to write a code which deals with strings. 
+For example, this is a `c4wa`-compatible implementation of `strlen` function:
+
+```c
+int strlen(char * str) {
+    int n = 0;
+    do {
+        str ++;
+        n ++;
+    }
+    while(*str);
+    return n;
+}
+```
+
+It must be acknowledged that `c4wa` isn't a good environment to write a code which deals with strings. 
 This is in part because C itself isn't, and in part because working with strings means often 
 allocation and freeing up memory, and you do need a decent memory manager for that.
 
@@ -410,7 +451,7 @@ generated WASM code would expect an imported function `printf` with **two** argu
 reading arguments from and actual **number of arguments**; 
 every argument takes exactly 8 bytes (64 bits) in linear memory.
 
-So if for example `printf` is actually called with 5 arguments, your implementation will receive two arguments,
+If for example `printf` is actually called with 5 arguments, your implementation will receive two arguments,
 let's call them `offset` and `count`; 
 `count` will be number of arguments, 5 in this case, and values of these arguments will be stored in memory as follows:
 
@@ -425,7 +466,8 @@ When passing arguments, all integer values are converted to `long`, and all floa
 Note that if passing a string as one of the arguments (as would be the case with an actual `printf` adaptation),
 value stored in memory would _itself_ be a memory address of the string.
 
-There is a sample `node.js` runtime implementation of `printf` [here](https://github.com/kign/c4wa/blob/master/etc/wasm-printf.js), which you can re-use. 
+There is a sample `node.js` runtime implementation of `printf` 
+[here](https://github.com/kign/c4wa/blob/master/etc/wasm-printf.js), which you can re-use. 
 It doesn't archive 100% compatibility with C standard, but it is reasonably close.
 File [run-wasm](https://github.com/kign/c4wa/blob/master/etc/run-wasm) 
 is an example of how it could be used in a runtime if WASM code is exporting memory.
@@ -441,8 +483,8 @@ Known inconsistencies and bugs are:
     function calls). Thus, operators `++` and `--` are postfix only (`a ++` is valid, `++ a` is not);
   * Comma `,` isn't technically an operator, it's an alternative to block `{ ... }` to make a composite statement.
    `a = b, c` is illegal, but `a = b, c = d` or `i ++, j ++` are ok;
-  * Boolean expressions `!!x`, `!(x == 0)`, `!x == 0`, `x != 0`, `(x == 0) == 0` are always simplified to `x`, whereas
-    it should be 1 if `x` ≠ 0.
+  * Boolean expressions `!!x`, `!(x == 0)`, `!x == 0`, `x != 0`, `(x == 0) == 0` are always simplified to just `x`, 
+   whereas it should be 1 if `x` ≠ 0.
 
 ### Boolean operators and values
 
@@ -451,7 +493,7 @@ support for `true` or `false` constants, feel free to add your own via preproces
 
 One thing to note, `c4wa` _does_ support proper semantics for boolean `&&` and `||` (so when evaluating
 `A && B`, if `A` evaluates to _false_, `B` is not evaluated, similarly for `A || B`), 
-but at a price of generating more complex  WAT code 
+but at a price of generating more complex WAT code 
 (since there is no built-in support for such operations in Web Assembly). You may consider
 using bitwise `&` and `|` instead in some situations, which directly translate to WASM instructions
 resulting in simpler and faster code.

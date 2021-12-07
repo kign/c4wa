@@ -1,10 +1,7 @@
 package net.inet_lab.c4wa.transpile;
 
-import net.inet_lab.c4wa.wat.NumType;
-
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 public class Struct extends StructDecl {
     final Map<String,Var> m;
@@ -52,5 +49,10 @@ public class Struct extends StructDecl {
             this.offset = offset;
             this.size = v.size;
         }
+    }
+
+    @Override
+    public boolean is_undefined_struct() {
+        return false;
     }
 }

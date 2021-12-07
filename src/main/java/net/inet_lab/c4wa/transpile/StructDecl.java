@@ -11,12 +11,12 @@ public class StructDecl extends CType {
 
     @Override
     public NumType asNumType() {
-        throw new RuntimeException("struct can't be converted to Web Assembly numeric type");
+        throw new RuntimeException("struct " + name + " can't be converted to Web Assembly numeric type");
     }
 
     @Override
     public int size() {
-        throw new RuntimeException("StructDeclaration cannot have size");
+        throw new RuntimeException("struct " + name + " is not defined so no size");
     }
 
     @Override
@@ -37,5 +37,10 @@ public class StructDecl extends CType {
     @Override
     public boolean is_struct(String name) {
         return this.name.equals(name);
+    }
+
+    @Override
+    public boolean is_undefined_struct() {
+        return true;
     }
 }
