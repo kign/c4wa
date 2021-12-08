@@ -65,6 +65,9 @@ static struct Box * world = (struct Box *) 0;
 |*                 MEMORY MANAGER                     *|
 \* -------------------------------------------------- */
 
+static int mm_allocated = 0;
+static int mm_freed = 0;
+
 #if defined(C4WA) || EMULATE_LINEAR_MEMORY
 
 #define MM_OFFSET 0
@@ -78,15 +81,16 @@ static int mm_inuse = 0;
 
 #define BOX0_IS_GREATER_THAN_BOX1 0
 
+#if BOX0_IS_GREATER_THAN_BOX1
+#define SBox Box0
+#else
+#define SBox Box
+#endif
+
 struct SUnit {
     unsigned long map;
-#if BOX0_IS_GREATER_THAN_BOX1
-    struct Box0 boxes[64];
-#else
-    struct Box boxes[64];
-#endif
+    struct SBox boxes[64];
 };
-
 
 void init_memory_manager() {
 #if BOX0_IS_GREATER_THAN_BOX1
@@ -104,6 +108,7 @@ void init_memory_manager() {
 }
 
 struct Box * new_box (int level, int x0, int y0) {
+    mm_allocated ++;
     const int verbose = 0;
 
     if (mm_first < 0 && mm_inuse == mm_capacity) {
@@ -133,7 +138,7 @@ struct Box * new_box (int level, int x0, int y0) {
     struct SUnit * cur = mm_start + mm_first;
     assert(cur->map != 0);
 
-    int j = (int) __builtin_ctzl(cur->map);
+    int j = __builtin_ctzl(cur->map);
 
     int size = N0;
     for (int k = 0; k < level; k ++)
@@ -163,15 +168,40 @@ struct Box * new_box (int level, int x0, int y0) {
     return box;
 }
 
-// this will be "extern" for now to force inclusion in WAT
-extern void free_box(struct Box * box) {
+void free_box_memory(struct SBox * box) {
+    mm_freed ++;
 
+    int offset = (char *)box - (char *)mm_start;
+    int idx = offset / sizeof(struct SUnit);
+    int j = box - mm_start[idx].boxes;
+    assert(j >= 0);
+    assert(j < 64);
+    assert(box == mm_start[idx].boxes + j);
+}
 
+void release_box(struct Box * box) {
+    if (box->level > 0) {
+        for (int y = 0; y < N; y ++)
+            for (int x = 0; x < N; x ++)
+                if (box->cells[y * N + x])
+                    release_box(box->cells[y * N + x]);
+    }
 
+    free_box_memory((struct SBox *) box);
 }
 
 #define new_box0(x0, y0) (struct Box0 *) new_box(0, x0, y0)
-#define free_box0(x) free_box((struct Box *)(x))
+
+int count_boxes () {
+    int res = 0;
+    for (int i = 0; i < mm_inuse; i ++)
+        res += (64 - __builtin_popcountl(mm_start[i].map));
+    return res;
+}
+
+void memory_stat() {
+    printf("A/R/C: %d/%d/%d; CAP: %d/%d\n", mm_allocated, mm_freed, count_boxes(), mm_inuse, mm_capacity);
+}
 
 #else // !defined(C4WA) && !EMULATE_LINEAR_MEMORY
 
@@ -493,6 +523,10 @@ extern int main () {
 #endif
 
     test_1 ();
+    verify(world);
+    release_box(world);
+    memory_stat ();
+    printf("Done!\n");
 
     return 0;
 }
@@ -500,3 +534,5 @@ extern int main () {
 // Sorted In : (-4715,-3007) (-3610,1301) (-3032,-3204) (-2933,1462) (-2862,1293) (-2607,153) (-1572,-3553) (-1333,-3258) (-688,1954) (-678,-839) (-332,1053) (-99,-4440) (-26,-529) (470,1330) (866,3016) (1026,-543) (1823,3825) (2371,-2971) (3181,2599) (4886,2280)
 // Sorted Out: (-4715,-3007) (-3610,1301) (-3032,-3204) (-2933,1462) (-2862,1293) (-2607,153) (-1572,-3553) (-1333,-3258) (-688,1954) (-678,-839) (-332,1053) (-99,-4440) (-26,-529) (470,1330) (866,3016) (1026,-543) (1823,3825) (2371,-2971) (3181,2599) (4886,2280)
 // Raw Out   : (-99,-4440) (-4715,-3007) (-3032,-3204) (-1572,-3553) (-1333,-3258) (2371,-2971) (-678,-839) (-26,-529) (1026,-543) (-2607,153) (-3610,1301) (-2862,1293) (-2933,1462) (-332,1053) (-688,1954) (470,1330) (4886,2280) (866,3016) (1823,3825) (3181,2599)
+// A/R/C: 81/81/81; CAP: 2/10
+// Done!

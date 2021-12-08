@@ -773,8 +773,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             assert res != null;
             return new OneExpression(res, arg.type);
         }
-        else if (List.of("__builtin_clz", "__builtin_ctz", "__builtin_clzl", "__builtin_ctzl").contains(fname)) {
+        else if (List.of("__builtin_clz", "__builtin_ctz", "__builtin_clzl", "__builtin_ctzl",
+                "__builtin_popcount", "__builtin_popcountl").contains(fname)) {
             boolean isClz = fname.startsWith("__builtin_clz");
+            boolean isCtz = fname.startsWith("__builtin_ctz");
             boolean is64 = fname.endsWith("l");
 
             if (args.expressions.length != 1)
@@ -783,12 +785,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             OneExpression arg = args.expressions[0];
             if (is64 && !arg.type.is_i64() || !is64 && !arg.type.is_i32())
                 throw fail(ctx, "function_call", "Argument to '" + fname + "' must be '" + (is64? "long":"int") + "', received " + args.expressions[0].type);
-            return new OneExpression(
-                    isClz
-                        ? new Clz(arg.type.asNumType(), arg.expression)
-                        : new Ctz(arg.type.asNumType(), arg.expression),
-                    arg.type
-            );
+
+            Expression e = isClz ? new Clz(arg.type.asNumType(), arg.expression) :
+                           isCtz ? new Ctz(arg.type.asNumType(), arg.expression) :
+                                   new Popcnt(arg.type.asNumType(), arg.expression);
+            return new OneExpression(is64? GenericCast.cast(NumType.I64, NumType.I32, false, e) : e, CType.INT);
         }
         else if ("abort".equals(fname)) {
             if (args.expressions.length != 0)

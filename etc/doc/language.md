@@ -366,9 +366,11 @@ there are a few other built-in functions:
   * `min` and `max` work with any numerical arguments (of the same type), and will return result of the same type as arguments;
   * `floor`, `ceil`, `sqrt`, `fabs`. These functions work for `float` or `double` arguments, and will return same type as passed;
   * `abort` triggers "_RuntimeError: unreachable_" exception;
-  * `__builtin_clz`, `__builtin_ctz`, `__builtin_clzl`, `__builtin_ctzl` 
-    (see gcc [documentation](https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html)). Note that while
-    in gcc behaviour is explicitly undefined if argument is 0 (in practice, implementations typically return 0), 
+  * `__builtin_clz`, `__builtin_ctz`, `__builtin_clzl`, `__builtin_ctzl`, `__builtin_popcount`, `__builtin_popcountl` 
+    (see gcc [documentation](https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html)). 
+    Note that 
+    in gcc behaviour of CLZ/CTZ functions is explicitly undefined if argument is 0 
+    (in practice, implementations typically return 0), 
     in WASM these functions return full number of bits in the argument (so 32 for first two, 64 for the last). Note also
     that in GNU C compiler, builtin functions don't need to be declared, thus you don't need anything extra glue to
     cross-compile (just be mindful of argument 0).
