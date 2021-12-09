@@ -707,18 +707,19 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "ternary", "argument types '" + thenExp.type +
                     "' and '" + elseExp.type + "' are incompatible");
 
+        Expression exp = GenericCast.cast(condition.type.asNumType(), NumType.I32, false, condition.expression);
         return new OneExpression(
                 thenExp.expression.complexity() < ModuleEnv.IF_THEN_ELSE_SHORT_CIRCUIT_THRESHOLD &&
                 elseExp.expression.complexity() < ModuleEnv.IF_THEN_ELSE_SHORT_CIRCUIT_THRESHOLD
-                    ? new Select(condition.expression, thenExp.expression, elseExp.expression)
-                    : new IfThenElseExp(condition.expression, thenExp.type.asNumType(), thenExp.expression,
+                    ? new Select(exp, thenExp.expression, elseExp.expression)
+                    : new IfThenElseExp(exp, thenExp.type.asNumType(), thenExp.expression,
                 elseExp.expression), thenExp.type);
     }
 
     private OneInstruction if_then_else(ParserRuleContext ctx, OneExpression condition, InstructionList thenList,
                                         InstructionList elseList) {
 
-        return new OneInstruction(new IfThenElse(condition.expression,
+        return new OneInstruction(new IfThenElse(GenericCast.cast(condition.type.asNumType(), NumType.I32, false, condition.expression),
                 thenList.instructions, (elseList == null)?null:elseList.instructions));
     }
 
@@ -826,6 +827,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     func_call_elms.add(new Store(t64, getStack,
                             GenericCast.cast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.expression)));
                 }
+                else if (arg.type.is_struct())
+                    func_call_elms.add(new Store(NumType.I32, getStack, arg.expression));
                 else
                     func_call_elms.add(new Store(arg.type.asNumType(), getStack, arg.expression));
                 if (idx < args.expressions.length - 1)
@@ -908,12 +911,15 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         VariableDecl variableDecl = (VariableDecl) visit(ctx.variable_decl());
         OneExpression rhs = (OneExpression) visit(ctx.expression());
 
+        rhs = constantAssignment(ctx, variableDecl.type, rhs);
+/*
         if (!variableDecl.type.isValidRHS(rhs.type)) {
-            if (rhs.expression instanceof Const && variableDecl.type.is_primitive())
+            if (rhs.expression instanceof Const && (variableDecl.type.is_primitive() || variableDecl.type.is_ptr()))
                 rhs = new OneExpression(new Const(variableDecl.type.asNumType(), (Const) rhs.expression), variableDecl.type);
             else
                 throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + variableDecl.type);
         }
+*/
 
         if (functionEnv.variables.containsKey(variableDecl.name))
             throw fail(ctx, "init", "variable '" + variableDecl.name + "' already defined");
@@ -985,6 +991,26 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         OneExpression rhs = (OneExpression) visit(ctx.expression());
 
         String[] names = ctx.ID().stream().map(ParseTree::getText).toArray(String[]::new);
+        String lastName = names[names.length - 1];
+
+        VariableDecl decl = functionEnv.variables.get(lastName);
+        if (decl == null)
+            decl = moduleEnv.varDecl.get(lastName);
+
+        if (decl == null)
+            throw fail(ctx, "assignment", "Variable '" + lastName + "' is not defined");
+
+        rhs = constantAssignment(ctx, decl.type, rhs);
+
+/*
+        if (!decl.type.isValidRHS(rhs.type)) {
+            if (rhs.expression instanceof Const && (decl.type.is_primitive() || decl.type.is_ptr()))
+                rhs = new OneExpression(new Const(decl.type.asNumType(), (Const) rhs.expression), decl.type);
+            else
+                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + decl.type);
+        }
+*/
+
         return new OneInstruction(new DelayedAssignment(ctx, false, names, rhs.expression, rhs.type));
     }
 
@@ -1727,6 +1753,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return null;
         return super.visit(ctx);
     }
+
     /*
     Default implementation always returns last result, even if null
     Change it to return first not-null
@@ -1738,6 +1765,17 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return aggregate;
         else
             return nextResult;
+    }
+
+    static private OneExpression constantAssignment(ParserRuleContext ctx, CType lhsType, OneExpression rhs) {
+        if (!lhsType.isValidRHS(rhs.type)) {
+            if (rhs.expression instanceof Const && (lhsType.is_primitive() || (((Const) rhs.expression).isZero() && lhsType.is_ptr())))
+                return new OneExpression(new Const(lhsType.asNumType(), (Const) rhs.expression), lhsType);
+            else
+                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + lhsType);
+        }
+
+        return rhs;
     }
 
     private Struct resolveStruct(ParserRuleContext ctx, CType type) {

@@ -58,6 +58,10 @@ public class Const extends Expression {
                 : doubleValue != 0;
     }
 
+    public boolean isZero() {
+        return is_int() && longValue == 0;
+    }
+
     public boolean is_int() {
         return numType == NumType.I32 || numType == NumType.I64;
     }

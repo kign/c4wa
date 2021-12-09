@@ -102,11 +102,7 @@ There are no `void *` pointers.
 If you are using a "generic" pointer, you must explicitly cast it.
 Built-in functions like `memcpy` use `char *`.  
 
-There is no built-in `NULL`. You can of course compare your pointer with `(type *) 0` if you wish, but technically
-0 is a valid pointer value (this will be the address of your first local variable
-allocated on the top of the stack, which starts from memory address 0), so be very careful when 
-doing something like that; it's ok to use pointers in conditionals `if (ptr} { *ptr = ... ` if you do want 
-to compare with 0.
+Technically `0` could be a valid value for a pointer,
 
 Almost all arithmetic operations, function calls and assignment require explicit type cast if types are different.
 
@@ -502,20 +498,57 @@ resulting in simpler and faster code.
 
 ## Casts
 
-As mentioned above, almost all casts must be explicit, and integer and float literals are `int` and `double`
-respectively. `long` and `float` literals aren't supported, so to assign a constant to a float you need a cast:
+As mentioned above, almost all casts must be explicit; however when assigning a constant value to a variable,
+it'll be converted to variable type at compile time, thus making cast unnecessary. That means that
+though `long` and `float` literals aren't supported, you can freely assign constant to these variables. 
+For example,
 
 ```c
-float x;
-x = (float) 1; // or (float) 1.0;
-double y;
-y = 2. // or (double)2, but simply 2 won't work
+long longNumber = -18;
+float floatNumber = 1.234e2;
+int intNumber = -57.4; // not even a warning!
+
+int * ptr = 0; // still OK
+
+ptr = 1;   // Nope, this is explicitly not allowed. Only constant `0` could be assigned to a pointer.
+
+```
+
+## `NULL`
+
+While there is no built-in `NULL` constant, you can define `NULL` as `0` and all customary C operators would
+work as expected:
+
+```c
+#define NULL 0
+
+.................
+int * p_x = NULL;
+
+if (p_x) { ....
+
+if (!p_x) { ....
+
+if (p_x && *p_x > 0) { ....
+
+```
+
+The only caveat is that technically `0` could be a valid pointer value
+(this will be the address of your first local variable allocated on the top of the stack, which starts from memory
+address 0), so be careful. If you absolutely want to protect yourself against this possibility, simply declare
+an unused array of size 1 as the first declaration in each of your endpoints:
+
+```c
+extern int main () {
+    char __ignored__[1];
+}
 ```
 
 ## Globals
 
 Web Assembly supports global variables, so you can freely use them in C code. However, Web Assembly requires that
-all non-imported globals be initialized.
+all non-imported globals be initialized, and furthermore, you can only initialize globals to compile-time
+constants.
 
 ```c
 int Num_of_Points;        // imported, can't initialize

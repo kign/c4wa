@@ -20,6 +20,8 @@ public class FunctionEnv implements Partial, PostprocessContext {
     Instruction[] instructions;
     boolean uses_stack;
 
+    private Instruction watCode;
+
     public FunctionEnv (String name, CType returnType, ModuleEnv moduleEnv, boolean export) {
         this.name = name;
         this.moduleEnv = moduleEnv;
@@ -103,9 +105,14 @@ public class FunctionEnv implements Partial, PostprocessContext {
         if (blocks.size() != 1)
             throw new RuntimeException(msg + "blocks.size() = " + blocks.size());
 
+        postprocessWat ();
     }
 
     public Instruction wat() {
+        return watCode;
+    }
+
+    private void postprocessWat() {
         List<Instruction> attributes = new ArrayList<>();
         List<Instruction> elements = new ArrayList<>();
 
@@ -145,8 +152,8 @@ public class FunctionEnv implements Partial, PostprocessContext {
                 elements.add(new Unreachable());
         }
 
-        Func watCode = new Func(attributes, elements);
-        return watCode.postprocessList(this).postprocessList(this).postprocessList(this);
+        Func _watCode = new Func(attributes, elements);
+        watCode = _watCode.postprocessList(this).postprocessList(this).postprocessList(this);
     }
 
     static class Block {

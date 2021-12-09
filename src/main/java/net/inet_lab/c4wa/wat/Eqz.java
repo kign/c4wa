@@ -6,7 +6,9 @@ public class Eqz extends Expression_1 {
     }
 
     @Override
-    public Expression Not(NumType numType) {
-        return arg;
+    public Expression Not(NumType expNumType) {
+        if (expNumType != NumType.I32)
+            throw new RuntimeException("Invalid EQZ type " + expNumType + ", must always be I32");
+        return GenericCast.cast(this.numType, NumType.I32, false, arg);
     }
 }
