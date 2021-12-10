@@ -99,32 +99,33 @@ arg_list: expression (',' expression)*;
 
 // cmp. Operators Precedence in C: https://www.tutorialspoint.com/Operators-Precedence-in-Cplusplus
 expression
-    : ptr=expression '[' idx=expression ']'        # expression_index
-    | expression '->' ID                      # expression_struct_member
-    | expression '.' ID                      # expression_struct_member_dot
-    | op=(NOT|MINUS|MULT|TILDA) expression                 # expression_unary_op
-    | BWAND ID                                          # expression_addr_var
-    | BWAND lhs                                         # expression_addr_lhs
-    | SIZEOF '(' variable_type ')'                 # expression_sizeof_type
-    | SIZEOF expression                 # expression_sizeof_exp
-    | '(' expression ')'                  # expression_parentheses
-    | '(' variable_type ')' expression    # expression_cast
-    | expression op=(MULT | DIV | MOD) expression    # expression_binary_mult
-    | expression op=(PLUS | MINUS) expression                        # expression_binary_add
-    | expression op=(LSHIFT | RSHIFT) expression                     # expression_binary_shift
-    | expression op=(LTEQ | GTEQ | LT | GT | EQ | NEQ) expression    # expression_binary_cmp
-    | expression op=BWAND expression           # expression_binary_bwand
-    | expression op=BWXOR expression           # expression_binary_bwxor
-    | expression op=BWOR expression           # expression_binary_bwor
-    | <assoc=right>left=expression AND right=expression           # expression_binary_and
-    | <assoc=right>left=expression OR right=expression            # expression_binary_or
+    : ptr=expression '[' idx=expression ']'                 # expression_index
+    | expression '->' ID                                    # expression_struct_member
+    | expression '.' ID                                     # expression_struct_member_dot
+    | op=(NOT|MINUS|MULT|TILDA) expression                  # expression_unary_op
+    | BWAND ID                                              # expression_addr_var
+    | BWAND lhs                                             # expression_addr_lhs
+    | SIZEOF '(' variable_type ')'                          # expression_sizeof_type
+    | SIZEOF expression                                     # expression_sizeof_exp
+    | '(' expression ')'                                    # expression_parentheses
+    | '(' variable_type ')' expression                      # expression_cast
+    | expression op=(MULT | DIV | MOD) expression           # expression_binary_mult
+    | expression op=(PLUS | MINUS) expression               # expression_binary_add
+    | expression op=(LSHIFT | RSHIFT) expression            # expression_binary_shift
+    | expression op=(LTEQ | GTEQ | LT | GT) expression      # expression_binary_cmp
+    | expression op=(EQ | NEQ) expression                   # expression_binary_equal
+    | expression op=BWAND expression                        # expression_binary_bwand
+    | expression op=BWXOR expression                        # expression_binary_bwxor
+    | expression op=BWOR expression                         # expression_binary_bwor
+    | <assoc=right>left=expression AND right=expression     # expression_binary_and
+    | <assoc=right>left=expression OR right=expression      # expression_binary_or
     | <assoc=right>expression '?' expression ':' expression # expression_if_else
-    | CONSTANT                            # expression_const
-    | ID                                  # expression_variable
-    | STRING+                              # expression_string
-    | CHARACTER                              # expression_character
+    | CONSTANT                                              # expression_const
+    | ID                                                    # expression_variable
+    | STRING+                                               # expression_string
+    | CHARACTER                                             # expression_character
     | ALLOC '(' memptr=expression ',' count=expression ',' variable_type ')' # expression_alloc
-    | function_call                       # expression_function_call
+    | function_call                                         # expression_function_call
     ;
 
 

@@ -408,6 +408,41 @@ void set_cell(int x, int y, int val) {
         printf("Done!\n");
 }
 
+int get_cell(int x, int y) {
+    const int verbose = 0;
+    int xp, yp, size;
+
+    if (!world)
+        return 0;
+
+    struct Box * w = world;
+    if (!(w->x0 <= x && x < w->x0 + w->size && w->y0 <= y && y < w->y0 + w->size))
+        return 0;
+
+    do {
+        if (verbose)
+            printf("Trying to locate (%d,%d) in <%d,%d,%d,%d>\n", x, y, w->level, w->x0, w->y0, w->size);
+        assert (w->x0 <= x && x < w->x0 + w->size && w->y0 <= y && y < w->y0 + w->size);
+        if (w->level == 0) {
+            xp = x - w->x0;
+            yp = y - w->y0;
+            if (verbose)
+                printf("Got to the bottom <%d,%d,%d>[%d]\n", w->level, w->x0, w->y0, yp * N0 + xp);
+            return (int)((struct Box0 *)w)->cells[yp * N0 + xp];
+        }
+        else {
+            size = w->size/N;
+            xp = (x - w->x0)/size;
+            yp = (y - w->y0)/size;
+            if (verbose)
+                printf("Going down to level %d, xp = %d, yp = %d\n", w->level - 1, xp, yp);
+            w = w->cells[yp * N + xp];
+        }
+    }
+    while(w);
+    return 0;
+}
+
 void dump_cells0(struct Box0 * w, int verbose) {
     if (verbose)
         printf ("[<%d,%d,%d>", w->level, w->x0, w->y0);
@@ -555,6 +590,10 @@ void test_2 () {
             set_cell(x, y, mulberry32() < density);
 
     seed = original_seed;
+
+    for (y = 0; y < Y; y ++)
+        for(x = 0; x < X; x ++)
+            assert(get_cell(x,y) == mulberry32() < density);
 
     printf("OK\n");
 }

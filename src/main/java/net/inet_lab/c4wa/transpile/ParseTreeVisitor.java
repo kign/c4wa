@@ -1351,6 +1351,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
+    public OneExpression visitExpression_binary_equal(c4waParser.Expression_binary_equalContext ctx) {
+        OneExpression arg1 = (OneExpression) visit(ctx.expression(0));
+        OneExpression arg2 = (OneExpression) visit(ctx.expression(1));
+        return binary_op(ctx, arg1, arg2, ctx.op.getText());
+    }
+
+    @Override
     public OneExpression visitExpression_binary_add(c4waParser.Expression_binary_addContext ctx) {
         OneExpression arg1 = (OneExpression) visit(ctx.expression(0));
         OneExpression arg2 = (OneExpression) visit(ctx.expression(1));
