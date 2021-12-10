@@ -1,7 +1,8 @@
 grammar c4wa;
 
+// make sure "package" matches "generateGrammarSource" target in `build.gradle`
 @header {
-package net.inet_lab.c4wa.autogen.parser;
+package net.inet_lab.c4wa.autogen.cparser;
 }
 // https://github.com/antlr/grammars-v4/blob/master/c/C.g4
 // Also good reference: https://github.com/bkiers/Mu/blob/master/src/main/antlr4/mu/Mu.g4

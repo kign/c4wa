@@ -15,8 +15,8 @@ import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 
-import net.inet_lab.c4wa.autogen.parser.c4waLexer;
-import net.inet_lab.c4wa.autogen.parser.c4waParser;
+import net.inet_lab.c4wa.autogen.cparser.c4waLexer;
+import net.inet_lab.c4wa.autogen.cparser.c4waParser;
 import net.inet_lab.c4wa.transpile.ParseTreeVisitor;
 import net.inet_lab.c4wa.transpile.ModuleEnv;
 

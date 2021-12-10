@@ -4,12 +4,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import org.jetbrains.annotations.NotNull;
 
-import net.inet_lab.c4wa.autogen.parser.c4waBaseVisitor;
-import net.inet_lab.c4wa.autogen.parser.c4waParser;
+import net.inet_lab.c4wa.autogen.cparser.c4waBaseVisitor;
+import net.inet_lab.c4wa.autogen.cparser.c4waParser;
 import net.inet_lab.c4wa.wat.*;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
-
 
 public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     private FunctionEnv functionEnv;
@@ -912,15 +911,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         OneExpression rhs = (OneExpression) visit(ctx.expression());
 
         rhs = constantAssignment(ctx, variableDecl.type, rhs);
-/*
-        if (!variableDecl.type.isValidRHS(rhs.type)) {
-            if (rhs.expression instanceof Const && (variableDecl.type.is_primitive() || variableDecl.type.is_ptr()))
-                rhs = new OneExpression(new Const(variableDecl.type.asNumType(), (Const) rhs.expression), variableDecl.type);
-            else
-                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + variableDecl.type);
-        }
-*/
-
         if (functionEnv.variables.containsKey(variableDecl.name))
             throw fail(ctx, "init", "variable '" + variableDecl.name + "' already defined");
         functionEnv.registerVar(variableDecl.name, variableDecl.type, false, ctx.CONST() == null);
@@ -1001,16 +991,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "assignment", "Variable '" + lastName + "' is not defined");
 
         rhs = constantAssignment(ctx, decl.type, rhs);
-
-/*
-        if (!decl.type.isValidRHS(rhs.type)) {
-            if (rhs.expression instanceof Const && (decl.type.is_primitive() || decl.type.is_ptr()))
-                rhs = new OneExpression(new Const(decl.type.asNumType(), (Const) rhs.expression), decl.type);
-            else
-                throw fail(ctx, "init", "Expression of type " + rhs.type + " cannot be assigned to variable of type " + decl.type);
-        }
-*/
-
         return new OneInstruction(new DelayedAssignment(ctx, false, names, rhs.expression, rhs.type));
     }
 

@@ -49,7 +49,7 @@ generateGrammarSource {
     switch(target) {
         case "Java" :
             // must match @header param in grammar definition file
-            outputDirectory = "${project.buildDir}/generated-src/antlr/main/net/inet_lab/c4wa/autogen/parser" as File
+            outputDirectory = "${project.buildDir}/generated-src/antlr/main/net/inet_lab/c4wa/autogen/cparser" as File
             break
         case "JavaScript" :
             // https://github.com/antlr/antlr4/blob/master/doc/javascript-target.md

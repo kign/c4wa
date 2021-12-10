@@ -317,7 +317,7 @@ or
 
 ```c
 int arr[N];
-for (int i = 0; i < N; i ++
+for (int i = 0; i < N; i ++)
     arr[i] = i; 
 ```
 
@@ -333,12 +333,12 @@ These functions behave as normal C function in C code with given signatures
 (which are a bit different from C standard, effectively using `char *` as a generic pointer), 
 but `c4wa` internally replaces them with Web Assembly memory operators:
 
-| Name    | Arguments                               | Return Value | Description  | 
-| ------- | --------------------------------------- | ------------ | ------------ |
-| memset  | `char * addr`, `char value`, `int size` | _none_       | Same as in C |
-| memcpy  | `char * dest`, `char * src`, `int size` | _none_       | Same as in C |
+| Name    | Arguments                               | Return Value | Description                                                      | 
+|---------|-----------------------------------------|--------------|------------------------------------------------------------------|
+| memset  | `char * addr`, `char value`, `int size` | _none_       | Same as in C                                                     |
+| memcpy  | `char * dest`, `char * src`, `int size` | _none_       | Same as in C                                                     |
 | memgrow | `int n_pages`                           | _none_       | Increase memory size by specified number of pages (1 page = 64K) |
-| memsize | _none_                                  | `int`        | Get current memory size in pages |
+| memsize | _none_                                  | `int`        | Get current memory size in pages                                 |
 
 Note that if using `memset` and `memcpy`, you'll need option `--enable-bulk-memory` to use `wat2wasm`.
 Also, generated WASM module might not be compatible with some runtimes (such as `wasmer` as of this writing).
@@ -506,12 +506,11 @@ For example,
 ```c
 long longNumber = -18;
 float floatNumber = 1.234e2;
-int intNumber = -57.4; // not even a warning!
+int intNumber = -57.4; // not even a warning, unlike standard C compiler!
 
 int * ptr = 0; // still OK
 
 ptr = 1;   // Nope, this is explicitly not allowed. Only constant `0` could be assigned to a pointer.
-
 ```
 
 ## `NULL`

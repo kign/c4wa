@@ -32,7 +32,7 @@ struct Box0 {
     int level;
     char top, bottom, left, right;
     int x0, y0, size;
-    char cells[N0 * N0];
+    char cells0[N0 * N0];
 };
 
 struct Box {
@@ -195,6 +195,9 @@ int count_boxes () {
 
 void mm_stat() {
     printf("A/R/C: %d/%d/%d; CAP: %d/%d\n", mm_allocated, mm_freed, count_boxes(), mm_inuse, mm_capacity);
+#if 0
+    printf("Actual memory used: %ld/%ld\n", LM_OFFSET + mm_inuse * sizeof(struct SUnit), LM_OFFSET + mm_capacity * sizeof(struct SUnit));
+#endif
 }
 
 #else // !defined(C4WA) && !EMULATE_LINEAR_MEMORY
@@ -248,7 +251,6 @@ void mm_release_box(struct Box * box) {
 #endif
 }
 
-
 /* -------------------------------------------------- *\
 |*                 INFINITE BOARD                     *|
 \* -------------------------------------------------- */
@@ -283,7 +285,7 @@ void set_cell(int x, int y, int val) {
     if (!world) {
         if (!val) return;
         struct Box0 * box = mm_new_box0(x - N0/2, y - N0/2);
-        box->cells[N0 * (y - box->y0) + (x - box->x0)] = '\1';
+        box->cells0[N0 * (y - box->y0) + (x - box->x0)] = '\1';
 
         world = (struct Box *) box;
         return;
@@ -377,7 +379,7 @@ void set_cell(int x, int y, int val) {
             yp = y - w->y0;
             if (verbose)
                 printf("Assigned <%d,%d,%d>[%d] = %d\n", w->level, w->x0, w->y0, yp * N0 + xp, val);
-            ((struct Box0 *)w)->cells[yp * N0 + xp] = (char) val;
+            ((struct Box0 *)w)->cells0[yp * N0 + xp] = (char) val;
             break;
         }
         else {
@@ -428,7 +430,7 @@ int get_cell(int x, int y) {
             yp = y - w->y0;
             if (verbose)
                 printf("Got to the bottom <%d,%d,%d>[%d]\n", w->level, w->x0, w->y0, yp * N0 + xp);
-            return (int)((struct Box0 *)w)->cells[yp * N0 + xp];
+            return (int)((struct Box0 *)w)->cells0[yp * N0 + xp];
         }
         else {
             size = w->size/N;
@@ -443,12 +445,138 @@ int get_cell(int x, int y) {
     return 0;
 }
 
+/* -------------------------------------------------- *\
+|*                 LIFE (FINITE)                      *|
+\* -------------------------------------------------- */
+
+void life_fin_prepare (
+    char               * cells,
+    int                  X,
+    int                  Y) {
+    int cnt = 0;
+    unsigned int hash = 0;
+
+    for(int y = 0; y < Y; y ++)
+        for(int x = 0; x < X; x ++) {
+            int idx = X * y + x;
+            if (cells[idx] == 1) {
+                cnt ++;
+                for (int dx = -1; dx <= 1; dx ++)
+                    for (int dy = -1; dy <= 1; dy ++) {
+                        int didx = X * ((y + dy + Y) % Y) + ((x + dx + X) % X);
+                        if (cells[didx] == 0)
+                            cells[didx] = 2;
+                    }
+            }
+        }
+}
+
+void life_fin_step (
+    char                 * cells,
+    char                 * cellsnew,
+    int                  X,
+    int                  Y) {
+
+    int                  ind, x, y,  n, newv;
+    int                  n00, n01, n02, n10, n12, n20, n21, n22;
+    int                  v00, v01, v02, v10, v11, v12, v20, v21, v22;
+    int                  cnt = 0;
+    unsigned int         hash = 0;
+    char                 * p = cells - 1;
+
+    memset ( cellsnew, (char)0, X * Y );
+
+    do {
+        do {
+            p ++;
+        }
+        while (*p == (char)0);
+
+        if (*p == 3)
+            break;
+
+        //assert ( *p == 1 || *p == 2 );
+
+        ind = p - cells;
+
+        y = ind / X; x = ind - y * X;
+
+        if ( x > 0 & x < X - 1 & y > 0 & y < Y - 1 ) {
+            n00 = X * (y - 1) + (x - 1);
+            n01 = n00 + 1;
+            n02 = n01 + 1;
+            n10 = ind - 1;
+            n12 = ind + 1;
+            n20 = n10 + X;
+            n21 = n20 + 1;
+            n22 = n21 + 1;
+        }
+        else {
+#define POS(dy,dx)  (X * ((y + dy + Y) % Y) + ((x + dx + X) % X))
+            n00 = POS(-1,-1);
+            n01 = POS(-1,0);
+            n02 = POS(-1,1);
+            n10 = POS(0,-1);
+            n12 = POS(0,1);
+            n20 = POS(1,-1);
+            n21 = POS(1,0);
+            n22 = POS(1,1);
+#undef POS
+        }
+        v00 = (1 == cells[n00]);
+        v01 = (1 == cells[n01]);
+        v02 = (1 == cells[n02]);
+        v10 = (1 == cells[n10]);
+        v11 = (1 == *p);
+        v12 = (1 == cells[n12]);
+        v20 = (1 == cells[n20]);
+        v21 = (1 == cells[n21]);
+        v22 = (1 == cells[n22]);
+
+        n = v00 + v01 + v02 + v10 + v12 + v20 + v21 + v22;
+
+        newv = (n == 3) | ((n == 2) & v11);
+
+        if ( newv ) {
+            cnt ++;
+
+            cellsnew[ind] = (char)newv;
+            if (cellsnew[n00] != 1) cellsnew[n00] = 2;
+            if (cellsnew[n01] != 1) cellsnew[n01] = 2;
+            if (cellsnew[n02] != 1) cellsnew[n02] = 2;
+            if (cellsnew[n10] != 1) cellsnew[n10] = 2;
+            if (cellsnew[n12] != 1) cellsnew[n12] = 2;
+            if (cellsnew[n20] != 1) cellsnew[n20] = 2;
+            if (cellsnew[n21] != 1) cellsnew[n21] = 2;
+            if (cellsnew[n22] != 1) cellsnew[n22] = 2;
+        }
+    }
+    while(1);
+}
+
+/* -------------------------------------------------- *\
+|*                LIFE (INFINITE)                     *|
+\* -------------------------------------------------- */
+
+void life_prepare () {
+
+}
+
+void life_step () {
+
+}
+
+
+/* -------------------------------------------------- *\
+|*                     TESTING                        *|
+\* -------------------------------------------------- */
+
 void dump_cells0(struct Box0 * w, int verbose) {
     if (verbose)
         printf ("[<%d,%d,%d>", w->level, w->x0, w->y0);
     for (int y = 0; y < N0; y ++)
         for (int x = 0; x < N0; x ++)
-            if (w->cells[y * N0 + x]) {
+            if (w->cells0[y * N0 + x]) {
                 printf(" (%d,%d)", w->x0 + x, w->y0 + y);
             }
     if (verbose)
@@ -483,7 +611,7 @@ void dump_all(int verbose) {
 void to_arr0(struct Box0 * w, int n, int pts[], int *k) {
     for (int y = 0; y < N0; y ++)
         for (int x = 0; x < N0; x ++)
-            if (w->cells[y * N0 + x]) {
+            if (w->cells0[y * N0 + x]) {
                 assert(*k < n);
                 pts[*k * 2]     = w->x0 + x;
                 pts[*k * 2 + 1] = w->y0 + y;
