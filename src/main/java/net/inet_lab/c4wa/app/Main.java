@@ -1,11 +1,16 @@
 package net.inet_lab.c4wa.app;
 
 import java.io.*;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -21,6 +26,8 @@ import net.inet_lab.c4wa.transpile.ParseTreeVisitor;
 import net.inet_lab.c4wa.transpile.ModuleEnv;
 
 public class Main {
+    static final ClassLoader loader = Main.class.getClassLoader();
+
     private static class Option {
         final Character shortName;
         final String longName;
@@ -116,7 +123,6 @@ public class Main {
             else {
                 String libName = builtin_libs.get(iarg - fileArgs.size());
                 fileName = "<builtin>:" + libName + ".c";
-                final var loader = Main.class.getClassLoader();
 
                 programLines = new BufferedReader(
                         new InputStreamReader(
@@ -183,8 +189,6 @@ public class Main {
         v.visit(tree);
 
         for (String libName: libs) {
-            final var loader = Main.class.getClassLoader();
-
             var programLines = new BufferedReader(
                     new InputStreamReader(
                             Objects.requireNonNull(
@@ -203,7 +207,8 @@ public class Main {
 
     private static Properties defaultProperties () throws IOException {
         Properties prop = new Properties();
-        prop.load(Main.class.getClassLoader().getResourceAsStream("gradle.properties"));
+//        prop.load(Main.class.getClassLoader().getResourceAsStream("gradle.properties"));
+        prop.load(loader.getResourceAsStream("gradle.properties"));
 
         return prop;
     }
@@ -224,13 +229,13 @@ public class Main {
                 "\n" +
                 "Options are: \n" +
                 "\n" +
-                " -P            invoke C preprocessor via GCC (use -Ph to print predefined symbols)\n" +
+                " -P              invoke C preprocessor via GCC (use -Ph to print predefined symbols)\n" +
                 " -D<name>=value  when option -P is used, pass definition to C preprocessor\n" +
                 " -X<name>=value  define compiler property (see below)\n" +
-                " -l<name>      include built-in library <name>\n" +
+                " -l<name>        include built-in library <name> (use -lh to list available libraries)\n" +
                 " -o, --output <FILE>  specify output files, either .wat or .wasm (or - for stdout)\n" +
-                " -k, --keep    when compiling to WASM, keep intermediate WAT file\n" +
-                " -h, --help    this help screen\n" +
+                " -k, --keep      when compiling to WASM, keep intermediate WAT file\n" +
+                " -h, --help      this help screen\n" +
                 "\n" +
                 "Compiler properties:\n" +
                 "\n" +
@@ -250,7 +255,7 @@ public class Main {
 
     private static String parseCommandLineArgs(String[] args, List<Option> options, Map<String, String> parsedArgs,
                                                List<String> fileArgs, Properties prop,
-                                               List<String> ppOptions, List<String> builtin_libs) {
+                                               List<String> ppOptions, List<String> builtin_libs) throws IOException {
         for (int i = 0; i < args.length; i++) {
             String o = args[i];
             if (o.startsWith("-D"))
@@ -263,6 +268,24 @@ public class Main {
                 if (prop.getProperty(p) == null)
                     return "No such property '" + p + "'";
                 prop.setProperty(o.substring(2, j), o.substring(j + 1));
+            }
+            else if (o.equals("-lh")) {
+                System.out.println("Library name   Description\n----------------------------------------------------------");
+                try {
+                    for (String libName: getResourceListing(Main.class, "lib"))
+                        if (libName.endsWith(".c")) {
+                            String line = new BufferedReader(
+                                    new InputStreamReader(
+                                            Objects.requireNonNull(
+                                                    loader.getResourceAsStream("lib/" + libName))))
+                                    .lines().findFirst().orElse("// <Empty file>").substring(3);
+                            System.out.printf("%-15s%s\n", libName.substring(0,libName.length() - 2), line);
+                        }
+                } catch (URISyntaxException e) {
+                    e.printStackTrace();
+                    System.exit(1);
+                }
+                System.exit(0);
             }
             else if (o.startsWith("-l") && o.length() > 2)
                 builtin_libs.add(o.substring(2));
@@ -374,11 +397,48 @@ public class Main {
         return tree;
     }
 
-    private static String generateWAT(ParseTree tree, Properties prop) {
-            //System.out.println("Parser returned \n" + tree.toStringTree(parser));
-            ModuleEnv moduleEnv = new ModuleEnv(prop);
-            ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
-            v.visit(tree);
-            return moduleEnv.wat().toStringPretty(2);
+    private static String[] getResourceListing(Class<?> clazz, String path) throws IOException, URISyntaxException {
+        // Adopted & modernized from: http://www.uofr.net/~greg/java/get-resource-listing.html
+        // Basically, Java has no built-in capability to list resource directory from JAR file;
+        // So there are two choices, either save content in special resource file(s) or simply open JAR file and read
+        URL dirURL = clazz.getClassLoader().getResource(path);
+        if (dirURL != null && dirURL.getProtocol().equals("file")) {
+            /* A file path: easy enough */
+            return new File(dirURL.toURI()).list();
+        }
+
+        if (dirURL == null) {
+            /*
+             * In case of a jar file, we can't actually find a directory.
+             * Have to assume the same jar as clazz.
+             */
+            String me = clazz.getName().replace(".", "/") + ".class";
+            dirURL = clazz.getClassLoader().getResource(me);
+        }
+
+        assert dirURL != null;
+        if (dirURL.getProtocol().equals("jar")) {
+            /* A JAR path */
+            String jarPath = dirURL.getPath().substring(5, dirURL.getPath().indexOf("!")); //strip out only the JAR file
+            JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8));
+            Enumeration<JarEntry> entries = jar.entries(); //gives ALL entries in jar
+            Set<String> result = new HashSet<>(); //avoid duplicates in case it is a subdirectory
+            while (entries.hasMoreElements()) {
+                String name = entries.nextElement().getName();
+                if (name.startsWith(path + "/")) { //filter according to the path
+                    String entry = name.substring(1 + path.length());
+                    int checkSubdir = entry.indexOf("/");
+                    if (checkSubdir > 0)
+                        // if it is a subdirectory, we just return the directory name
+                        entry = entry.substring(0, checkSubdir);
+
+                    if (entry.length() > 0)
+                        result.add(entry);
+                }
+            }
+            return result.toArray(String[]::new);
+        }
+
+        throw new RuntimeException("Cannot list files in " + path + " inside  " + dirURL);
     }
 }

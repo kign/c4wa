@@ -1,3 +1,4 @@
+// incremental memory allocation; nothing is ever released
 static int __last_offset = __builtin_offset;
 static int __available_size = -1;
 

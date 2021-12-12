@@ -6,14 +6,15 @@
 void printf();
 #else
 
+#define max(a,b) ((a) < (b))?(b):(a)
+
 // value > 0: we emulate WASM linear memory with fixed maximum # of pages equal to this value
 // value = 0: we use malloc() and free()
 #define EMULATE_LINEAR_MEMORY 100
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-
+#include <stdlib.h>
 #endif
 
 
@@ -30,14 +31,12 @@ void printf();
 
 struct Box0 {
     int level;
-    char top, bottom, left, right;
     int x0, y0, size;
-    char cells0[N0 * N0];
+    char cells0[2 * N0 * N0];
 };
 
 struct Box {
     int level;
-    char top, bottom, left, right;
     int x0, y0, size;
     struct Box * cells[N * N];
 };
@@ -53,9 +52,7 @@ static int mm_allocated = 0;
 static int mm_freed = 0;
 
 #if !defined(C4WA) && EMULATE_LINEAR_MEMORY
-
-
-static void * __linear_memory;
+static void * __builtin_memory;
 static int __builtin_offset = 0;
 
 static int __memsize = 1;
@@ -67,137 +64,115 @@ void memgrow(int upgrade) {
 
     assert(__memsize <= EMULATE_LINEAR_MEMORY);
 }
+
 #endif // !defined(C4WA) && EMULATE_LINEAR_MEMORY
 
 #if defined(C4WA) || EMULATE_LINEAR_MEMORY
 
-#define MM_OFFSET 0
-#define LM_OFFSET (MM_OFFSET + __builtin_offset)
 #define LM_PAGE 64000
-static struct SUnit * mm_start = 0;
+static unsigned long * mm_start = 0;
 static int mm_first = -1;
 static int mm_capacity = 0;
 static int mm_inuse = 0;
+static int mm_extra_offset = -1;
+static int mm_size = -1;
+static int mm_expand_by = 10;
 
-#define BOX0_IS_GREATER_THAN_BOX1 0
+void mm_init(int extra_offset, int size) {
+    if (extra_offset < 0 || size < 1 || mm_start)
+        abort ();
 
-#if BOX0_IS_GREATER_THAN_BOX1
-#define SBox Box0
-#else
-#define SBox Box
-#endif
+    mm_extra_offset = extra_offset;
+    mm_size = size;
 
-struct SUnit {
-    unsigned long map;
-    struct SBox boxes[64];
-};
-
-void mm_init() {
 #if !defined(C4WA) && EMULATE_LINEAR_MEMORY
-    __linear_memory = malloc(64000 * EMULATE_LINEAR_MEMORY);
+    __builtin_memory = malloc(64000 * EMULATE_LINEAR_MEMORY);
 #endif
 
-#if BOX0_IS_GREATER_THAN_BOX1
-    assert (sizeof(struct Box0) >= sizeof(struct Box));
-#else
-    assert (sizeof(struct Box0) <= sizeof(struct Box));
-#endif
-
-#ifdef C4WA
-    mm_start = (struct SUnit *)(__builtin_memory + __builtin_offset);
-#else
-    mm_start =__linear_memory + LM_OFFSET;
-#endif
-
-#if 0 // sizes are different in WASM vs native compiler
-    printf("MM: one storage unit is %ld (box0 = %ld, box = %ld)\n",
-        sizeof(struct SUnit), sizeof(struct Box0), sizeof(struct Box));
-#endif
+    mm_start = (unsigned long *)(__builtin_memory + __builtin_offset + mm_extra_offset);
 }
 
-struct Box * allocate_box () {
+char * mm_malloc (int size) {
     const int verbose = 0;
 
     if (!mm_start)
-        mm_init ();
+        mm_init (0, size);
+
+    if (size > mm_size)
+        abort ();
+
+    const int unit_size = 1 + 8 * mm_size; // # of "long" in one memory unit
 
     if (mm_first < 0 && mm_inuse == mm_capacity) {
-#define MM_EXPANSION 10
         if (verbose)
             printf("MM: We are at capacity with limit of %d storage units reached\n", mm_capacity);
-        int required = (LM_OFFSET + (mm_capacity + MM_EXPANSION) * sizeof(struct SUnit))/LM_PAGE + 1;
+        int required = (__builtin_offset + mm_extra_offset + (mm_capacity + mm_expand_by) * 8 * unit_size)/LM_PAGE + 1;
         if (required > memsize()) {
             if (verbose)
                 printf("MM: Need %d more page(s) in addition to currently allocated %d\n", required - memsize(), memsize());
             memgrow(required - memsize());
         }
-        mm_capacity += MM_EXPANSION;
-#undef MM_EXPANSION
+        mm_capacity += mm_expand_by;
     }
 
     if (mm_first < 0) {
         if (verbose)
             printf("MM: Allocating additional map at index %d\n", mm_inuse);
         assert(mm_inuse < mm_capacity);
-        mm_start[mm_inuse].map = -1;
+        mm_start[mm_inuse * unit_size] = -1;
         mm_first = mm_inuse;
         mm_inuse ++;
     }
 
     assert(mm_first >= 0);
-    struct SUnit * cur = mm_start + mm_first;
-    assert(cur->map != 0);
+    unsigned long * cur = mm_start + mm_first * unit_size;
+    assert(*cur != 0);
 
-    int j = __builtin_ctzl(cur->map);
+    int j = __builtin_ctzl(*cur);
 
-/*
-    if (verbose)
-        printf("Allocating Box<%d>: [%d, %d] | x = (%d,%d), y = (%d,%d)\n", level, mm_first, j,
-                x0, x0 + size - 1, y0, y0 + size - 1);
-*/
+    *cur ^= (unsigned long)1 << (unsigned long)j;
+    char * result = (char*) cur + 8 + j * mm_size;
 
-    cur->map ^= (unsigned long)1 << (unsigned long)j;
-    struct Box * box = (struct Box *) (cur->boxes + j);
-
-    if (cur->map == 0) {
+    if (*cur == 0) {
         do {
             mm_first ++;
         }
-        while(mm_first < mm_inuse && !mm_start[mm_first].map);
+        while(mm_first < mm_inuse && !mm_start[mm_first * unit_size]);
         if (mm_first == mm_inuse)
             mm_first = -1;
     }
 
-    return box;
+    return result;
 }
 
-void free_box_memory(struct SBox * box) {
-    int offset = (char *)box - (char *)mm_start;
-    int idx = offset / sizeof(struct SUnit);
-    struct SUnit * cur = mm_start + idx;
-    int j = box - cur->boxes;
+void mm_free(char * box) {
+    const int unit_size = 1 + 8 * mm_size; // # of "long" in one memory unit
+
+    int offset = box - (char *)mm_start;
+    int idx = offset / unit_size / 8;
+    unsigned long * cur = mm_start + idx * unit_size;
+    int j = (box - (char *) cur - 8)/mm_size;
     assert(j >= 0);
     assert(j < 64);
-    assert(box == cur->boxes + j);
-    assert((cur->map & (unsigned long)1 << (unsigned long)j) == 0);
-    cur->map ^= (unsigned long)1 << (unsigned long)j;
+    assert(box == (char *)cur + 8 + j*mm_size);
+    assert((*cur & (unsigned long)1 << (unsigned long)j) == 0);
+    *cur ^= (unsigned long)1 << (unsigned long)j;
 
     if (idx < mm_first)
         mm_first = idx;
 }
 
 int count_boxes () {
+    const int unit_size = 1 + 8 * mm_size; // # of "long" in one memory unit
+
     int res = 0;
     for (int i = 0; i < mm_inuse; i ++)
-        res += (64 - __builtin_popcountl(mm_start[i].map));
+        res += (64 - __builtin_popcountl(mm_start[i * unit_size]));
     return res;
 }
 
 void mm_stat() {
     printf("A/R/C: %d/%d/%d; CAP: %d/%d\n", mm_allocated, mm_freed, count_boxes(), mm_inuse, mm_capacity);
-#if 0
-    printf("Actual memory used: %ld/%ld\n", LM_OFFSET + mm_inuse * sizeof(struct SUnit), LM_OFFSET + mm_capacity * sizeof(struct SUnit));
-#endif
 }
 
 #else // !defined(C4WA) && !EMULATE_LINEAR_MEMORY
@@ -212,13 +187,8 @@ void mm_stat() {
 
 struct Box * mm_new_box (int level, int x0, int y0) {
     mm_allocated ++;
-#if defined(C4WA) || EMULATE_LINEAR_MEMORY
-    struct Box * box = allocate_box ();
-    memset((char *) box, '\0', BOX0_IS_GREATER_THAN_BOX1? sizeof(struct Box0) : sizeof(struct Box));
-#else
-    struct Box * box = malloc(level == 0? sizeof(struct Box0): sizeof(struct Box));
-    memset(box, '\0', level == 0? sizeof(struct Box0): sizeof(struct Box));
-#endif
+    struct Box * box = (struct Box *) mm_malloc(level == 0? sizeof(struct Box0): sizeof(struct Box));
+    memset((char *)box, '\0', level == 0? sizeof(struct Box0): sizeof(struct Box));
 
     int size = N0;
     for (int k = 0; k < level; k ++)
@@ -244,11 +214,7 @@ void mm_release_box(struct Box * box) {
                     mm_release_box(box->cells[y * N + x]);
     }
 
-#if defined(C4WA) || EMULATE_LINEAR_MEMORY
-    free_box_memory((struct SBox *) box);
-#else
-    free(box);
-#endif
+    mm_free((char *) box);
 }
 
 /* -------------------------------------------------- *\
@@ -727,6 +693,8 @@ void test_2 () {
 }
 
 extern int main () {
+    mm_init(0, max(sizeof(struct Box0), sizeof(struct Box)));
+
     for (int test = 1; test <= 2; test ++) {
         printf("🧪 Test %d\n", test);
         if (test == 1)

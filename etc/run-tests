@@ -272,7 +272,7 @@ async function run_c_file(cfile) {
 
     fs.rmSync(tmp_exe, {force: true});
 
-    res = spawnSync(compile, ['-P', cfile, '-lmm_incr', '-o', wat].concat(cfile.endsWith('171-life.c') || cfile.endsWith('172-life.c')?['-Xmodule.dataSize=2048']:[]), {stdio: 'inherit'});
+    res = spawnSync(compile, ['-P', cfile, '-lmm_incr', '-o', wat], {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ c4wa compilation failed, not proceeding");
