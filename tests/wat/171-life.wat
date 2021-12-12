@@ -22,7 +22,7 @@
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (global.get $@stack) (i32.const 2))
         (unreachable)))
-    (global.set $mm_start (i32.const 3072))
+    (global.set $mm_start (i32.const 2933))
     (global.set $@stack (get_local $@stack_entry)))
   (func $allocate_box (result i32)
     (local $@stack_entry i32)
@@ -44,7 +44,7 @@
             (i64.store (global.get $@stack) (i64.extend_i32_s (global.get $mm_capacity)))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))))
-        (set_local $required (i32.add (i32.div_s (i32.add (i32.const 3072) (i32.mul (i32.add (global.get $mm_capacity) (i32.const 10)) (i32.const 7688))) (i32.const 64000)) (i32.const 1)))
+        (set_local $required (i32.add (i32.div_s (i32.add (i32.const 2933) (i32.mul (i32.add (global.get $mm_capacity) (i32.const 10)) (i32.const 7688))) (i32.const 64000)) (i32.const 1)))
         (if (i32.gt_s (get_local $required) (memory.size))
           (then
             (if (get_local $verbose)

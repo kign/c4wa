@@ -3,10 +3,9 @@ package net.inet_lab.c4wa.transpile;
 import net.inet_lab.c4wa.wat.*;
 import net.inet_lab.c4wa.wat.Module;
 
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-public class ModuleEnv implements Partial {
+public class ModuleEnv implements Partial, PostprocessContext {
     final List<FunctionEnv> functions;
     final Map<String, FunctionDecl> funcDecl;
     final Map<String, VariableDecl> varDecl;
@@ -14,11 +13,9 @@ public class ModuleEnv implements Partial {
     final Map<String,Struct> structs;
     final Set<String> libraryFunctions;
 
-    final byte[] data;
-    int data_len;
+    final List<Byte> data;
 
     final int STACK_SIZE;
-    final int DATA_SIZE;
     final String GLOBAL_IMPORT_NAME;
     final MemoryState memoryState;
     final String MEMORY_NAME;
@@ -58,10 +55,8 @@ public class ModuleEnv implements Partial {
             throw new RuntimeException("Invalid value of property 'module.memoryStatus'");
 
         STACK_SIZE = memoryState == MemoryState.NONE? 0 : Integer.parseInt(prop.getProperty("module.stackSize"));
-        DATA_SIZE  = memoryState == MemoryState.NONE? 0 : Integer.parseInt(prop.getProperty("module.dataSize"));
 
-        data = new byte[DATA_SIZE];
-        data_len = 0;
+        data = new ArrayList<>();
 
         addDeclaration(new FunctionDecl("memset", null,
                 new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR, CType.INT}, false, FunctionDecl.SType.BUILTIN));
@@ -122,34 +117,27 @@ public class ModuleEnv implements Partial {
         varDecl.put(name, variableDecl);
     }
 
-    public OptionalInt addString(List<Byte> bytes) {
+    public int addString(List<Byte> bytes) {
         int hash = bytes.hashCode();
 
         Integer current_id = strings.get(hash);
         if (current_id != null)
-            return OptionalInt.of(current_id);
+            return current_id;
 
-        OptionalInt res = _addString(bytes);
+        int res = _addString(bytes);
 
-        if (res.isEmpty())
-            return res;
-
-        strings.put(hash, res.getAsInt());
+        strings.put(hash, res);
 
         return res;
     }
 
-    private OptionalInt _addString(List<Byte> bytes) {
-        int res = STACK_SIZE + data_len;
+    private int _addString(List<Byte> bytes) {
+        int res = STACK_SIZE + data.size();
 
-        if (data_len + bytes.size() + 1 > DATA_SIZE)
-            return OptionalInt.empty();
+        data.addAll(bytes);
+        data.add((byte) 0);
 
-        for(byte b: bytes)
-            data[data_len ++] = b;
-        data[data_len++] = '\0';
-
-        return OptionalInt.of(res);
+        return res;
     }
 
     private enum MemoryState {
@@ -187,7 +175,17 @@ public class ModuleEnv implements Partial {
         return res;
     }
 
-    public Module wat () {
+    private void missingFunctions() {
+        for (String fname: funcDecl.keySet()) {
+            FunctionDecl decl = funcDecl.get(fname);
+
+            if (decl.used && decl.storage == FunctionDecl.SType.EXTERNAL)
+                throw new SyntaxError("'extern' Function '" + fname + "' isn't defined");
+        }
+    }
+
+    public Instruction wat () {
+        missingFunctions ();
         Set<String> included = dependencyList();
 
         if (included.isEmpty())
@@ -226,8 +224,13 @@ public class ModuleEnv implements Partial {
         else if (memoryState == MemoryState.INTERNAL)
             elements.add(new Memory( 1));
 
-        if (data_len > 0)
-            elements.add(new Data(STACK_SIZE, data, data_len));
+        if (!data.isEmpty()) {
+            byte[] data_arr = new byte[data.size()];
+            int idx = 0;
+            for (byte b: data)
+                data_arr[idx ++] = b;
+            elements.add(new Data(STACK_SIZE, data_arr, data.size()));
+        }
 
         for (FunctionEnv f : functions)
             if(included.contains(f.name))
@@ -241,7 +244,7 @@ public class ModuleEnv implements Partial {
                 elements.add(new FuncWat(libf, code));
         }
 
-        return new Module(elements);
+        return (new Module(elements)).postprocessList(this);
     }
 
     static final Map<String, String> library = Map.ofEntries(

@@ -1,5 +1,7 @@
 void printf();
 
+extern char * malloc(int);
+
 char * long_to_string(unsigned long a) {
     int N = 20;
     char buf[N];
@@ -13,7 +15,7 @@ char * long_to_string(unsigned long a) {
         buf[n] = (char)(48 + (int)d);
     } while(a > 0);
 
-    char * ret = alloc(0, N - n + 2, char);
+    char * ret = (char *) malloc(N - n + 2);
     memcpy(ret, buf + n, N - n + 1);
     ret[N - n + 1] = '\0';
     return ret;

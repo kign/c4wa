@@ -54,10 +54,10 @@ static int mm_freed = 0;
 
 #if !defined(C4WA) && EMULATE_LINEAR_MEMORY
 
-#define C4WA_STACK_SIZE 1024
-#define C4WA_DATA_SIZE 2048
 
 static void * __linear_memory;
+static int __builtin_offset = 0;
+
 static int __memsize = 1;
 int memsize() {
     return __memsize;
@@ -72,7 +72,7 @@ void memgrow(int upgrade) {
 #if defined(C4WA) || EMULATE_LINEAR_MEMORY
 
 #define MM_OFFSET 0
-#define LM_OFFSET (MM_OFFSET + C4WA_STACK_SIZE + C4WA_DATA_SIZE)
+#define LM_OFFSET (MM_OFFSET + __builtin_offset)
 #define LM_PAGE 64000
 static struct SUnit * mm_start = 0;
 static int mm_first = -1;
@@ -104,7 +104,7 @@ void mm_init() {
 #endif
 
 #ifdef C4WA
-    mm_start = alloc(MM_OFFSET, 1, struct SUnit);
+    mm_start = (struct SUnit *)(__builtin_memory + __builtin_offset);
 #else
     mm_start =__linear_memory + LM_OFFSET;
 #endif

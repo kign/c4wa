@@ -61,6 +61,15 @@ public class Instruction_Decl extends Instruction {
         this.e3 = e3;
     }
 
+    Instruction_Decl(InstructionName type, Expression e1, Instruction i1, Instruction i2, Instruction i3, Expression e3) {
+        super(type);
+        this.e1 = e1;
+        this.i1 = i1;
+        this.i2 = i2;
+        this.i3 = i3;
+        this.e3 = e3;
+    }
+
     @Override
     public String toString() {
         StringBuilder b = new StringBuilder();
@@ -79,5 +88,10 @@ public class Instruction_Decl extends Instruction {
         b.append(")");
         return b.toString();
     }
+
+    public Instruction[] postprocess(PostprocessContext ppctx) {
+        return new Instruction[]{new Instruction_Decl((InstructionName) type, e1 == null? null: e1.postprocess(ppctx), i1, i2, i3, e3 == null? null: e3.postprocess(ppctx))};
+    }
+
 
 }

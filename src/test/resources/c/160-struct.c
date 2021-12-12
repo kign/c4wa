@@ -1,6 +1,8 @@
 void printf();
+extern char * malloc(int);
 
 struct Point { float x; float y; char color; float z; };
+
 const    int M = sizeof(struct Point);
 
 double dot(struct Point * A, struct Point * B) {
@@ -24,9 +26,9 @@ char * color(struct Point * p) {
 extern int main () {
     struct Point * A, * B, * C;
 
-    A = alloc(0, 1, struct Point);
-    B = alloc(M, 1, struct Point);
-    C = alloc(2*M, 1, struct Point);
+    A = (struct Point *)malloc(M);
+    B = (struct Point *)malloc(M);
+    C = (struct Point *)malloc(M);
 
     // constants are automatically cast to LHS type, or it makes no difference whether we write it like that ...
     A->x = 1;

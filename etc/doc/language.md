@@ -69,12 +69,11 @@ Here are some of the most commonly used features of C language **NOT** supported
   
 ## A bit more details
 
-_We list below most important known limitations of `c4wa` compiler, inconsistencies with standard C, or specifics of WASM
-runtime, in no particular order. Some of these we'll cover in more details further down._ 
-
-Web Assembly doesn't have any memory management features, instead giving programmers access to one single memory block 
-("linear memory"). Correspondingly, `c4wa` has only limited dynamic memory allocation capabilities; for anything beyond
-that, developer must assign free space to all dynamic objects manually (more on that below).
+As already mentioned, with a few exceptions, `c4wa` out of the box doesn't support any C standard library methods.
+Typically, you can import missing functionality from your runtime environment; that's how we could support
+a `printf` function, for example. Once instance where you cannot rely on imported functionality is 
+dynamic memory allocation; fortunately, `c4wa` does provide some limited support for dynamic memory. More
+on that below.
 
 `cw4a` supports Web Assembly primitive types (`i32`, `i64`, `f32` and `f64` which translate to C as 
 `int`, `long`, `float` and `double` correspondingly), also `char` and `short` 
@@ -132,6 +131,22 @@ Functions called from a file they aren't defined in must be declared `extern`;
 more on this below. You can't currently have a global variables shared between multiple
 files in a way which would be consistent with C compiler, so better don't try.
 
+## Built-in functions and built-in libraries
+
+While there is nothing resembling C standard library in `c4wa`, it does support a few utilities. 
+They come in the forms of `built-in functions` and `built-in libraries`.
+
+**Built-in functions** are typically such that could be directly mapped to WASM instructions (in other words,
+they are _inline_ functions). We give full list further down in the documentation.
+
+**Built-in libraries**, on the other hand, are separate pieces of functionality that could be optionally
+added to the generated files. They don't become available unless explicitly "linked" with `-l<library name>`
+command line option. Basically, "linking" with such library is functionally equivalent to adding 
+additional source files to compile, except these source files are embedded into compiler JAR.
+
+Note that functions provided by libraries still need to be declared as `extern` before usage; 
+built-in functions, on the other hand, do not need to be declared.
+
 ## Import and export
 
 Syntax of C doesn't exactly match Web Assembly concepts of "imported" and "exported" symbols (global variables, functions
@@ -186,7 +201,7 @@ A simple C program might not require a linear memory at all; you can use
 [compiler option](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md) `module.memoryStatus=none`
 to not add any memory declaration to generated WAT file. However, many features, such as 
 taking address of a local variable, using `struct`s or arrays, calling imported function with 
-arbitrary number of arguments (like `printf`), and obviosuly allocating memory directly, won't work without 
+arbitrary number of arguments (like `printf`), and obviously allocating memory directly, won't work without 
 linear memory.
 
 ### Composition of linear memory
@@ -196,79 +211,30 @@ linear memory.
 Generated WAT will have two special blocks of linear memory with configurable sizes.
 
   * **Stack**, size `module.stackSize` (default 1024), for stack variables;
-  * **Data**, size `module.dataSize` (default 1024), for string literals.
+  * **Data**, for string literals; size is flexible depending on actual space used.
 
-The rest of memory, from byte number  `module.stackSize + module.dataSize` onwards, will only be used
-by directly calling `alloc` pseudo-macro.
+The rest of memory, from byte number  `module.stackSize` + (actual data size) onwards,
+can only be accessed by using `__builtin_memory` variable or one of provided memory managers.
 
-### `alloc` and `free`
+### Low-level memory access
 
-You can think of `alloc` as macro wih this definition
+You can access linear memory directly from your C program by accessing built-in global variable `__builtin_memory`.
+(It has type `char *` and actual numeric value `0`).
+This has to be done very carefully, obviously, because you must make sure you assign memory
+correctly, and because you may override stack section or data section.
 
-```c
-#ifdef C4WA
-#define alloc(address, _ignore, type) (type *)(address + offset)
-#else 
-#define alloc(_ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
-#endif
-```
+There is also a built-in global variable `__builtin_offset` which is set to the value where data segment ends. Its
+type is `int`.
 
-In Web Assembly, this simply returns its first argument plus offset 
-(which is where general use memory begins, `module.stackSize + module.dataSize`) wrapped up as a
-pointer to the last argument (a type). When cross-compiling with regular C compiler, you can invoke `malloc`
-to trigger a similar behaviour.
+### Memory managers
 
-Example:
+Memory manager is a module which utilized `__builtin_memory` to provide higher level methods like `malloc` and
+`free` for dynamic memory access.
 
-```c
-int * arr = alloc(10, N + 1, int);
-```
-
-This can be used to allocate an array of `N+1` integers (note that you can also use syntax `int arr[N+1]` 
-to allocate in the stack instead, subject to space limitations of course; see "stack arrays" below).
-
-Second argument `N+1` is ignored by `c4wa`, so consider it a declaration of intent. 
-It is only present for possible future implementation
-of an actual memory manager and to make it easier to compile and test with native C compiler.
-
-It's really up to you how you want to interpret `alloc` when cross-compiling with a native C compiler.
-The easiest solution could be simply call `malloc` :
-
-```c
-#ifndef C4WA
-#define alloc(_ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
-#endif
-```
-
-However, you may also choose to stay closer to Web Assembly linear memory model and do something like that:
-
-```c
-#ifndef C4WA
-static void * __linear_memory;
-#define alloc(addr, size, type) (type *)(__linear_memory + C4WA_STACK_SIZE  + C4WA_DATA_SIZE + addr)
-#define free(addr)
-#endif
-
-//.........
-extern int main () {
-#ifndef C4WA
-    __linear_memory = malloc(64000);
-#endif
-//.........
-}
-```
-
-Function `free` basically has same semantic as in C standard library, it frees memory allocated earlier 
-with `alloc`. Since for now `alloc` doesn't really allocate anything, `free` does nothing.
-Just like 2<sup>nd</sup> argument to `alloc`, it is there for better compatibility with C compiler,
-future enhancements and to better represent programmer's intent.
-
-Note that function `free` is special in `c4wa` since it takes pointer of _any type_ as an argument.
-Normally defined (or imported) functions would only work with a specific pointer type, including
-built-in `memset` and `memcpy`.
-
-Note also that while `alloc` is technically _not_ a function but a _pseudo-macro_ (it's last argument is type,
-not a value), from this point on I'll be referring to it as one of the "built-in _functions_" for brevity.
+Advanced universal memory managers is very much work in progress at this point. However, the simplest 
+memory manager what could be used for testing is "incremental" memory manager, which simply 
+allocates all memory consecutively and never releases anything. It could be used with `-lmm_incr`
+command line option.
 
 ### stack variables
 
@@ -308,7 +274,9 @@ For example, if you need to allocate integer array of size `N` and fill it in wi
 either of these two alternatives will work:
 
 ```c
-int * arr = alloc(0, N, int);
+extern char * malloc(int);
+
+int * arr = (int *) malloc(N * sizeof(int)); // make sure to link with a suppored memory manager!
 for (int i = 0; i < N; i ++
     arr[i] = i; 
 ```
@@ -321,8 +289,8 @@ for (int i = 0; i < N; i ++)
     arr[i] = i; 
 ```
 
-in the 2<sup>nd</sup> version you don't need to worry about memory being available, not used by another object, and
-marked as available again when no longer needed; however, you need to be mindful of available stack size (see above);
+in the 2<sup>nd</sup> version you don't need to worry about selecting or implementing a memory manager; 
+however, you need to be mindful of available stack size (see above);
 we are _not_ checking for stack overflow, so if you take too much memory you'd start overwriting your DATA section. 
 
 Arrays are permitted in `struct`s, but must have fixed (= known at compile time) size. 
@@ -356,7 +324,7 @@ static int __memory_size = 1;
 
 ## Built-in functions
 
-In addition to memory functions `alloc` and `free` and memory functions `memset`, `memcpy`, `memgrow`, `memsize`, 
+In addition to memory functions `memset`, `memcpy`, `memgrow`, `memsize` discussed above, 
 there are a few other built-in functions:
 
   * `min` and `max` work with any numerical arguments (of the same type), and will return result of the same type as arguments;
@@ -374,8 +342,7 @@ there are a few other built-in functions:
 ## Strings and chars
 
 Web Assembly has special DATA section and `data` instruction to store strings in memory. 
-The capacity of DATA section is determined by `module.dataSize` compiler option; trying to
-exceed this capacity will trigger a compiler error.
+Memory for DATA is allocated at compile time and based on actual usage.  
 
 All string literals in C code are placed in DATA section with terminating `\0`; 
 identical strings are assigned same memory address.
@@ -585,9 +552,10 @@ Cross-compiling the code with standard C compiler is listed above as one of the 
 and it should indeed be simple and straightforward; `c4wa` does not use any special syntax or markers 
 not known to a C compiler. Nevertheless, you may need a few adjustments:
 
-  * `cw4a` is using some built-in functions specific to WASM and thus not present in standard library: 
-    `alloc`, `memgrow`, `memsize` 
-  * Other built-in functions while are part of C library, must be declared directly or via an include file;
+  * Due to incompatible dynamic memory semantics, 
+    you need to either emulate customary C functions `malloc` and `free` in `c4wa`, 
+    or emulate linear memory in native C compiler; 
+  * Some built-in functions might not be available in C library or unlike `c4wa`, require an explicit declaration;
   * `cw4a` is tolerant to functions calling each other in any order.
 
 This is an example of the header you can include into your program:
@@ -596,9 +564,7 @@ This is an example of the header you can include into your program:
 #ifndef C4WA
 void * memset(); 
 void * memcpy(); 
-void * free(void *); 
 double sqrt(double);
-#define alloc(ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
 static int __memory_size = 1;
 #define memgrow(size) __memory_size += (size)
 #define memsize() __memory_size

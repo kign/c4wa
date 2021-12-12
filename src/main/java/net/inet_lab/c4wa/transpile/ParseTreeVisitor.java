@@ -319,6 +319,26 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
     }
 
+    static class DelayedMemoryOffset extends Expression_Delayed {
+        @Override
+        public int complexity() {
+            return 0;
+        }
+
+        @Override
+        public String toString() {
+            return "DelayedMemoryOffset";
+        }
+
+        @Override
+        public Expression postprocess(PostprocessContext ppctx) {
+            if (ppctx instanceof ModuleEnv)
+                return new Const(((ModuleEnv) ppctx).STACK_SIZE + ((ModuleEnv) ppctx).data.size());
+            else
+                return this;
+        }
+    }
+
     static class OneFunction implements Partial {
         final FunctionEnv func;
         final c4waParser.Composite_blockContext code;
@@ -407,9 +427,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             if (decl.mutable && decl.imported)
                 throw fail(ctx, "global variable","Imported global variable cannot be initialized, declare 'const' or 'static'");
             OneExpression rhs = (OneExpression) visit(ctx.expression());
-            if (!(rhs.expression instanceof Const))
+            if (!(rhs.expression instanceof Const || rhs.expression instanceof DelayedMemoryOffset))
                 throw fail(ctx, "global_variable", "RHS '" + ctx.expression().getText() + "' hasn't evaluated to a constant");
-            decl.initialValue = new Const(decl.type.asNumType(), (Const) rhs.expression);
+//            decl.initialValue = new Const(decl.type.asNumType(), (Const) rhs.expression);
+            decl.initialValue = GenericCast.cast(rhs.type.asNumType(), decl.type.asNumType(), rhs.type.is_signed(), rhs.expression);
             // decl.initialValue = parseConstant(ctx, decl.type, ctx.CONSTANT().getText());
             if (!decl.mutable)
                 decl.imported = false;
@@ -801,6 +822,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         FunctionDecl decl = moduleEnv.funcDecl.get(fname);
         if (decl == null)
             throw fail(ctx, "function call", "Function '" + fname + "' not defined or declared");
+        decl.used = true;
 
         if (decl.params != null && Arrays.stream(decl.params).anyMatch(Objects::isNull))
             throw fail(ctx, "function_call", "void parameters aren't allowed (function '" + fname + "')");
@@ -1596,6 +1618,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "unary_op", "Operation '" + op + "' not recognized");
     }
 
+/*
     @Override
     public OneExpression visitExpression_alloc(c4waParser.Expression_allocContext ctx) {
         OneExpression memptr = (OneExpression) visit(ctx.memptr);
@@ -1610,6 +1633,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         else
             return new OneExpression(new Add(NumType.I32, memptr.expression, new Const(memOffset)), type.make_pointer_to());
     }
+*/
 
     @Override
     public OneExpression visitExpression_cast(c4waParser.Expression_castContext ctx) {
@@ -1639,6 +1663,14 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     private OneExpression accessVariable(ParserRuleContext ctx, String name) {
+        if (name.equals("__builtin_offset"))
+            return new OneExpression(new DelayedMemoryOffset(), CType.INT);
+        else if (name.equals("__builtin_memory"))
+            return new OneExpression(new Const(0), CType.CHAR.make_pointer_to());
+
+        if (functionEnv == null)
+            throw fail(ctx, "variable", "Cannot access variable '" + name + "' outside of function definition");
+
         VariableDecl decl = functionEnv.variables.get(name);
 
         if (decl != null)
@@ -1660,16 +1692,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public OneExpression visitExpression_string(c4waParser.Expression_stringContext ctx) {
         List<Byte> bytes = new ArrayList<>();
-
         for (var s : ctx.STRING())
             bytes.addAll(unescapeString(ctx, s.getText()));
 
-        OptionalInt str_id = moduleEnv.addString(bytes);
-
-        if (str_id.isEmpty())
-            throw fail(ctx, "string", "DATA section overflow; consider bumping 'module.dataSize'");
-
-        return new OneExpression(new Const(str_id.getAsInt()), CType.CHAR.make_pointer_to());
+        int str_id = moduleEnv.addString(bytes);
+        return new OneExpression(new Const(str_id), CType.CHAR.make_pointer_to());
     }
 
     @Override

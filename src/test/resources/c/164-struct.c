@@ -1,13 +1,11 @@
 void printf();
+extern char * malloc(int);
 
 struct Complex { float x, y; };
 struct Triangle { struct Complex A, B, C; };
 
-static int m = 0;
-
 struct Complex * _new () {
-    struct Complex * res = alloc(m, 1, struct Complex);
-    m += sizeof(struct Complex);
+    struct Complex * res = (struct Complex *) malloc(sizeof(struct Complex));
     return res;
 }
 

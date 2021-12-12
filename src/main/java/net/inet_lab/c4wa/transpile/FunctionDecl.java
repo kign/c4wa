@@ -12,6 +12,7 @@ public class FunctionDecl implements Partial {
     final boolean anytype;
     final SType storage;
 
+    boolean used;
     enum SType {
         INTERNAL, // Present in this module. Could be declared "static" to please C compiler
         EXPORTED, // Present and exported; must be defined as "extern" and optionally declared as "static"
@@ -27,6 +28,8 @@ public class FunctionDecl implements Partial {
         this.anytype = anytype;
         this.storage = storage;
         this.params = anytype? null : params;
+
+        used = false;
     }
 
     public String signature () {

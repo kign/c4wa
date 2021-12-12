@@ -1,7 +1,9 @@
 void printf();
 
+extern char * malloc(int);
+
 extern int main () {
-    int *a = alloc(10, 3, int);
+    int *a = (int *) malloc(3 * sizeof(int));
     a[0] = 15;
     int* b = a + 1;
     *b = 13;

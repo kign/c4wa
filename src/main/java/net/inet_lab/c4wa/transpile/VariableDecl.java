@@ -1,6 +1,6 @@
 package net.inet_lab.c4wa.transpile;
 
-import net.inet_lab.c4wa.wat.Const;
+import net.inet_lab.c4wa.wat.Expression;
 import net.inet_lab.c4wa.wat.Global;
 
 class VariableDecl implements Partial {
@@ -11,7 +11,7 @@ class VariableDecl implements Partial {
     boolean mutable;
     boolean inStack;
     boolean isArray;
-    Const initialValue;
+    Expression initialValue;
 
     VariableDecl(CType type, String name, boolean is_mutable) {
         this.type = type;

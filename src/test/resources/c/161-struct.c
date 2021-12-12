@@ -1,10 +1,11 @@
 void printf();
+extern char * malloc(int);
 
 struct Student { int access; char * name; };
 
 struct Student * makeStudent(char * name, struct Student ** p_res) {
     printf("Calling makeStudent()\n");
-    struct Student * res = alloc(0, 1, struct Student);
+    struct Student * res = (struct Student *)malloc(sizeof(struct Student));
     res->name = name;
     res->access = 11;
     * p_res = res;
@@ -17,7 +18,7 @@ void print_student(struct Student * student) {
 }
 
 extern int main () {
-    struct Student ** p_student = alloc(10, 1, struct Student *);
+    struct Student ** p_student = (struct Student **)malloc(sizeof(struct Student *));
     makeStudent("Vasya", p_student)->access *= 2;
     struct Student * student = * p_student;
     print_student(student);

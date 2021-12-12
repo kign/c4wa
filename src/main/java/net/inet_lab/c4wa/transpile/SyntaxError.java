@@ -11,6 +11,11 @@ public class SyntaxError extends RuntimeException {
     final public int pos_en;
     final public String msg;
 
+    public SyntaxError(String msg) {
+        this.msg = msg;
+        this.line_st = this.line_en = this.pos_st = this.pos_en = -1;
+    }
+
     public SyntaxError(int line_st, int line_en, int pos_st, int pos_en, String msg) {
         this.line_st = line_st;
         this.line_en = line_en;

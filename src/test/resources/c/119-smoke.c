@@ -1,4 +1,5 @@
 void printf ();
+extern char * malloc(int);
 
 static unsigned int seed = 57;
 
@@ -26,7 +27,7 @@ double array_min(double arr[], int N) {
 }
 
 double * make_array(int N) {
-    double * arr = alloc(0, N, double);
+    double * arr = (double *) malloc(N * sizeof(double));
     for (int i = 0; i < N; i ++)
         arr[i] = mulberry32();
     return arr;

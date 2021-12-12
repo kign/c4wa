@@ -30,14 +30,29 @@ public class RunAllTests {
         Files.createDirectories(Paths.get("tests", "wat"));
 
         final var needs_pp = List.of("121-smoke.c", "170-life.c", "171-life.c");
-        final var needs_extra_data = List.of("171-life.c");
+        final var libraries = List.of("110-smoke.c", "115-smoke.c", "118-smoke.c", "119-smoke.c",
+                "150-pointers.c",
+                "160-struct.c", "161-struct.c", "163-struct.c", "164-struct.c",
+                "mm_incr");
         while ((fileName = br.readLine()) != null) {
             final String fname = fileName;
             if (!fname.endsWith(".c"))
                 continue;
+            List<String> libs = new ArrayList<>();
+            boolean f = false;
+            for (String x: libraries) {
+                if (x.equals(fname))
+                    f = true;
+                else if (x.endsWith(".c")) {
+                    if (!libs.isEmpty())
+                        break;
+                }
+                else if (f)
+                    libs.add(x);
+            }
             tests.add(DynamicTest.dynamicTest(fileName, () -> {
                 String programText = Files.readString(Path.of(Objects.requireNonNull(loader.getResource(ctests + "/" + fname)).getPath()));
-                Main.runAndSave(programText, needs_pp.contains(fname), needs_extra_data.contains(fname)?2048:null, Paths.get("tests", "wat", fname.replace(".c", ".wat")));
+                Main.runAndSave(programText, needs_pp.contains(fname), libs, Paths.get("tests", "wat", fname.replace(".c", ".wat")));
             }));
         }
 

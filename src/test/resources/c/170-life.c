@@ -165,12 +165,15 @@ extern int main () {
 
 #define NO_USE_STACK
 
-#ifdef USE_STACK
+#if defined(USE_STACK)
     cell_t pos_0[X* Y + 1];
     cell_t pos_1[X* Y + 1];
+#elif defined(C4WA)
+    cell_t * pos_0 = (cell_t *) (__builtin_memory + __builtin_offset);
+    cell_t * pos_1 = (cell_t *) (__builtin_memory + __builtin_offset + M*(X*Y+1));
 #else
-    cell_t * pos_0 = alloc(0, X*Y, cell_t);
-    cell_t * pos_1 = alloc(M*(X*Y+1), X*Y, cell_t);
+    cell_t * pos_0 = (cell_t *) malloc(M*(1 + X*Y));
+    cell_t * pos_1 = (cell_t *) malloc(M*(1 + X*Y));
 #endif
     struct Stat stat;
 

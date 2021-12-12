@@ -1,4 +1,5 @@
 void printf();
+extern char * malloc(int);
 
 struct Node { struct Node * next; int val; };
 struct LinkedList { struct Node * head, * tail; };
@@ -6,7 +7,7 @@ struct LinkedList { struct Node * head, * tail; };
 static int node_idx = 0;
 
 struct Node * new_node() {
-    struct Node * node = alloc(node_idx * sizeof(struct Node), 1, struct Node);
+    struct Node * node = (struct Node *)malloc(sizeof(struct Node));
     node_idx ++;
     node->next = (struct Node *) 0;
 

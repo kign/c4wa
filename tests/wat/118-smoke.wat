@@ -1,5 +1,7 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
+  (global $__last_offset (mut i32) (i32.const 1111))
+  (global $__available_size (mut i32) (i32.const -1))
   (global $@stack (mut i32) (i32.const 0))
   (memory (export "memory") 1)
   (data (i32.const 1024) "Requested %d bits of storage, using %d long's\0A\00%d\00\0A\00%d >> 2 = %d, %d << 2 = %d\0A\00=>\00 %d\00")
@@ -17,7 +19,7 @@
     (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $s)))
     (global.set $@stack (i32.sub (global.get $@stack) (i32.const 16)))
     (call $printf (global.get $@stack) (i32.const 3))
-    (set_local $sto (i32.const 2048))
+    (set_local $sto (call $malloc (i32.mul (get_local $s) (i32.const 8))))
     (block $@block_1_break
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $i) (get_local $s)))
@@ -128,4 +130,18 @@
     (global.set $@stack (i32.sub (global.get $@stack) (i32.const 0)))
     (call $printf (global.get $@stack) (i32.const 1))
     (global.set $@stack (get_local $@stack_entry))
-    (i32.const 0)))
+    (i32.const 0))
+  (func $malloc (param $size i32) (result i32)
+    (local $res i32)
+    (local $pages i32)
+    (if (i32.lt_s (global.get $__available_size) (i32.const 0))
+      (then
+        (global.set $__available_size (i32.mul (i32.const 64000) (memory.size)))))
+    (set_local $res (global.get $__last_offset))
+    (global.set $__last_offset (i32.add (global.get $__last_offset) (get_local $size)))
+    (if (i32.gt_s (global.get $__last_offset) (global.get $__available_size))
+      (then
+        (set_local $pages (i32.add (i32.const 1) (i32.div_s (global.get $__last_offset) (i32.const 64000))))
+        (drop (memory.grow (i32.sub (get_local $pages) (memory.size))))
+        (global.set $__available_size (i32.mul (i32.const 64000) (get_local $pages)))))
+    (get_local $res)))

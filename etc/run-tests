@@ -15,13 +15,11 @@ const def_arr = ["WAT file exists (created by gradlew :test) and has been modifi
     "C file compiled to an executable",
     "Native executable compiled from C source generated expected output"];
 
-const c_prefix = `void * malloc();
-void * memset();
+const c_prefix = `void * memset();
 void * memcpy();
 void * free(void *);
 double sqrt(double);
 void abort ();
-#define alloc(ignore, count, type)  (type *)malloc((count) * (sizeof(type)))
 static int __memory_size = 1;
 #define memgrow(size) __memory_size += (size)
 #define memsize() __memory_size
@@ -274,7 +272,7 @@ async function run_c_file(cfile) {
 
     fs.rmSync(tmp_exe, {force: true});
 
-    res = spawnSync(compile, ['-P', cfile, '-o', wat].concat(cfile.endsWith('171-life.c') || cfile.endsWith('172-life.c')?['-Xmodule.dataSize=2048']:[]), {stdio: 'inherit'});
+    res = spawnSync(compile, ['-P', cfile, '-lmm_incr', '-o', wat].concat(cfile.endsWith('171-life.c') || cfile.endsWith('172-life.c')?['-Xmodule.dataSize=2048']:[]), {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ c4wa compilation failed, not proceeding");

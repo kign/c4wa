@@ -2,6 +2,8 @@ void printf ();
 
 const double precision = 1.0e-9;
 
+extern char * malloc(int);
+
 void solve_square_equation(double a, double b, double c, double roots[2], int * p_status) {
     double d = b*b - 4.0*a*c;
     if (d < 0.) {
@@ -23,8 +25,10 @@ void solve_square_equation(double a, double b, double c, double roots[2], int * 
 }
 
 void try_solving(int a, int b, int c) {
-    double * roots = alloc(0, 2, double);
-    int * p_status = alloc(2 * sizeof(double), 1, int);
+//    double * roots = alloc(0, 2, double);
+//    int * p_status = alloc(2 * sizeof(double), 1, int);
+    double * roots = (double *) malloc(2 * sizeof(double));
+    int * p_status = (int *) malloc(sizeof(int));
 
     solve_square_equation((double)a, (double)b, (double)c, roots, p_status);
 

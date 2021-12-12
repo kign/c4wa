@@ -1,9 +1,11 @@
 void printf();
 
+extern char * malloc(int);
+
 char * alloc_storage(int n) {
     int s = (n + 8*sizeof(long) - 1)/8/sizeof(long);
     printf("Requested %d bits of storage, using %d long's\n", n, s);
-    unsigned long * sto = alloc(0, s, unsigned long);
+    unsigned long * sto = (unsigned long *) malloc(s * sizeof(long));
 
     for (int i = 0; i < s; i ++)
         sto[i] = (long) 0;

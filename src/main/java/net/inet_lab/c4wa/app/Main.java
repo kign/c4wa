@@ -45,6 +45,7 @@ public class Main {
         List<String> ppOptions = new ArrayList<>();
         Map<String, String> parsedArgs = new HashMap<>();
         List<String> fileArgs = new ArrayList<>();
+        List<String> builtin_libs = new ArrayList<>();
 
         addPreprocessorSymbolsFromProperties(ppOptions, prop);
 
@@ -52,7 +53,7 @@ public class Main {
                 List.of(new Option('o', "output", true),
                         new Option('h', "help"),
                         new Option('P', null)),
-                parsedArgs, fileArgs, prop, ppOptions);
+                parsedArgs, fileArgs, prop, ppOptions, builtin_libs);
 
         if (error != null) {
             System.err.println("Error parsing command line: " + error);
@@ -90,19 +91,38 @@ public class Main {
         }
 
         ModuleEnv moduleEnv = new ModuleEnv(prop);
-        for (String fileName: fileArgs) {
-            if (!((new File(fileName)).exists())) {
-                System.err.println("File " + fileName + " doesn't exist");
-                System.exit(1);
+        String wat = null;
+        final int n_units = fileArgs.size() + builtin_libs.size();
+        for (int iarg = 0; iarg < n_units; iarg ++) {
+            List<String> programLines;
+            String fileName;
+            if (iarg < fileArgs.size()) {
+                fileName = fileArgs.get(iarg);
+
+                if (!((new File(fileName)).exists())) {
+                    System.err.println("File " + fileName + " doesn't exist");
+                    System.exit(1);
+                }
+
+                programLines = usePP
+                        ? runFileThroughCPreprocessor(fileName, ppOptions)
+                        : Files.lines(Paths.get(fileName), StandardCharsets.UTF_8).collect(Collectors.toUnmodifiableList());
+
+                if (programLines.size() == 0) {
+                    System.err.println("file '" + fileName + "': no text, could be preprocessor error");
+                    System.exit(1);
+                }
             }
+            else {
+                String libName = builtin_libs.get(iarg - fileArgs.size());
+                fileName = "<builtin>:" + libName + ".c";
+                final var loader = Main.class.getClassLoader();
 
-            List<String> programLines = usePP
-                    ? runFileThroughCPreprocessor(fileName, ppOptions)
-                    : Files.lines(Paths.get(fileName), StandardCharsets.UTF_8).collect(Collectors.toUnmodifiableList());
-
-            if (programLines.size() == 0) {
-                System.err.println("file '" + fileName + "': no text, could be preprocessor error");
-                System.exit(1);
+                programLines = new BufferedReader(
+                        new InputStreamReader(
+                                Objects.requireNonNull(
+                                        loader.getResourceAsStream("lib/" + libName + ".c"))))
+                        .lines().collect(Collectors.toUnmodifiableList());
             }
 
             String programText = String.join("\n", programLines);
@@ -114,26 +134,31 @@ public class Main {
                 ParseTree tree = buildParseTree(programText);
                 ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
                 v.visit(tree);
+                if (iarg == n_units - 1)
+                    wat = moduleEnv.wat().toStringPretty(2);
             } catch (SyntaxError err) {
-                String realName = fileName;
                 int lineno = err.line_st;
-                if (usePP) {
-                    err.locate(programLines);
-                    realName = err.fileName;
-                    lineno = err.lineno;
+                if (lineno < 0)
+                    System.err.println(err.msg);
+                else {
+                    String realName = fileName;
+                    if (usePP) {
+                        err.locate(programLines);
+                        realName = err.fileName;
+                        lineno = err.lineno;
+                    }
+
+                    System.out.println(programLines.get(err.line_st - 1));
+                    System.out.println(" ".repeat(err.pos_st) + "^".repeat(1 + err.pos_en - err.pos_st));
+                    System.err.println("[" + realName + ":" + lineno + "] " + err.msg);
+
+                    if (err.line_st != err.line_en)
+                        System.out.println("(Actual reported error location is " + (err.line_en - err.line_st + 1) + " lines long)");
                 }
-
-                System.out.println(programLines.get(err.line_st - 1));
-                System.out.println(" ".repeat(err.pos_st) + "^".repeat(1 + err.pos_en - err.pos_st));
-                System.err.println("[" + realName + ":" + lineno + "] " + err.msg);
-
-                if (err.line_st != err.line_en)
-                    System.out.println("(Actual reported error location is " + (err.line_en - err.line_st + 1) + " lines long)");
                 System.exit(1);
             }
         }
 
-        String wat = moduleEnv.wat().toStringPretty(2);
         if ("-".equals(output))
             System.out.println(wat);
         else
@@ -141,10 +166,8 @@ public class Main {
     }
 
     // to be used from tests
-    public static void runAndSave(String programText, boolean usePreprocessor, Integer dataSize, Path watFileName) throws IOException {
+    public static void runAndSave(String programText, boolean usePreprocessor, List<String> libs, Path watFileName) throws IOException {
         Properties prop = defaultProperties();
-        if (dataSize != null)
-            prop.setProperty("module.dataSize", dataSize.toString());
 
         List<String> ppOptions = new ArrayList<>();
 
@@ -153,11 +176,29 @@ public class Main {
         if (usePreprocessor)
             programText = String.join("\n", runTextThroughCPreprocessor(programText, ppOptions));
 
+        ModuleEnv moduleEnv = new ModuleEnv(prop);
+
         ParseTree tree = buildParseTree(programText);
-        String wat = generateWAT(tree, prop);
+        ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
+        v.visit(tree);
+
+        for (String libName: libs) {
+            final var loader = Main.class.getClassLoader();
+
+            var programLines = new BufferedReader(
+                    new InputStreamReader(
+                            Objects.requireNonNull(
+                                    loader.getResourceAsStream("lib/" + libName + ".c"))))
+                    .lines().collect(Collectors.toUnmodifiableList());
+            programText = String.join("\n", programLines);
+
+            tree = buildParseTree(programText);
+            v = new ParseTreeVisitor(moduleEnv);
+            v.visit(tree);
+        }
 
         PrintStream out = new PrintStream(watFileName.toFile());
-        out.println(wat);
+        out.println(moduleEnv.wat().toStringPretty(2));
     }
 
     private static Properties defaultProperties () throws IOException {
@@ -171,7 +212,6 @@ public class Main {
         ppOptions.add("-DC4WA");
         ppOptions.add("-DC4WA_VERSION=" + prop.getProperty("appVersion"));
         ppOptions.add("-DC4WA_STACK_SIZE=" + prop.getProperty("module.stackSize"));
-        ppOptions.add("-DC4WA_DATA_SIZE=" + prop.getProperty("module.dataSize"));
     }
 
     private static void printUsage(Properties prop, String usage) {
@@ -185,8 +225,9 @@ public class Main {
                 "Options are: \n" +
                 "\n" +
                 " -P            invoke C preprocessor via GCC (use -Ph to print predefined symbols)\n" +
-                " -Dname=value  when option -P is used, pass definition to C preprocessor\n" +
-                " -Xname=value  define compiler property (see below)\n" +
+                " -D<name>=value  when option -P is used, pass definition to C preprocessor\n" +
+                " -X<name>=value  define compiler property (see below)\n" +
+                " -l<name>      include built-in library <name>\n" +
                 " -o, --output <FILE>  specify output files, either .wat or .wasm (or - for stdout)\n" +
                 " -k, --keep    when compiling to WASM, keep intermediate WAT file\n" +
                 " -h, --help    this help screen\n" +
@@ -207,7 +248,9 @@ public class Main {
         }
     }
 
-    private static String parseCommandLineArgs(String[] args, List<Option> options, Map<String, String> parsedArgs, List<String> fileArgs, Properties prop, List<String> ppOptions) {
+    private static String parseCommandLineArgs(String[] args, List<Option> options, Map<String, String> parsedArgs,
+                                               List<String> fileArgs, Properties prop,
+                                               List<String> ppOptions, List<String> builtin_libs) {
         for (int i = 0; i < args.length; i++) {
             String o = args[i];
             if (o.startsWith("-D"))
@@ -220,7 +263,10 @@ public class Main {
                 if (prop.getProperty(p) == null)
                     return "No such property '" + p + "'";
                 prop.setProperty(o.substring(2, j), o.substring(j + 1));
-            } else if (o.charAt(0) == '-' && o.length() >= 2 && o.charAt(1) != '-') {
+            }
+            else if (o.startsWith("-l") && o.length() > 2)
+                builtin_libs.add(o.substring(2));
+            else if (o.charAt(0) == '-' && o.length() >= 2 && o.charAt(1) != '-') {
                 for (int j = 1; j < o.length(); j++) {
                     char so = o.charAt(j);
                     var g = options.stream().filter(x -> x.shortName == so).findFirst();
@@ -322,10 +368,8 @@ public class Main {
 
         ParseTree tree = parser.module();
 
-        if (parser.getNumberOfSyntaxErrors() > 0) {
-            System.err.println("Syntax errors were detected");
-            System.exit(1);
-        }
+        if (parser.getNumberOfSyntaxErrors() > 0)
+            throw new RuntimeException("Syntax errors were detected; this should never happen, as we throw exception of 1-st error");
 
         return tree;
     }

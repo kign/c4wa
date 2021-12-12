@@ -6,12 +6,12 @@ public class Global extends Instruction_Decl {
                 mutable?new Mut(numType): new Special(numType));
     }
 
-    public Global(String ref, String export_name, NumType numType, boolean mutable, Const initialValue) {
+    public Global(String ref, String export_name, NumType numType, boolean mutable, Expression initialValue) {
         super(InstructionName.GLOBAL, new Special(ref), new Export(export_name),
                 mutable ? new Mut(numType) : new Special(numType), initialValue);
     }
 
-    public Global(String ref, NumType numType, boolean mutable, Const initialValue) {
+    public Global(String ref, NumType numType, boolean mutable, Expression initialValue) {
         super(InstructionName.GLOBAL, new Special(ref),
                 mutable ? new Mut(numType) : new Special(numType), initialValue);
     }
