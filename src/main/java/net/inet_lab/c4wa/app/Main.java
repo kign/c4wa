@@ -148,7 +148,7 @@ public class Main {
                     System.err.println(err.msg);
                 else {
                     String realName = fileName;
-                    if (usePP) {
+                    if (usePP && iarg < fileArgs.size()) {
                         err.locate(programLines);
                         realName = err.fileName;
                         lineno = err.lineno;
@@ -278,7 +278,7 @@ public class Main {
                                     new InputStreamReader(
                                             Objects.requireNonNull(
                                                     loader.getResourceAsStream("lib/" + libName))))
-                                    .lines().findFirst().orElse("// <Empty file>").substring(3);
+                                    .lines().filter(x -> x.startsWith("//")).findFirst().orElse("// <Empty file>").substring(3);
                             System.out.printf("%-15s%s\n", libName.substring(0,libName.length() - 2), line);
                         }
                 } catch (URISyntaxException e) {

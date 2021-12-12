@@ -32,8 +32,11 @@ public class RunAllTests {
         final var needs_pp = List.of("121-smoke.c", "170-life.c", "171-life.c");
         final var libraries = List.of("110-smoke.c", "115-smoke.c", "118-smoke.c", "119-smoke.c",
                 "150-pointers.c",
-                "160-struct.c", "161-struct.c", "163-struct.c", "164-struct.c",
-                "mm_incr");
+                "161-struct.c", "163-struct.c", "164-struct.c",
+                "mm_incr",
+                "160-struct.c",
+                "mm_fixed"
+                );
         while ((fileName = br.readLine()) != null) {
             final String fname = fileName;
             if (!fname.endsWith(".c"))

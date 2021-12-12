@@ -754,16 +754,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         ExpressionList args = (ctx.arg_list() == null)?(new ExpressionList()):(ExpressionList) visit(ctx.arg_list());
 
-        if ("free".equals(fname)) {
-            if (args.expressions.length != 1)
-                throw fail(ctx, "function_call", "function '" + fname + "' expects 1 argument, received " +
-                        args.expressions.length);
-            if (!args.expressions[0].type.is_ptr())
-                throw fail(ctx, "function_call", "Argument to `free' must be a pointer, received " + args.expressions[0].type);
-
-            return new NoOp();
-        }
-        else if (List.of("min", "max").contains(fname)) {
+        if (List.of("min", "max").contains(fname)) {
             if (args.expressions.length != 2)
                 throw fail(ctx, "function_call", "function '" + fname + "' expects 2 arguments, received " +
                         args.expressions.length);

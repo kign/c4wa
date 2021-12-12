@@ -2,16 +2,15 @@
 |*             COMMON COMPATIBILITY LAYER             *|
 \* -------------------------------------------------- */
 
+// value > 0: we emulate WASM linear memory with fixed maximum # of pages equal to this value
+// value = 0: we use malloc() and free()
+// we make this value visible to C4WA mode to keep statistics consistent
+#define EMULATE_LINEAR_MEMORY 100
+
 #ifdef C4WA
 void printf();
 #else
-
 #define max(a,b) ((a) < (b))?(b):(a)
-
-// value > 0: we emulate WASM linear memory with fixed maximum # of pages equal to this value
-// value = 0: we use malloc() and free()
-#define EMULATE_LINEAR_MEMORY 100
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -43,15 +42,16 @@ struct Box {
 
 static struct Box * world = (struct Box *) 0;
 
-
 /* -------------------------------------------------- *\
 |*                 MEMORY MANAGER                     *|
 \* -------------------------------------------------- */
+#define USE_PRINTF
+#if defined(C4WA) || EMULATE_LINEAR_MEMORY
 
-static int mm_allocated = 0;
-static int mm_freed = 0;
-
-#if !defined(C4WA) && EMULATE_LINEAR_MEMORY
+#ifdef C4WA
+#define mm_malloc malloc
+#define mm_free free
+#else
 static void * __builtin_memory;
 static int __builtin_offset = 0;
 
@@ -64,128 +64,145 @@ void memgrow(int upgrade) {
 
     assert(__memsize <= EMULATE_LINEAR_MEMORY);
 }
-
-#endif // !defined(C4WA) && EMULATE_LINEAR_MEMORY
-
-#if defined(C4WA) || EMULATE_LINEAR_MEMORY
+#endif // !defined(C4WA)
 
 #define LM_PAGE 64000
-static unsigned long * mm_start = 0;
-static int mm_first = -1;
-static int mm_capacity = 0;
-static int mm_inuse = 0;
-static int mm_extra_offset = -1;
-static int mm_size = -1;
-static int mm_expand_by = 10;
+static unsigned long * __mm_start = 0;
+static int __mm_first = -1;
+static int __mm_capacity = 0;
+static int __mm_inuse = 0;
+static int __mm_extra_offset = -1;
+static int __mm_size = -1;
+static int __mm_expand_by = 10;
+
+static int __mm_stat_allocated = 0;
+static int __mm_stat_freed = 0;
 
 void mm_init(int extra_offset, int size) {
-    if (extra_offset < 0 || size < 1 || mm_start)
+    if (extra_offset < 0 || size < 1 || __mm_start)
         abort ();
 
-    mm_extra_offset = extra_offset;
-    mm_size = size;
+    __mm_extra_offset = extra_offset;
+    __mm_size = size;
 
 #if !defined(C4WA) && EMULATE_LINEAR_MEMORY
     __builtin_memory = malloc(64000 * EMULATE_LINEAR_MEMORY);
 #endif
 
-    mm_start = (unsigned long *)(__builtin_memory + __builtin_offset + mm_extra_offset);
+    __mm_start = (unsigned long *)(__builtin_memory + __builtin_offset + __mm_extra_offset);
 }
 
 char * mm_malloc (int size) {
+#ifdef USE_PRINTF
     const int verbose = 0;
+#endif
+    __mm_stat_allocated ++;
 
-    if (!mm_start)
+    if (!__mm_start)
         mm_init (0, size);
 
-    if (size > mm_size)
+    if (size > __mm_size)
         abort ();
 
-    const int unit_size = 1 + 8 * mm_size; // # of "long" in one memory unit
+    const int unit_size = 1 + 8 * __mm_size; // # of "long" in one memory unit
 
-    if (mm_first < 0 && mm_inuse == mm_capacity) {
+    if (__mm_first < 0 && __mm_inuse == __mm_capacity) {
+#ifdef USE_PRINTF
         if (verbose)
-            printf("MM: We are at capacity with limit of %d storage units reached\n", mm_capacity);
-        int required = (__builtin_offset + mm_extra_offset + (mm_capacity + mm_expand_by) * 8 * unit_size)/LM_PAGE + 1;
+            printf("MM: We are at capacity with limit of %d storage units reached\n", __mm_capacity);
+#endif
+        int required = (__builtin_offset + __mm_extra_offset + (__mm_capacity + __mm_expand_by) * 8 * unit_size)/LM_PAGE + 1;
         if (required > memsize()) {
+#ifdef USE_PRINTF
             if (verbose)
                 printf("MM: Need %d more page(s) in addition to currently allocated %d\n", required - memsize(), memsize());
+#endif
             memgrow(required - memsize());
         }
-        mm_capacity += mm_expand_by;
+        __mm_capacity += __mm_expand_by;
     }
 
-    if (mm_first < 0) {
+    if (__mm_first < 0) {
+#ifdef USE_PRINTF
         if (verbose)
-            printf("MM: Allocating additional map at index %d\n", mm_inuse);
-        assert(mm_inuse < mm_capacity);
-        mm_start[mm_inuse * unit_size] = -1;
-        mm_first = mm_inuse;
-        mm_inuse ++;
+            printf("MM: Allocating additional map at index %d\n", __mm_inuse);
+#endif
+        assert(__mm_inuse < __mm_capacity);
+        __mm_start[__mm_inuse * unit_size] = -1;
+        __mm_first = __mm_inuse;
+        __mm_inuse ++;
     }
 
-    assert(mm_first >= 0);
-    unsigned long * cur = mm_start + mm_first * unit_size;
+    assert(__mm_first >= 0);
+    unsigned long * cur = __mm_start + __mm_first * unit_size;
     assert(*cur != 0);
 
     int j = __builtin_ctzl(*cur);
 
     *cur ^= (unsigned long)1 << (unsigned long)j;
-    char * result = (char*) cur + 8 + j * mm_size;
+    char * result = (char*) cur + 8 + j * __mm_size;
 
     if (*cur == 0) {
         do {
-            mm_first ++;
+            __mm_first ++;
         }
-        while(mm_first < mm_inuse && !mm_start[mm_first * unit_size]);
-        if (mm_first == mm_inuse)
-            mm_first = -1;
+        while(__mm_first < __mm_inuse && !__mm_start[__mm_first * unit_size]);
+        if (__mm_first == __mm_inuse)
+            __mm_first = -1;
     }
 
     return result;
 }
 
 void mm_free(char * box) {
-    const int unit_size = 1 + 8 * mm_size; // # of "long" in one memory unit
+    __mm_stat_freed ++;
 
-    int offset = box - (char *)mm_start;
+    const int unit_size = 1 + 8 * __mm_size; // # of "long" in one memory unit
+
+    int offset = box - (char *)__mm_start;
     int idx = offset / unit_size / 8;
-    unsigned long * cur = mm_start + idx * unit_size;
-    int j = (box - (char *) cur - 8)/mm_size;
+    unsigned long * cur = __mm_start + idx * unit_size;
+    int j = (box - (char *) cur - 8)/__mm_size;
     assert(j >= 0);
     assert(j < 64);
-    assert(box == (char *)cur + 8 + j*mm_size);
+    assert(box == (char *)cur + 8 + j*__mm_size);
     assert((*cur & (unsigned long)1 << (unsigned long)j) == 0);
     *cur ^= (unsigned long)1 << (unsigned long)j;
 
-    if (idx < mm_first)
-        mm_first = idx;
+    if (idx < __mm_first)
+        __mm_first = idx;
 }
 
-int count_boxes () {
-    const int unit_size = 1 + 8 * mm_size; // # of "long" in one memory unit
+int __mm_count_boxes () {
+    const int unit_size = 1 + 8 * __mm_size; // # of "long" in one memory unit
 
     int res = 0;
-    for (int i = 0; i < mm_inuse; i ++)
-        res += (64 - __builtin_popcountl(mm_start[i * unit_size]));
+    for (int i = 0; i < __mm_inuse; i ++)
+        res += (64 - __builtin_popcountl(__mm_start[i * unit_size]));
     return res;
 }
 
-void mm_stat() {
-    printf("A/R/C: %d/%d/%d; CAP: %d/%d\n", mm_allocated, mm_freed, count_boxes(), mm_inuse, mm_capacity);
+void mm_stat(int * allocated, int * freed, int * current, int * in_use, int * capacity) {
+    * allocated = __mm_stat_allocated;
+    * freed     = __mm_stat_freed;
+    * current   = __mm_count_boxes();
+    * in_use    = __mm_inuse;
+    * capacity  = __mm_capacity;
 }
-
-#else // !defined(C4WA) && !EMULATE_LINEAR_MEMORY
-
-#define mm_init()
-
-void mm_stat() {
-    printf("A/R: %d/%d\n", mm_allocated, mm_freed);
-}
-
 #endif // defined(C4WA) || EMULATE_LINEAR_MEMORY
 
-struct Box * mm_new_box (int level, int x0, int y0) {
+#if !defined(C4WA) && !EMULATE_LINEAR_MEMORY
+#define mm_init(offset, size)
+#endif // !defined(C4WA) && !EMULATE_LINEAR_MEMORY
+
+/* -------------------------------------------------- *\
+|*              ALLOCATION WRAPPERS                   *|
+\* -------------------------------------------------- */
+
+static int mm_allocated = 0;
+static int mm_freed = 0;
+
+struct Box * alloc_new_box (int level, int x0, int y0) {
     mm_allocated ++;
     struct Box * box = (struct Box *) mm_malloc(level == 0? sizeof(struct Box0): sizeof(struct Box));
     memset((char *)box, '\0', level == 0? sizeof(struct Box0): sizeof(struct Box));
@@ -202,19 +219,30 @@ struct Box * mm_new_box (int level, int x0, int y0) {
     return box;
 }
 
-#define mm_new_box0(x0, y0) (struct Box0 *) mm_new_box(0, x0, y0)
+#define alloc_new_box0(x0, y0) (struct Box0 *) alloc_new_box(0, x0, y0)
 
-void mm_release_box(struct Box * box) {
+void release_box(struct Box * box) {
     mm_freed ++;
 
     if (box->level > 0) {
         for (int y = 0; y < N; y ++)
             for (int x = 0; x < N; x ++)
                 if (box->cells[y * N + x])
-                    mm_release_box(box->cells[y * N + x]);
+                    release_box(box->cells[y * N + x]);
     }
 
     mm_free((char *) box);
+}
+
+void memory_stat() {
+#if EMULATE_LINEAR_MEMORY
+    int allocated, freed, current, in_use, capacity;
+
+    mm_stat(&allocated, &freed, &current, &in_use, &capacity);
+    printf("A/R/C: %d/%d/%d; CAP: %d/%d\n", allocated, freed, current, in_use, capacity);
+#else
+    printf("A/R\n", mm_allocated, mm_freed);
+#endif
 }
 
 /* -------------------------------------------------- *\
@@ -239,7 +267,6 @@ void verify(struct Box * w) {
         }
 }
 
-
 void set_cell(int x, int y, int val) {
     struct Box * w;
     int t, xp, yp;
@@ -250,7 +277,7 @@ void set_cell(int x, int y, int val) {
 
     if (!world) {
         if (!val) return;
-        struct Box0 * box = mm_new_box0(x - N0/2, y - N0/2);
+        struct Box0 * box = alloc_new_box0(x - N0/2, y - N0/2);
         box->cells0[N0 * (y - box->y0) + (x - box->x0)] = '\1';
 
         world = (struct Box *) box;
@@ -308,7 +335,7 @@ void set_cell(int x, int y, int val) {
         int dy = (new_size - ymax + ymin)/2;
         if (dy % size != 0) dy += (size - dy % size);
 
-        struct Box * new_world = mm_new_box(new_level, xmin - dx, ymin - dy);
+        struct Box * new_world = alloc_new_box(new_level, xmin - dx, ymin - dy);
 
         w = new_world;
         int wsize = new_size/N;
@@ -327,7 +354,7 @@ void set_cell(int x, int y, int val) {
             if (verbose)
                 printf("w->x0 = %d, xp = %d, wsize = %d, w->y0 = %d, yp = %d\n", w->x0, xp, wsize, w->y0, yp);
 
-            w->cells[N * yp + xp] = mm_new_box(new_level, w->x0 + xp*wsize, w->y0 + yp*wsize);
+            w->cells[N * yp + xp] = alloc_new_box(new_level, w->x0 + xp*wsize, w->y0 + yp*wsize);
             w = w->cells[N * yp + xp];
             wsize /= N;
         }
@@ -349,14 +376,15 @@ void set_cell(int x, int y, int val) {
             break;
         }
         else {
-            if (!val) return;
             size = w->size/N;
             xp = (x - w->x0)/size;
             yp = (y - w->y0)/size;
             if (verbose)
                 printf("Going down to level %d, xp = %d, yp = %d\n", w->level - 1, xp, yp);
-            if (!w->cells[yp * N + xp])
-                w->cells[yp * N + xp] = mm_new_box(w->level - 1, w->x0 + xp*size, w->y0 + yp*size);
+            if (!w->cells[yp * N + xp]) {
+                if (!val) return;
+                w->cells[yp * N + xp] = alloc_new_box(w->level - 1, w->x0 + xp*size, w->y0 + yp*size);
+            }
             int t1 = w->level - 1;
             int t2 = w->x0 + xp*size;
             int t3 = w->y0 + yp*size;
@@ -702,9 +730,11 @@ extern int main () {
         else
             test_2 ();
         verify(world);
-        mm_release_box(world);
-        world = 0;
-        mm_stat ();
+        if (test > 0) {
+            release_box(world);
+            world = 0;
+        }
+        memory_stat ();
     }
     printf("Done!\n");
 

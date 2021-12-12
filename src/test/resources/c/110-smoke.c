@@ -3,6 +3,7 @@ void printf ();
 const double precision = 1.0e-9;
 
 extern char * malloc(int);
+extern void free(char *);
 
 void solve_square_equation(double a, double b, double c, double roots[2], int * p_status) {
     double d = b*b - 4.0*a*c;
@@ -41,8 +42,8 @@ void try_solving(int a, int b, int c) {
     else if (*p_status == 2)
         printf("two roots, %.6f and %.6f\n", roots[0], roots[1]);
 
-    free(roots);
-    free(p_status);
+    free((char *)roots);
+    free((char *)p_status);
 }
 
 extern int main () {

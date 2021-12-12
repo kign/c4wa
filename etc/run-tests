@@ -17,7 +17,6 @@ const def_arr = ["WAT file exists (created by gradlew :test) and has been modifi
 
 const c_prefix = `void * memset();
 void * memcpy();
-void * free(void *);
 double sqrt(double);
 void abort ();
 static int __memory_size = 1;
@@ -272,7 +271,22 @@ async function run_c_file(cfile) {
 
     fs.rmSync(tmp_exe, {force: true});
 
-    res = spawnSync(compile, ['-P', cfile, '-lmm_incr', '-o', wat], {stdio: 'inherit'});
+    const run_tests_java = fs.readFileSync('src/test/java/net/inet_lab/c4wa/transpile/RunAllTests.java', 'utf8');
+    const m = /libraries\s*=\s*List.of\((.+?)\)/s.exec(run_tests_java);
+    const libraries = JSON.parse('[' + m[1] + ']');
+    
+    const libs = [];
+    let f = false;
+    for (const x of libraries) {
+        if (cfile.endsWith(x))
+            f = true;
+        else if (x.endsWith(".c")) {
+            if (libs.length > 0)
+                break;
+        } else if (f)
+            libs.push("-l" + x);
+    }
+    res = spawnSync(compile, ['-P', cfile, '-o', wat].concat(libs), {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ c4wa compilation failed, not proceeding");

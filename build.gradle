@@ -64,6 +64,18 @@ generateGrammarSource {
     arguments += ['-visitor', '-long-messages']
 }
 
+task preprocess_library(type: Exec) {
+    doLast {
+        println 'Compiling built-in library'
+    }
+    executable "bash"
+    args "-c", 'for f in etc/lib/*.c; do gcc -E -C -DC4WA $f > src/main/resources/lib/$(basename $f); done'
+}
+
+processResources {
+    dependsOn preprocess_library
+}
+
 application {
     mainClass = 'net.inet_lab.c4wa.app.Main'
 }

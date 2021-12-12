@@ -192,7 +192,7 @@ extern int main () {
 
     print(X, Y, N % 2 == 0? pos_0 : pos_1, 0);
 
-#ifndef USE_STACK
+#if !defined(C4WA) && !defined(USE_STACK)
     free(pos_0);
     free(pos_1);
 #endif
