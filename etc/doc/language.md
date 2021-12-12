@@ -137,11 +137,11 @@ While there is nothing resembling C standard library in `c4wa`, it does support 
 They come in the forms of `built-in functions` and `built-in libraries`.
 
 **Built-in functions** are typically such that could be directly mapped to WASM instructions (in other words,
-they are _inline_ functions). We give full list further down in the documentation.
+they are _inline_ functions). There is a full list further down in the documentation.
 
 **Built-in libraries**, on the other hand, are separate pieces of functionality that could be optionally
 added to the generated files. They don't become available unless explicitly "linked" with `-l<library name>`
-command line option. Basically, "linking" with such library is functionally equivalent to adding 
+command line option. Technically, "linking" with such library is functionally equivalent to adding 
 additional source files to compile, except these source files are embedded into compiler JAR.
 
 Note that functions provided by libraries still need to be declared as `extern` before usage; 
@@ -167,10 +167,25 @@ For example, then you declare function like `double atan2(double, double)` (no a
 it is interpreted as _imported_, and
 if not provided by the run-time, this will trigger a error. 
 
-`static` and `extern` declarations are for functions defined elswhere in the same file (in case of `static`)
+`static` and `extern` declarations are for functions defined elsewhere in the same file (in case of `static`)
 or in another file (`extern`). You never need `static` declaration to compile with `c4wa` , but you might
 need it for compatibility ith standard C compiler. `extern` declaration could come handy if you have more
-than one source file to compile.
+than one source file to compile (or when using a built-in library).
+
+Be careful: an attempt to declare function without `extern`, while perfectly legal in standard C,
+will lead  `c4wa` to tread your function as imported, and if it is defined later, it'll trigger a 
+compiler error.
+
+```c
+double atan2(double, double); // no attribute, function considered imported
+
+..................
+double x = atan2(2.0, 3.0);   // no problems so far, function is declaraed
+
+..................
+double atan2(double y, double x) {  // oops, can't define imported function, compiler error;
+                                    // change declaration to add `static` or `extern`
+```
 
 **Global variables** could be `static`, `extern`, or neither. `extern` variable will be _exported_, and neither `extern`
 nor `static` will be _imported_ (just like a function declaration). `static` global variables are neither 
@@ -231,10 +246,11 @@ type is `int`.
 Memory manager is a module which utilized `__builtin_memory` to provide higher level methods like `malloc` and
 `free` for dynamic memory access.
 
-Advanced universal memory managers is very much work in progress at this point. However, the simplest 
+A universal memory managers is very much work in progress at this point. However, the simplest 
 memory manager what could be used for testing is "incremental" memory manager, which simply 
 allocates all memory consecutively and never releases anything. It could be used with `-lmm_incr`
-command line option.
+command line option. There is also a "fixed" memory manager which allocates and releases chunks of
+fixed size, `-lmm_fixed`.
 
 ### stack variables
 

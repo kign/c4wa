@@ -245,9 +245,11 @@ async function run_c_file(cfile) {
     fs.rmSync(tmp_exe, {force: true});
     const wat = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wat'));
     const wasm = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wasm'));
-    const tmp_c = path.resolve(tmp_dir, 'tmp.c');
     const c_program = fs.readFileSync(cfile, 'utf8');
-    fs.writeFileSync(tmp_c, (/^#/m.test(c_program) ? "" : c_prefix) + c_program);
+    const needsPP = /^#/m.test(c_program);
+    const tmp_c = needsPP? cfile: path.resolve(tmp_dir, 'tmp.c');
+    if (!needsPP)
+        fs.writeFileSync(tmp_c, c_prefix + c_program);
 
     await build ();
 
@@ -274,7 +276,7 @@ async function run_c_file(cfile) {
     const run_tests_java = fs.readFileSync('src/test/java/net/inet_lab/c4wa/transpile/RunAllTests.java', 'utf8');
     const m = /libraries\s*=\s*List.of\((.+?)\)/s.exec(run_tests_java);
     const libraries = JSON.parse('[' + m[1] + ']');
-    
+
     const libs = [];
     let f = false;
     for (const x of libraries) {
@@ -286,7 +288,7 @@ async function run_c_file(cfile) {
         } else if (f)
             libs.push("-l" + x);
     }
-    res = spawnSync(compile, ['-P', cfile, '-o', wat].concat(libs), {stdio: 'inherit'});
+    res = spawnSync(compile, [cfile, '-o', wat].concat(libs).concat(needsPP? ['-P']: []), {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ c4wa compilation failed, not proceeding");
