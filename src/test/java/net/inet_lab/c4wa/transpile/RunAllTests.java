@@ -29,7 +29,8 @@ public class RunAllTests {
         String fileName;
         Files.createDirectories(Paths.get("tests", "wat"));
 
-        final var needs_pp = List.of("121-smoke.c", "170-life.c", "171-life.c", "172-life.c", "180-memory.c");
+        final var needs_pp = List.of("121-smoke.c", "170-life.c", "171-life.c", "172-life.c",
+                "180-memory.c", "181-memory.c");
         final var libraries = List.of("110-smoke.c", "115-smoke.c", "118-smoke.c", "119-smoke.c",
                 "150-pointers.c",
                 "161-struct.c", "163-struct.c", "164-struct.c",
