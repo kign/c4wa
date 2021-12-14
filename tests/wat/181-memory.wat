@@ -117,7 +117,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 1096))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 147))
+            (i64.store (global.get $@stack) (i64.const 153))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -133,7 +133,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 1165))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 152))
+            (i64.store (global.get $@stack) (i64.const 160))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -141,7 +141,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 1205))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 153))
+            (i64.store (global.get $@stack) (i64.const 161))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -197,7 +197,7 @@
               (then
                 (i64.store (global.get $@stack) (i64.const 1394))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-                (i64.store (global.get $@stack) (i64.const 174))
+                (i64.store (global.get $@stack) (i64.const 188))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
                 (call $printf (global.get $@stack) (i32.const 2))
                 (unreachable)))
@@ -238,7 +238,7 @@
               (then
                 (i64.store (global.get $@stack) (i64.const 1466))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-                (i64.store (global.get $@stack) (i64.const 193))
+                (i64.store (global.get $@stack) (i64.const 209))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
                 (call $printf (global.get $@stack) (i32.const 2))
                 (unreachable)))
@@ -246,7 +246,7 @@
               (then
                 (i64.store (global.get $@stack) (i64.const 1096))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-                (i64.store (global.get $@stack) (i64.const 194))
+                (i64.store (global.get $@stack) (i64.const 210))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
                 (call $printf (global.get $@stack) (i32.const 2))
                 (unreachable)))
@@ -298,7 +298,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 1628))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 216))
+            (i64.store (global.get $@stack) (i64.const 238))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -325,7 +325,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 1745))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 226))
+            (i64.store (global.get $@stack) (i64.const 250))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -374,7 +374,7 @@
       (then
         (i64.store (global.get $@stack) (i64.const 1871))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.const 254))
+        (i64.store (global.get $@stack) (i64.const 281))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (global.get $@stack) (i32.const 2))
         (unreachable)))
@@ -393,7 +393,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 1940))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 259))
+            (i64.store (global.get $@stack) (i64.const 288))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -411,7 +411,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 1394))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 266))
+            (i64.store (global.get $@stack) (i64.const 295))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -442,7 +442,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 2055))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 276))
+            (i64.store (global.get $@stack) (i64.const 306))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -450,7 +450,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 2105))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 277))
+            (i64.store (global.get $@stack) (i64.const 307))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -458,7 +458,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 2176))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 278))
+            (i64.store (global.get $@stack) (i64.const 308))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -489,7 +489,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 2293))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 290))
+            (i64.store (global.get $@stack) (i64.const 324))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -497,7 +497,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 2355))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 291))
+            (i64.store (global.get $@stack) (i64.const 325))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -611,7 +611,7 @@
       (then
         (i64.store (global.get $@stack) (i64.const 2520))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.const 372))
+        (i64.store (global.get $@stack) (i64.const 408))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (global.get $@stack) (i32.const 2))
         (unreachable)))
@@ -679,7 +679,7 @@
       (then
         (i64.store (global.get $@stack) (i64.const 2593))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.const 406))
+        (i64.store (global.get $@stack) (i64.const 442))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (global.get $@stack) (i32.const 2))
         (unreachable)))
