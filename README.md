@@ -45,10 +45,10 @@ and use shell wrapper `c4wa-compile`
 ```bash
 mkdir -p ~/Apps
 cd ~/Apps
-wget https://github.com/kign/c4wa/releases/download/v0.2/c4wa-compile-0.2.zip
-unzip c4wa-compile-0.2.zip
+wget https://github.com/kign/c4wa/releases/download/v0.2/c4wa-compile-0.3.zip
+unzip c4wa-compile-0.3.zip
 cd
-PATH=~/Apps/c4wa-compile-0.2/bin:$PATH
+PATH=~/Apps/c4wa-compile-0.3/bin:$PATH
 c4wa-compile --help
 ```
 
