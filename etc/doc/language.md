@@ -147,6 +147,11 @@ additional source files to compile, except these source files are embedded into 
 Note that functions provided by libraries still need to be declared as `extern` before usage; 
 built-in functions, on the other hand, do not need to be declared.
 
+To note, by default with one very small exception (which is built-in functions `min` and `max` when applied to
+integers), `c4wa` does not add any "library" functionality to generated WAT file; you would only get 
+whatever functions are in your source and nothing more. On the other hand, incorporating a built-in library, 
+for example for memory management, could add noticeable amount of additional library code.
+
 ## Import and export
 
 Syntax of C doesn't exactly match Web Assembly concepts of "imported" and "exported" symbols (global variables, functions
@@ -246,11 +251,17 @@ type is `int`.
 Memory manager is a module which utilized `__builtin_memory` to provide higher level methods like `malloc` and
 `free` for dynamic memory access.
 
-A universal memory managers is very much work in progress at this point. However, the simplest 
-memory manager what could be used for testing is "incremental" memory manager, which simply 
-allocates all memory consecutively and never releases anything. It could be used with `-lmm_incr`
-command line option. There is also a "fixed" memory manager which allocates and releases chunks of
-fixed size, `-lmm_fixed`.
+There are currently three memory managers, in order of increasing complexity:
+
+| Library name | Description                                             |
+|--------------|---------------------------------------------------------|
+| mm_incr      | Incremental memory allocation; nothing is ever released |
+| mm_fixed     | Fixed-sized chunk allocation                            |
+| mm_uni       | Universal memory manager                                |
+
+Incorporating universal memory manager with command line option `-lmm_uni` pretty much allows a programmer to use 
+`malloc` and `free` as one normally would. In many ways, this is not the most optimized solution though,
+and it could be an overkill for simpler tasks. 
 
 ### stack variables
 

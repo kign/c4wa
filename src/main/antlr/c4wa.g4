@@ -202,8 +202,6 @@ FLOAT  :  'float';
 VOID   :  'void';
 SIZEOF :  'sizeof';
 
-ALLOC  :  'alloc';
-
 ID     :  [a-zA-Z_][a-zA-Z0-9_]*;
 ASM    :  'asm' [ \t\n\r]* '{' .*? '}';
 

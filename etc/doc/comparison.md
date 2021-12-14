@@ -108,7 +108,7 @@ export function collatz(a:int):int {
 }
 ```
 
-Pretty much same logic we had originally.
+Pretty much same logic we had originally, still clearly recognizable.
 
 On top of that, to run this WASM file one only needs 3 lines of JavaScript code (or any other Web Assembly runtime): 
 to read the file, to instantiate `WebAssembly` object, and to call exported function. Nothing else.
