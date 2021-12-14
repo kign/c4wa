@@ -15,6 +15,8 @@ extern void mm_init(int, int);
 #include <string.h>
 #include <stdlib.h>
 
+#define min(a,b) ((a) < (b))?(a):(b)
+
 #endif
 
 #define assert(x) if(!(x)) { printf("‼️ ASSERTION: \"" #x "\" @ line %d\n", __LINE__); abort (); }
@@ -72,6 +74,9 @@ static int __mm_stat_allocated = 0;
 static int __mm_stat_freed = 0;
 static int __mm_extra_offset = -1;
 
+#define MM_HIST_SIZE 20
+static int * __mm_report_histogram = 0;
+
 void mm_init(int mm_min) {
     if (__mm_min)
         abort ();
@@ -82,11 +87,17 @@ void mm_init(int mm_min) {
     __builtin_memory = malloc(LM_PAGE * __memsize * EMULATE_LINEAR_MEMORY);
 #endif
 
-    __mm_extra_offset = 10*sizeof(int);
+    __mm_extra_offset = 10*sizeof(int) + MM_HIST_SIZE*sizeof(int *);
     __mm_memory =  __builtin_memory + __builtin_offset + __mm_extra_offset;
     __mm_avail = (int *)(__builtin_memory + __builtin_offset);
-    for (int i = 0; i <= 6; i ++)
+
+    int i;
+    for (i = 0; i <= 6; i ++)
         __mm_avail[i] = -1;
+
+    __mm_report_histogram = (int *)(__builtin_memory + __builtin_offset + 10*sizeof(int));
+    for (i = 0; i <= 6; i ++)
+        __mm_report_histogram[i] = 0;
 }
 
 char * mm_malloc (int size) {
@@ -106,21 +117,22 @@ char * mm_malloc (int size) {
 
     if (size > 64 * __mm_min) {
         // big block
-        n = 1 + (size - (64 * __mm_min + 8))/(64 * __mm_min + 12);
+        n = 2 + (size - (64 * __mm_min + 8))/(64 * __mm_min + 12);
         if (verbose)
             printf("Allocating %d big blocks\n", n);
+        __mm_report_histogram[min(n + 6, MM_HIST_SIZE - 1)] ++;
 
         idx = 0;
         do {
             if (idx >= __mm_inuse) break;
             state = *(int *)(__mm_memory + idx * unit);
             if (state == 0) {
-                for (j = idx + 1; j < __mm_inuse && j < i + n && *(int *)(__mm_memory + j * unit) == 0; j ++);
-                if (j - i >= n) {
+                for (j = idx + 1; j < __mm_inuse && j < idx + n && *(int *)(__mm_memory + j * unit) == 0; j ++);
+                if (j - idx >= n) {
                     if (verbose)
                         printf("Found free stretch from %d to %d\n", idx, j - 1);
                     *(int *)(__mm_memory + idx * unit) = -n;
-                    return __mm_memory + idx * unit;
+                    return __mm_memory + idx * unit + 4;
                 }
                 if (j == __mm_inuse)
                     break;
@@ -153,13 +165,14 @@ char * mm_malloc (int size) {
         if (verbose)
             printf("Following expansion, returning stretch from %d to %d\n", idx, idx + n - 1);
         *(int *)(__mm_memory + idx * unit) = -n;
-        return __mm_memory + idx * unit;
+        return __mm_memory + idx * unit + 4;
     }
     else {
         // small block
         int a_size = __mm_min;
         for(n = 0; a_size < size; n ++, a_size *= 2)
         assert(n <= 6);
+        __mm_report_histogram[n] ++;
         idx = __mm_avail[n];
         if (verbose)
             printf("Actual size %d, n = %d, idx = %d\n", a_size, n, idx);
@@ -285,35 +298,66 @@ void mm_free(char * address) {
     }
 }
 
-void mm_print_units() {
+void __mm_itoa(int a, char ret[]) {
+    const int N = 10;
+    char buf[N];
+    int n = N;
+
+    do {
+        int d = a % 10;
+        a = a / 10;
+
+        n --;
+        buf[n] = (char)(48 + (int)d);
+    } while(a > 0);
+
+    memcpy(ret, buf + n, N - n);
+    ret[N - n] = '\0';
+}
+
+void __mm_append_string(char * dst, char * src) {
+    int len_dst, len_src;
+    for(len_src = 0; src[len_src]; len_src ++);
+    for(len_dst = 0; dst[len_dst]; len_dst ++);
+    memcpy(dst + len_dst, src, len_src + 1);
+}
+
+void __mm_append_number(char * dst, int num) {
+    char buf[10];
+    __mm_itoa(num, buf);
+    __mm_append_string(dst, buf);
+}
+
+char * mm_print_units() {
     const int unit = 64 * __mm_min + 12;
+    char * buf = mm_malloc(1000);
+    buf[0] = '\0';
 
     for (int idx = 0; idx < __mm_inuse; idx ++) {
         int state = *(int *)(__mm_memory + idx * unit);
         if (state == 0)
-            printf("A");
+            __mm_append_string(buf, ".");
         else if (state < 0) {
-            printf("B<%d>\n", -state);
+            __mm_append_string(buf, "B<");
+            __mm_append_number(buf, -state);
+            __mm_append_string(buf, ">");
             idx += (-state - 1);
         }
-        else
-            printf("S<%d|free=%d>", state - 1, __builtin_popcountl(*(unsigned long *)(__mm_memory + idx * unit + 4)));
+        else {
+            __mm_append_string(buf, "S<");
+            __mm_append_number(buf, state - 1);
+            __mm_append_string(buf, "|free=");
+            __mm_append_number(buf, __builtin_popcountl(*(unsigned long *)(__mm_memory + idx * unit + 4)));
+            __mm_append_string(buf, ">");
+        }
     }
-    printf("\n");
+
+    return buf;
 }
 
 #endif // defined(C4WA) || EMULATE_LINEAR_MEMORY
 
 /* ----------------------- MEMORY MANAGER END ----------------------- */
-
-struct Unit {
-    int id;
-    int integrity;
-    char data[100];
-};
-
-#define N_UNITS 1000
-static struct Unit ** storage = NULL;
 
 static unsigned int seed = 57;
 double mulberry32() {
@@ -324,48 +368,135 @@ double mulberry32() {
     return (double)(t ^ t >> (unsigned int)14) / 4294967296.0;
 }
 
-struct Unit * allocate(int id) {
-    struct Unit * unit = (struct Unit *) mm_malloc(sizeof(struct Unit));
-    memset((char *) unit, '\0', sizeof(struct Unit));
-    unit->id = id;
-    unit->integrity = id ^ 816191;
+char * allocate_data(int id, int size) {
+    assert(size >= 2*sizeof(int));
+    char * data = mm_malloc(size);
+    memset(data, '\0', size);
+    *(int *)data = id;
+    *(int *)(data + sizeof(int)) = id ^ 816191;
 
-    return unit;
+    return data;
 }
 
-void verify(struct Unit * unit) {
-    assert(unit->integrity == (unit->id ^ 816191));
+void print_histogram() {
+    const int s0 = 128;
+    const int hsize = 20;
+    int lim = s0/2;
+    int i, j;
+
+    for(j = hsize - 1; j >= 1 && !__mm_report_histogram[j]; j --);
+
+    for(i = 0; i <= j; i ++) {
+        lim = i > 6? (64 * __mm_min + 12) * (i - 7) + 64 * __mm_min + 8 : 2 * lim;
+        if (i < hsize-1)
+            printf("%6d", lim);
+        else
+            printf(" unlim");
+        if (__mm_report_histogram[i])
+            printf(" %d\n", __mm_report_histogram[i]);
+        else
+            printf(" -\n");
+    }
 }
 
-extern int main () {
-    storage = (struct Unit **) mm_malloc(N_UNITS * 8 /*sizeof(struct Unit *)*/);
-    memset((char *) storage, '\0', N_UNITS * sizeof(struct Unit *));
+void verify_data(char * data) {
+    int id = *(int *)data;
+    int integrity = *(int *)(data + sizeof(int));
 
-    const int n_iter = 100000;
+    assert(integrity == (id ^ 816191));
+}
 
-    printf("Starting memory test with %d empty \"unit\" pointers and %d iterations\n", N_UNITS, n_iter);
+void test_uniform(int n_units, int n_iter, int size) {
+    char ** storage = (char **) mm_malloc(n_units * 8);
+    memset((char *) storage, '\0', n_units * 8);
+
+    printf("Starting memory test with %d empty \"unit\" pointers and %d iterations\n", n_units, n_iter);
 
     for (int iter = 0; iter < n_iter; iter ++) {
-        int idx = (int)(mulberry32() * (double)N_UNITS);
+        int idx = (int)(mulberry32() * (double)n_units);
 
         if (storage[idx]) {
-            verify(storage[idx]);
-//            printf("Releasing index %d, id %d\n", idx, storage[idx]->id);
-            mm_free((char *)storage[idx]);
-            storage[idx] = (struct Unit *) NULL;
+            verify_data(storage[idx]);
+//            printf("⬅️ Releasing index %d, id %d\n", idx, *(int*)storage[idx]);
+            mm_free(storage[idx]);
+            storage[idx] = (char *) NULL;
         }
         else {
-            storage[idx] = allocate(1 + iter);
+//            printf("➡️ Allocating index %d, id %d\n", idx, 1 + iter);
+            storage[idx] = allocate_data(1 + iter, size);
+        }
+    }
+
+    char * units = mm_print_units();
+    printf("%s\n", units);
+    mm_free(units);
+    mm_free((char *)storage);
+    printf("Finished fixed memory test\n");
+}
+
+void test_nonuniform(int n_units, int n_iter, int size) {
+    char ** storage = (char **) mm_malloc(n_units * 8);
+    memset((char *) storage, '\0', n_units * 8);
+
+    printf("Starting memory test with %d empty \"unit\" pointers and %d iterations\n", n_units, n_iter);
+
+    for (int iter = 0; iter < n_iter; iter ++) {
+        int idx = (int)(mulberry32() * (double)n_units);
+
+        if (storage[idx]) {
+            verify_data(storage[idx]);
+//            printf("Releasing index %d, id %d\n", idx, *(int*)storage[idx]);
+            mm_free(storage[idx]);
+            storage[idx] = (char *) NULL;
+        }
+        else {
+            double r = mulberry32();
+            storage[idx] = allocate_data(1 + iter, (int)((double)(size - 8) * r * r * r * r) + 8);
 //            printf("Allocating index %d, id %d\n", idx, 1 + iter);
         }
     }
 
-    mm_print_units();
+    char * units = mm_print_units();
+    printf("%s\n", units);
+    mm_free(units);
     mm_free((char *)storage);
-    printf("Finished fixed memory test\n");
+    printf("Finished variable memory test\n");
+}
 
+extern int main () {
+    test_uniform(1000, 100000, 108);
+    test_uniform(10, 1000, 10000);
+    test_nonuniform(100, 10000, 100000);
+    print_histogram ();
+//    abort();
     return 0;
 }
 // Starting memory test with 1000 empty "unit" pointers and 100000 iterations
-// S<6|free=0>S<0|free=5>S<0|free=2>S<0|free=4>S<0|free=14>S<0|free=23>S<0|free=19>S<0|free=8>S<0|free=5>S<0|free=4>
+// S<6|free=0>S<0|free=5>S<0|free=2>S<0|free=4>S<0|free=14>S<0|free=23>S<0|free=19>S<0|free=8>S<0|free=5>S<0|free=4>S<3|free=7>
 // Finished fixed memory test
+// Starting memory test with 10 empty "unit" pointers and 1000 iterations
+// S<6|free=1>S<0|free=5>S<0|free=2>S<0|free=4>S<0|free=14>S<0|free=23>S<0|free=19>S<0|free=7>S<0|free=5>S<0|free=4>S<3|free=7>B<2>B<2>B<2>B<2>B<2>..B<2>....
+// Finished fixed memory test
+// Starting memory test with 100 empty "unit" pointers and 10000 iterations
+// S<0|free=53>S<0|free=5>S<0|free=2>S<0|free=4>S<0|free=14>S<0|free=23>S<0|free=19>S<0|free=8>S<0|free=5>S<0|free=4>S<3|free=3>B<2>B<2>B<2>B<2>B<2>B<2>B<2>S<5|free=1>S<6|free=0>S<4|free=2>S<6|free=1>S<5|free=0>S<6|free=0>B<2>B<2>.B<4>.S<1|free=32>B<2>B<3>B<7>B<4>B<5>.B<3>..B<2>B<5>B<5>...B<4>B<12>....B<6>...........B<7>B<3>B<7>...S<2|free=15>B<10>B<9>.................B<10>.............................B<11>B<10>............................................................
+// Finished variable memory test
+//    128 51172
+//    256 182
+//    512 228
+//   1024 255
+//   2048 302
+//   4096 327
+//   8192 405
+//   8200 -
+//  16404 1041
+//  24608 320
+//  32812 299
+//  41016 202
+//  49220 192
+//  57424 159
+//  65628 153
+//  73832 160
+//  82036 123
+//  90240 128
+//  98444 115
+//  unlim 15
