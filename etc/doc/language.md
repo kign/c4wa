@@ -6,12 +6,13 @@ Obviously, details might change as work on the compiler continues.
 ## Design goals
 
   * **Direct translation.**<br> We try to only support features of C language which could be directly and unambiguously
-    translated to WAT text format with S-expressions. This way, generated WAT code should be readable and reasonably close to what 
+    translated to WAT text format with S-expressions. This way, generated WAT code should be readable and 
+   reasonably close to what 
     a human programmer would write.
   * **Functionality first, syntax sugar later.**<br> Implement the widest possible scope of C language features first, worry 
     about convenience only as necessary.
   * **Cross compilation.**<br> It should be easy to write code which could be compiled and tested 
-     with both `c4wm` _and_ an ordinary C compiler. All features which are in some way WASM-specific
+     with both `c4wa` _and_ an ordinary C compiler. All features which are in some way WASM-specific
     are introduced in a way to make them understood by C compiler as good as possible.
   * **Minor Incompatibilities**<br> On the other hand, since there is no goal to provide full implementation
     of C standard, we are not worried about minor or inconsequential incompatibilities which have little impact
@@ -24,10 +25,7 @@ unavoidable inconsistencies with the standard C compiler, and differences betwee
 Web Assembly environment.
 
   * Your code might successfully pass through `c4wa` but still fail `wat2wasm` compilation. 
-    The plan in to eventually try to verify generated code as much as possible to avoid incorrect WAT output, 
-    but it's still very much work in progress. 
-    Fortunately, since generated WAT code could be easily traced to the original source in C, 
-    such errors are easy to fix in C code (unless it is a compiler bug).
+    With version 0.3 of the compiler, there are no known cases of this happening, but it can't be ruled out yet.
   * Your code might successfully compile with both regular compiler and `c4wa`, generate correctly working
     native executable, but still work incorrectly in Web Assembly. This could be due to a limited number of known
     inconsistencies you should be aware of when writing code for `c4wa`.
@@ -38,10 +36,10 @@ Web Assembly environment.
     (for example, `c4wa` doesn't require you to define or declare functions before they are called, as long as they
     are defined later in the code).
   * There is no expectation that any existing C code, other than completely trivial, would pass through `c4wa`
-    with no changes. Moreover, we are not making too much effort to make adaptation to `c4wa` easier,
+    compilation unchanged. Moreover, we are not making too much effort to make adaptation to `c4wa` easier,
     since it would be mostly pointless. However, for any normal C code, which doesn't rely on external functions
     or libraries, doesn't use any compiler- or OS-specific features, and doesn't make too much use of the more obscure 
-    language features (`union`s, `goto`s, etc.), making it `c4wa`-compatible shouldn't take too much effort. 
+    C language features (`union`s, `goto`s, etc.), making it `c4wa`-compatible shouldn't take too much effort. 
 
 ## TL;DR
 
@@ -54,7 +52,7 @@ Here are some of the most commonly used features of C language **NOT** supported
   * `enum`
   * `static` variables or functions
   * `while() ...` loop
-  * wide chars
+  * wide char
   * `void *` pointers
   * Pragmas
   * Array initializers
@@ -66,14 +64,15 @@ Here are some of the most commonly used features of C language **NOT** supported
   * Pointers to arrays, arrays of arrays
   * Function names as variables, indirect function calls
   * Bit Fields
+  * Almost all new features introduced in C99 and later standards (except variable-length arrays, intermingled
+    declarations, and one-line comments which are all supported)
   
 ## A bit more details
 
 As already mentioned, with a few exceptions, `c4wa` out of the box doesn't support any C standard library methods.
 Typically, you can import missing functionality from your runtime environment; that's how we could support
-a `printf` function, for example. Once instance where you cannot rely on imported functionality is 
-dynamic memory allocation; fortunately, `c4wa` does provide some limited support for dynamic memory. More
-on that below.
+a `printf` function, for example. One particular instance where you cannot rely on imported functionality is 
+dynamic memory allocation, and `c4wa` does provide certain memory management utilities, covered in detail below. 
 
 `cw4a` supports Web Assembly primitive types (`i32`, `i64`, `f32` and `f64` which translate to C as 
 `int`, `long`, `float` and `double` correspondingly), also `char` and `short` 
@@ -95,7 +94,8 @@ Recursive declarations are allowed. There are no `union`s.
 `a = ptr[i ++]` etc. Chain assignments
 `a = b = c ...` _are_ supported with some limitations though.
 
-Usual pointer arithmetic is supported; `&` operator can be used with some limitations.
+Usual pointer arithmetic is supported; `&` operator can be used with some limitations. 
+Note that pointers in `c4wa` are 32 bit.
 
 There are no `void *` pointers. 
 If you are using a "generic" pointer, you must explicitly cast it.
@@ -111,7 +111,8 @@ block-level locals.
 The ony "native" loop type in Web Assembly is `do ... while()`; you are encouraged to use it whenever practical 
 since this creates cleaner and simpler WAT/WASM code. Since it is so common C, we do 
 nevertheless support a regular `for` loop, but not `while() {   }` loop. Use `for(; ... ;)` syntax if you must.
-You can use comma `,` to have multiple initializations or increments.
+You _can_ use comma `,` to have multiple initializations or increments, though semantic isn't entirely consistent
+with C standard.
 
 You can define multiple variables in one definition like `int *a, b, c[2]` and you can 
 initialize variables when you define them, e.g.
@@ -119,8 +120,8 @@ initialize variables when you define them, e.g.
 structures (except literal strings, which are zero-terminated `char` arrays); neither arrays nor `struct`s 
 could be assigned to.
 
-If you reach the end of a non-void function without returning a value, this will trigger "RuntimeError: unreachable"
-in WASM even if return value is never actually used.
+If you reach the end of a non-void function without returning a value, this will trigger 
+"unreachable" run time error in WASM even if return value is never actually used.
 
 Function declarations (unlike definitions) can't have parameter names, only types.
 
@@ -134,7 +135,7 @@ files in a way which would be consistent with C compiler, so better don't try.
 ## Built-in functions and built-in libraries
 
 While there is nothing resembling C standard library in `c4wa`, it does support a few utilities. 
-They come in the forms of `built-in functions` and `built-in libraries`.
+They come in the form of _built-in functions_ and _built-in libraries_.
 
 **Built-in functions** are typically such that could be directly mapped to WASM instructions (in other words,
 they are _inline_ functions). There is a full list further down in the documentation.
@@ -142,13 +143,13 @@ they are _inline_ functions). There is a full list further down in the documenta
 **Built-in libraries**, on the other hand, are separate pieces of functionality that could be optionally
 added to the generated files. They don't become available unless explicitly "linked" with `-l<library name>`
 command line option. Technically, "linking" with such library is functionally equivalent to adding 
-additional source files to compile, except these source files are embedded into compiler JAR.
+additional source files to compile, except these source files are embedded into JAR.
 
-Note that functions provided by libraries still need to be declared as `extern` before usage; 
+Note that functions provided by libraries _still need to be declared_ as `extern` before usage; 
 built-in functions, on the other hand, do not need to be declared.
 
 To note, by default with one very small exception (which is built-in functions `min` and `max` when applied to
-integers), `c4wa` does not add any "library" functionality to generated WAT file; you would only get 
+integers), `c4wa` does not add any "library" functionality to generated WAT files; you would only get 
 whatever functions are in your source and nothing more. On the other hand, incorporating a built-in library, 
 for example for memory management, could add noticeable amount of additional library code.
 
@@ -175,11 +176,11 @@ if not provided by the run-time, this will trigger a error.
 `static` and `extern` declarations are for functions defined elsewhere in the same file (in case of `static`)
 or in another file (`extern`). You never need `static` declaration to compile with `c4wa` , but you might
 need it for compatibility ith standard C compiler. `extern` declaration could come handy if you have more
-than one source file to compile (or when using a built-in library).
+than one source file to compile, or when using a built-in library.
 
 Be careful: an attempt to declare function without `extern`, while perfectly legal in standard C,
-will lead  `c4wa` to tread your function as imported, and if it is defined later, it'll trigger a 
-compiler error.
+will lead  `c4wa` to treat your function as imported, and if it is defined later (including in a library), 
+it'll trigger a compiler error.
 
 ```c
 double atan2(double, double); // no attribute, function considered imported
@@ -206,14 +207,14 @@ All objects are exported and imported under their actual names in C (except memo
 identifier and so export/import name is determined by compiler option `module.memoryStatus`). 
 When importing, module name is set by compiler option `module.importName` (default is `c4wa`). So for example,
 if you want to import function `atan2` from JavaScript runtime, you declare it in C source as
-`double atan2(double, double)`, and then use this code in JavaScript to import:
+`double atan2(double, double)` (remember: no attributes), and then use this code in JavaScript to import:
 
 ```javascript
 WebAssembly.instantiate(wasm_bytes, {c4wa: {atan2: Math.atan2}});
 ```
 
-Any C attribute not listed above is not allowed 
-(so you can't have `static` function definition or `extern` declaration).
+Any C attribute not listed above is explicitly not allowed 
+(so for example you can't have `static` function definition).
 
 ## Memory
 
@@ -238,7 +239,7 @@ can only be accessed by using `__builtin_memory` variable or one of provided mem
 
 ### Low-level memory access
 
-You can access linear memory directly from your C program by accessing built-in global variable `__builtin_memory`.
+You can access linear memory directly from your C program by utilizing built-in global variable `__builtin_memory`.
 (It has type `char *` and actual numeric value `0`).
 This has to be done very carefully, obviously, because you must make sure you assign memory
 correctly, and because you may override stack section or data section.
@@ -248,16 +249,16 @@ type is `int`.
 
 ### Memory managers
 
-Memory manager is a module which utilized `__builtin_memory` to provide higher level methods like `malloc` and
-`free` for dynamic memory access.
+Memory manager is a module which built on the top of low-level access to  `__builtin_memory` 
+to implement higher level methods like `malloc` and `free` for dynamic memory access.
 
 There are currently three memory managers, in order of increasing complexity:
 
 | Library name | Description                                             |
 |--------------|---------------------------------------------------------|
-| mm_incr      | Incremental memory allocation; nothing is ever released |
-| mm_fixed     | Fixed-sized chunk allocation                            |
-| mm_uni       | Universal memory manager                                |
+| `mm_incr`    | Incremental memory allocation; nothing is ever released |
+| `mm_fixed`   | Fixed-sized chunk allocation                            |
+| `mm_uni`     | Universal memory manager                                |
 
 Incorporating universal memory manager with command line option `-lmm_uni` pretty much allows a programmer to use 
 `malloc` and `free` as one normally would. In many ways, this is not the most optimized solution though,
@@ -294,8 +295,9 @@ simply replace this expression with `a + 1`, which is what it is anyway.
 
 ### stack arrays
 
-You can bypass manual memory allocation by using stack. When you declare a stack array, `type variable[size]`,
-`size` doesn't have to be a compile-time constant, it could be any valid integer expression.
+You can bypass manual memory allocation by using stack. When you declare a stack array, `type variable[size]`.
+Variable-length arrays are supported: `size` doesn't have to be a compile-time constant, 
+it could be any valid integer expression, subject to the limit imposed by allocated stack space.
 
 For example, if you need to allocate integer array of size `N` and fill it in with consecutive numbers `0 ... N-1`,
 either of these two alternatives will work:
