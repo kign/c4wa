@@ -42,7 +42,6 @@
     (if (i32.gt_s (i32.load (get_local $box)) (i32.const 0))
       (then
         (block $@block_1_break
-          (set_local $y (i32.const 0))
           (loop $@block_1_continue
             (br_if $@block_1_break (i32.ge_s (get_local $y) (i32.const 5)))
             (block $@block_1_1_break

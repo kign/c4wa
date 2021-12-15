@@ -154,8 +154,10 @@ public class Main {
                         lineno = err.lineno;
                     }
 
-                    System.out.println(programLines.get(err.line_st - 1));
-                    System.out.println(" ".repeat(err.pos_st) + "^".repeat(1 + err.pos_en - err.pos_st));
+                    String errLine = programLines.get(err.line_st - 1);
+                    System.out.println(errLine);
+                    int pos_en = err.line_st == err.line_en? err.pos_en : (errLine.length() - 1);
+                    System.out.println(" ".repeat(err.pos_st) + "^".repeat(1 + pos_en - err.pos_st));
                     System.err.println("[" + realName + ":" + lineno + "] " + err.msg);
 
                     if (err.line_st != err.line_en)

@@ -110,10 +110,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     static class InstructionList implements Partial {
         final Instruction[] instructions;
-        boolean need_block;
-        InstructionList(Instruction[] instructions, boolean need_block) {
+        InstructionList(Instruction[] instructions) {
             this.instructions = instructions;
-            this.need_block = need_block;
         }
     }
 
@@ -349,16 +347,19 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     static class BlockEnv {
-        String block_id;
-        Instruction block_postfix;
-        boolean need_block;
-        BlockEnv () {
-            block_id = null;
-        }
-        void markAsLoop(String block_id, Instruction block_postfix) {
+        final String block_id;
+        BlockEnv (String block_id) {
             this.block_id = block_id;
+        }
+    }
+
+    static class LoopEnv extends BlockEnv {
+        final Instruction block_postfix;
+        boolean has_breaks;
+        LoopEnv(String block_id, Instruction block_postfix) {
+            super(block_id);
             this.block_postfix = block_postfix;
-            need_block = false;
+            has_breaks = false;
         }
     }
 
@@ -429,9 +430,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             OneExpression rhs = (OneExpression) visit(ctx.expression());
             if (!(rhs.expression instanceof Const || rhs.expression instanceof DelayedMemoryOffset))
                 throw fail(ctx, "global_variable", "RHS '" + ctx.expression().getText() + "' hasn't evaluated to a constant");
-//            decl.initialValue = new Const(decl.type.asNumType(), (Const) rhs.expression);
             decl.initialValue = GenericCast.cast(rhs.type.asNumType(), decl.type.asNumType(), rhs.type.is_signed(), rhs.expression);
-            // decl.initialValue = parseConstant(ctx, decl.type, ctx.CONSTANT().getText());
             if (!decl.mutable)
                 decl.imported = false;
         }
@@ -525,41 +524,19 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (ctx.composite_block() != null)
             return (InstructionList) visit(ctx.composite_block());
         else {
-            BlockEnv blockEnv = new BlockEnv(/* functionEnv.getMemOffset() */);
-            var parent = ctx.getParent();
-            if (parent instanceof c4waParser.Element_do_whileContext ||
-                    parent instanceof c4waParser.Element_forContext)
-                blockEnv.markAsLoop(functionEnv.getBlockId(), functionEnv.getBlockPostfix());
-
             List<Instruction> res = new ArrayList<>();
-
-            blockStack.push(blockEnv);
             Partial parsedElem = visit(ctx.element());
 
             if (parsedElem instanceof OneInstruction)
                 res.add(((OneInstruction) parsedElem).instruction);
             else if (!(parsedElem instanceof NoOp))
                 throw new RuntimeException("Wrong type of parsedElem = " + parsedElem);
-            blockStack.pop();
-
-            return new InstructionList(res.toArray(Instruction[]::new), blockEnv.need_block);
+            return new InstructionList(res.toArray(Instruction[]::new));
         }
     }
 
     @Override
     public InstructionList visitComposite_block(c4waParser.Composite_blockContext ctx) {
-        BlockEnv blockEnv = new BlockEnv(/* functionEnv.getMemOffset() */);
-
-        // A hack obviously, but that's the best way I could find to meaningfully pass the knowledge
-        // Basically we must know if this block is one associated with
-        var parent = ctx.getParent();
-        if (parent instanceof c4waParser.BlockContext)
-            parent = parent.getParent();
-        if (parent instanceof c4waParser.Element_do_whileContext ||
-                parent instanceof c4waParser.Element_forContext)
-            blockEnv.markAsLoop(functionEnv.getBlockId(), functionEnv.getBlockPostfix());
-
-        blockStack.push(blockEnv);
         List<Instruction> res = new ArrayList<>();
 
         int idx = 0;
@@ -581,9 +558,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             else if (!(parsedElem instanceof NoOp))
                 throw new RuntimeException("Wrong type of parsedElem = " + parsedElem);
         }
-
-        blockStack.pop();
-        return new InstructionList(res.toArray(Instruction[]::new), blockEnv.need_block);
+        return new InstructionList(res.toArray(Instruction[]::new));
     }
 
     @Override
@@ -605,7 +580,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         String block_id_cont = block_id + CONT_SUFFIX;
         String block_id_break = block_id + BREAK_SUFFIX;
 
+        LoopEnv loopEnv = new LoopEnv(block_id, null);
+        blockStack.push(loopEnv);
         InstructionList body = (InstructionList) visit(ctx.block());
+        blockStack.pop();
         functionEnv.popBlock();
 
         List<Instruction> body_elems = new ArrayList<>(Arrays.asList(body.instructions));
@@ -616,7 +594,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
         else
             body_elems.add(new BrIf(block_id_cont, condition.expression));
-        if (body.need_block)
+        if (loopEnv.has_breaks)
             return new OneInstruction(
                     new Block(block_id_break, new Instruction[]{
                             new Loop(block_id_cont, body_elems.toArray(Instruction[]::new))}));
@@ -635,7 +613,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         String block_id_cont = block_id + CONT_SUFFIX;
         String block_id_break = block_id + BREAK_SUFFIX;
 
+        LoopEnv loopEnv = new LoopEnv(block_id, updateStatement == null ? null : updateStatement.instruction);
+        blockStack.push(loopEnv);
         InstructionList body = (InstructionList) visit(ctx.block());
+        blockStack.pop();
         functionEnv.popBlock();
 
         List<Instruction> loop_elems = new ArrayList<>();
@@ -670,21 +651,21 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     private OneInstruction break_if(ParserRuleContext ctx, boolean is_break, OneExpression condition) {
-        BlockEnv blockEnv = null;
+        LoopEnv loopEnv = null;
         for (var b : blockStack)
-            if (b.block_id != null) {
-                blockEnv = b;
+            if (b instanceof LoopEnv) {
+                loopEnv = (LoopEnv) b;
                 break;
             }
 
-        if (blockEnv == null)
-            throw fail(ctx, is_break ? "break" : "continue", "cannot find eligible block");
+        if (loopEnv == null)
+            throw fail(ctx, is_break ? "break" : "continue", "not inside a loop");
 
-        String ref = blockEnv.block_id + (is_break ? BREAK_SUFFIX : CONT_SUFFIX);
+        String ref = loopEnv.block_id + (is_break ? BREAK_SUFFIX : CONT_SUFFIX);
         if (is_break)
-            blockEnv.need_block = true;
+            loopEnv.has_breaks = true;
 
-        if (blockEnv.block_postfix == null || is_break) {
+        if (loopEnv.block_postfix == null || is_break) {
             if (condition == null)
                 return new OneInstruction(new Br(ref));
             else
@@ -692,11 +673,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
         else {
             if (condition == null)
-                return new OneInstruction(new DelayedList(List.of(blockEnv.block_postfix, new Br(ref))));
+                return new OneInstruction(new DelayedList(List.of(loopEnv.block_postfix, new Br(ref))));
             else
                 return new OneInstruction(
                         new IfThenElse(condition.expression,
-                        new Instruction[]{blockEnv.block_postfix, new Br(ref)}, null));
+                        new Instruction[]{loopEnv.block_postfix, new Br(ref)}, null));
         }
     }
 
@@ -931,7 +912,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return new OneInstruction(
                 new DelayedList(List.of(
                     new DelayedLocalDefinition(variableDecl.name),
-                    new DelayedAssignment(ctx, blockStack.size() == 1, new String[]{variableDecl.name}, rhs.expression, rhs.type))));
+                    new DelayedAssignment(ctx, blockStack.stream().noneMatch(x -> x instanceof LoopEnv),
+                            new String[]{variableDecl.name}, rhs.expression, rhs.type))));
     }
 
     @Override
@@ -1608,23 +1590,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         } else
             throw fail(ctx, "unary_op", "Operation '" + op + "' not recognized");
     }
-
-/*
-    @Override
-    public OneExpression visitExpression_alloc(c4waParser.Expression_allocContext ctx) {
-        OneExpression memptr = (OneExpression) visit(ctx.memptr);
-        CType type = (CType) visit(ctx.variable_type());
-
-        if (!memptr.type.is_i32())
-            throw fail(ctx, "alloc", "'" + memptr.type + "' won't work for alloc, must have int");
-
-        int memOffset = moduleEnv.STACK_SIZE + moduleEnv.DATA_SIZE;
-        if (memptr.expression instanceof Const)
-            return new OneExpression(new Const(memOffset + (int)((Const)memptr.expression).longValue), type.make_pointer_to());
-        else
-            return new OneExpression(new Add(NumType.I32, memptr.expression, new Const(memOffset)), type.make_pointer_to());
-    }
-*/
 
     @Override
     public OneExpression visitExpression_cast(c4waParser.Expression_castContext ctx) {
