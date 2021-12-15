@@ -43,7 +43,8 @@ Web Assembly environment.
 
 ## TL;DR
 
-Here are some of the most commonly used features of C language **NOT** supported by `c4wa`:
+To get this out of the way as early as possible, 
+here are some of the most commonly used features of C language **NOT** supported by `c4wa`:
 
   * No standard library; other than a handful of built-in utilities, all functions must be implemented or imported
   * `switch`
@@ -130,7 +131,8 @@ Function declarations (unlike definitions) can't have parameter names, only type
 If you specify more than one source files, compiler will yield one "bundle" WAT file.
 Functions called from a file they aren't defined in must be declared `extern`; 
 more on this below. You can't currently have a global variables shared between multiple
-files in a way which would be consistent with C compiler, so better don't try.
+files in a way which would be consistent with C compiler and won't depend on files order, 
+so better not try.
 
 ## Built-in functions and built-in libraries
 
@@ -141,16 +143,16 @@ They come in the form of _built-in functions_ and _built-in libraries_.
 they are _inline_ functions). There is a full list further down in the documentation.
 
 **Built-in libraries**, on the other hand, are separate pieces of functionality that could be optionally
-added to the generated files. They don't become available unless explicitly "linked" with `-l<library name>`
+added to the generated WAT. They don't become available unless explicitly "linked" with `-l<library name>`
 command line option. Technically, "linking" with such library is functionally equivalent to adding 
 additional source files to compile, except these source files are embedded into JAR.
 
 Note that functions provided by libraries _still need to be declared_ as `extern` before usage; 
 built-in functions, on the other hand, do not need to be declared.
 
-To note, by default with one very small exception (which is built-in functions `min` and `max` when applied to
-integers), `c4wa` does not add any "library" functionality to generated WAT files; you would only get 
-whatever functions are in your source and nothing more. On the other hand, incorporating a built-in library, 
+To note, by default with one very small exception (built-in functions `min` and `max` when applied to
+integers), `c4wa` does not embed any "library" functionality to generated WAT; you would only get 
+whatever functions are in your source and nothing else. On the other hand, incorporating a built-in library, 
 for example for memory management, could add noticeable amount of additional library code.
 
 ## Import and export
@@ -249,8 +251,8 @@ type is `int`.
 
 ### Memory managers
 
-Memory manager is a module which built on the top of low-level access to  `__builtin_memory` 
-to implement higher level methods like `malloc` and `free` for dynamic memory access.
+Memory manager is a module built on the top of low-level access to  `__builtin_memory` 
+to implement methods like `malloc` and `free` for dynamic memory access.
 
 There are currently three memory managers, in order of increasing complexity:
 
@@ -351,6 +353,10 @@ static int __memory_size = 1;
 #endif 
 ```
 
+Note also that while [memory.grow](https://github.com/sunfishcode/wasm-reference-manual/blob/master/WebAssembly.md#grow-linear-memory-size)
+instruction in WASM does return a value (previous memory size on success, -1 on failure), it is currently ignored
+(dropped) in `c4wa`.
+
 ## Built-in functions
 
 In addition to memory functions `memset`, `memcpy`, `memgrow`, `memsize` discussed above, 
@@ -361,17 +367,17 @@ there are a few other built-in functions:
   * `abort` triggers "_RuntimeError: unreachable_" exception;
   * `__builtin_clz`, `__builtin_ctz`, `__builtin_clzl`, `__builtin_ctzl`, `__builtin_popcount`, `__builtin_popcountl` 
     (see gcc [documentation](https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html)). 
-    Note that 
+    Note that while
     in gcc behaviour of CLZ/CTZ functions is explicitly undefined if argument is 0 
     (in practice, implementations typically return 0), 
     in WASM these functions return full number of bits in the argument (so 32 for first two, 64 for the last). Note also
-    that in GNU C compiler, builtin functions don't need to be declared, thus you don't need anything extra glue to
-    cross-compile (just be mindful of argument 0).
+    that in GNU C compiler, builtin functions don't need to be declared, thus you don't need any extra glue to
+    cross-compile with a GNU-compatible compiler (just be mindful of argument 0).
 
 ## Strings and chars
 
 Web Assembly has special DATA section and `data` instruction to store strings in memory. 
-Memory for DATA is allocated at compile time and based on actual usage.  
+Memory for DATA is allocated at compile time based on actual usage.  
 
 All string literals in C code are placed in DATA section with terminating `\0`; 
 identical strings are assigned same memory address.
@@ -421,7 +427,10 @@ int strlen(char * str) {
 }
 ```
 
-It must be acknowledged that `c4wa` isn't a good environment to write a code which deals with strings. 
+You can freely pass strings to imported functions, which will then need to read actual characters from memory
+(and probably convert 8-bit data to Unicode strings); this is how `printf` function works in the testing suite.
+
+It must be acknowledged that `c4wa` isn't a good environment to write a code dealing with strings. 
 This is in part because C itself isn't, and in part because working with strings means often 
 allocation and freeing up memory, and you do need a decent memory manager for that.
 
@@ -457,7 +466,7 @@ let's call them `offset` and `count`;
 
 When passing arguments, all integer values are converted to `long`, and all float values to `double`.
 
-Note that if passing a string as one of the arguments (as would be the case with an actual `printf` adaptation),
+Note that if passing a string as one of the arguments (as would be the case with an actual `printf` implementation),
 value stored in memory would _itself_ be a memory address of the string.
 
 There is a sample `node.js` runtime implementation of `printf` 
@@ -582,10 +591,11 @@ and it should indeed be simple and straightforward; `c4wa` does not use any spec
 not known to a C compiler. Nevertheless, you may need a few adjustments:
 
   * Due to incompatible dynamic memory semantics, 
-    you need to either emulate customary C functions `malloc` and `free` in `c4wa`, 
+    you need to either emulate customary C functions `malloc` and `free` in `c4wa` 
+   (e.g. by using one of the provided memory managers) , 
     or emulate linear memory in native C compiler; 
-  * Some built-in functions might not be available in C library or unlike `c4wa`, require an explicit declaration;
-  * `cw4a` is tolerant to functions calling each other in any order.
+  * Some built-in functions might not be available in C library or require an explicit declaration;
+  * `cw4a` is tolerant to functions calling each other in any order within the same file.
 
 This is an example of the header you can include into your program:
 
