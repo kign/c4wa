@@ -14,12 +14,12 @@
       (set_local $p (i32.const 3))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $p) (global.get $N)))
-        (block $@block_1_2_break
+        (block $@block_1_1_break
           (set_local $i (i32.const 1))
-          (loop $@block_1_2_continue
-            (br_if $@block_1_2_break (i32.eqz (block $@block_1_1_break (result i32) (drop (br_if $@block_1_1_break (i32.const 0) (i32.ge_s (get_local $i) (get_local $n)))) (drop (br_if $@block_1_1_break (i32.const 0) (i32.ge_s (i32.mul (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4)))) (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4))))) (get_local $p)))) (drop (br_if $@block_1_1_break (i32.const 0) (i32.eq (i32.rem_s (get_local $p) (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4))))) (i32.const 0)))) (i32.const 1))))
+          (loop $@block_1_1_continue
+            (br_if $@block_1_1_break (i32.eqz (block $@block_1_1_1_break (result i32) (drop (br_if $@block_1_1_1_break (i32.const 0) (i32.ge_s (get_local $i) (get_local $n)))) (drop (br_if $@block_1_1_1_break (i32.const 0) (i32.ge_s (i32.mul (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4)))) (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4))))) (get_local $p)))) (drop (br_if $@block_1_1_1_break (i32.const 0) (i32.eq (i32.rem_s (get_local $p) (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4))))) (i32.const 0)))) (i32.const 1))))
             (set_local $i (i32.add (get_local $i) (i32.const 1)))
-            (br $@block_1_2_continue)))
+            (br $@block_1_1_continue)))
         (if (if (result i32) (i32.ge_s (get_local $i) (get_local $n)) (then (i32.const 1)) (else (i32.ne (i32.ne (i32.rem_s (get_local $p) (i32.load (i32.add (get_local $primes) (i32.mul (get_local $i) (i32.const 4))))) (i32.const 0)) (i32.const 0))))
           (then
             (i32.store (i32.add (get_local $primes) (i32.mul (get_local $n) (i32.const 4))) (get_local $p))

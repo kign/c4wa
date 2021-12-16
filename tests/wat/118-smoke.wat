@@ -114,17 +114,17 @@
     (global.set $@stack (i32.sub (global.get $@stack) (i32.const 0)))
     (call $printf (global.get $@stack) (i32.const 1))
     (block $@block_2_break
-      (set_local $d (i32.const 0))
+      (set_local $p (i32.const 0))
       (loop $@block_2_continue
-        (br_if $@block_2_break (i32.ge_s (get_local $d) (get_local $N)))
-        (if (i32.eqz (call $read (get_local $S) (get_local $d)))
+        (br_if $@block_2_break (i32.ge_s (get_local $p) (get_local $N)))
+        (if (i32.eqz (call $read (get_local $S) (get_local $p)))
           (then
             (i64.store (global.get $@stack) (i64.const 1107))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $d)))
+            (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $p)))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))))
-        (set_local $d (i32.add (get_local $d) (i32.const 1)))
+        (set_local $p (i32.add (get_local $p) (i32.const 1)))
         (br $@block_2_continue)))
     (i64.store (global.get $@stack) (i64.const 1074))
     (global.set $@stack (i32.sub (global.get $@stack) (i32.const 0)))

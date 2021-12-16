@@ -387,12 +387,18 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     static class LoopEnv extends BlockEnv {
-        final Instruction block_postfix;
+        Instruction block_postfix;
         boolean has_breaks;
-        LoopEnv(String block_id, Instruction block_postfix) {
+        boolean in_initialization;
+        LoopEnv(String block_id) {
             super(block_id);
-            this.block_postfix = block_postfix;
+            this.block_postfix = null;
             has_breaks = false;
+            in_initialization = false;
+        }
+
+        void addUpdate(Instruction block_postfix) {
+            this.block_postfix = block_postfix;
         }
     }
 
@@ -626,7 +632,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         String block_id_cont = block_id + CONT_SUFFIX;
         String block_id_break = block_id + BREAK_SUFFIX;
 
-        LoopEnv loopEnv = new LoopEnv(block_id, null);
+        LoopEnv loopEnv = new LoopEnv(block_id);
         blockStack.push(loopEnv);
         InstructionList body = (InstructionList) visit(ctx.block());
         blockStack.pop();
@@ -650,17 +656,21 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public OneInstruction visitElement_for(c4waParser.Element_forContext ctx) {
-        OneInstruction initializationStatement = (OneInstruction) visit(ctx.pre);
-
-        OneExpression testExpression = (OneExpression) visit(ctx.expression());
-        OneInstruction updateStatement = (OneInstruction) visit(ctx.post);
-
         String block_id = functionEnv.pushBlock();
         String block_id_cont = block_id + CONT_SUFFIX;
         String block_id_break = block_id + BREAK_SUFFIX;
 
-        LoopEnv loopEnv = new LoopEnv(block_id, updateStatement == null ? null : updateStatement.instruction);
+        LoopEnv loopEnv = new LoopEnv(block_id);
         blockStack.push(loopEnv);
+        loopEnv.in_initialization = true;
+        OneInstruction initializationStatement = (OneInstruction) visit(ctx.pre);
+        loopEnv.in_initialization = false;
+        OneExpression testExpression = (OneExpression) visit(ctx.expression());
+        OneInstruction updateStatement = (OneInstruction) visit(ctx.post);
+
+        if (ctx.post != null)
+            loopEnv.addUpdate(updateStatement.instruction);
+
         InstructionList body = (InstructionList) visit(ctx.block());
         blockStack.pop();
         functionEnv.popBlock();
@@ -965,7 +975,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return new OneInstruction(
                 new DelayedList(List.of(
                     new DelayedLocalDefinition(varId, null),
-                    new DelayedAssignment(ctx, blockStack.stream().noneMatch(x -> x instanceof LoopEnv),
+                    new DelayedAssignment(ctx, blockStack.stream().noneMatch(x -> x instanceof LoopEnv && !((LoopEnv) x).in_initialization),
                             new String[]{varId}, rhs.expression, rhs.type))));
     }
 
