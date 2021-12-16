@@ -7,12 +7,10 @@ import java.util.*;
 public class FunctionEnv implements Partial, PostprocessContext {
     final String name;
     final CType returnType;
-    final List<String> params;
-    final List<String> locals;
+    final private List<String> params;
     final boolean is_exported;
-    final Map<String, VariableDecl> variables;
     final Map<NumType, String> tempVars;
-    final Deque<Block> blocks;
+    final Deque<Integer> blocks;
     final static String STACK_ENTRY_VAR = "@stack_entry";
     final ModuleEnv moduleEnv;
     final Set<String> calls;
@@ -21,35 +19,59 @@ public class FunctionEnv implements Partial, PostprocessContext {
     boolean uses_stack;
 
     private Instruction watCode;
+    final private List<Variable> variables;
+    private boolean is_closed;
 
     public FunctionEnv (String name, CType returnType, ModuleEnv moduleEnv, boolean export) {
         this.name = name;
         this.moduleEnv = moduleEnv;
         this.returnType = returnType;
         this.params = new ArrayList<>();
-        this.locals = new ArrayList<>();
         this.is_exported = export;
-        variables = new HashMap<>();
+        variables = new ArrayList<>();
         blocks = new ArrayDeque<>();
         tempVars = new HashMap<>();
         calls = new HashSet<>();
 
-        blocks.push(new Block());
+        blocks.push(0);
         uses_stack = false;
+        is_closed = false;
     }
 
     public void markAsUsingStack () {
         uses_stack = true;
     }
 
-    public void registerVar(String name, CType type, boolean is_param, boolean is_mutable) {
-        if (variables.containsKey(name))
-            throw new RuntimeException("Variable " + name + " already defined");
-        variables.put(name, new VariableDecl(type, name, is_mutable));
+    public String registerVar(String name, String block_id, CType type, boolean is_param, boolean is_mutable) {
+        if (variables.stream().anyMatch(x -> Objects.equals(x.block_id, block_id) && x.name.equals(name)))
+            return null;
+
+        Variable v = new Variable(name, block_id, new VariableDecl(type, name, is_mutable), is_param);
+        variables.add(v);
         if (is_param)
-            params.add(name);
-        else
-            locals.add(name);
+            params.add(v.var_id);
+
+        return v.var_id;
+    }
+
+    public String getVariableWAT(String variableId) {
+        if (!is_closed)
+            throw new RuntimeException("Function hasn't been closed yet");
+
+        var res = variables.stream().filter(x -> x.var_id.equals(variableId)).findFirst();
+        return res.map(variable -> variable.watName).orElse(variableId);
+    }
+
+    public boolean isWATNameReused(String watName) {
+        if (!is_closed)
+            throw new RuntimeException("Function hasn't been closed yet");
+
+        return variables.stream().filter(x -> x.watName.equals(watName)).count() > 1;
+    }
+
+    public VariableDecl getVariableDecl(String variableId) {
+        var res = variables.stream().filter(x -> x.var_id.equals(variableId)).findFirst();
+        return res.map(variable -> variable.decl).orElse(null);
     }
 
     public String temporaryVar(NumType numType) {
@@ -58,7 +80,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
 
     public FunctionDecl makeDeclaration() {
         return new FunctionDecl(name, returnType,
-                params.stream().map(p -> variables.get(p).type).toArray(CType[]::new), false,
+                params.stream().map(p -> getVariableDecl(p).type).toArray(CType[]::new), false,
                 is_exported? FunctionDecl.SType.EXPORTED : FunctionDecl.SType.INTERNAL);
     }
 
@@ -66,53 +88,64 @@ public class FunctionEnv implements Partial, PostprocessContext {
         this.instructions = instructions;
     }
 
-    public String pushBlock(Instruction postfix) {
-        Block last = blocks.removeLast();
-        blocks.addLast(new Block(postfix, last.index + 1));
-        blocks.addLast(new Block());
-        return getBlockId();
-    }
+    public String pushBlock() {
+        int last = blocks.removeLast();
+        blocks.addLast(last + 1);
 
-    public String getBlockId () {
         StringBuilder b = new StringBuilder();
-
         b.append("@block");
-        int idx = 1;
-        for (Block block : blocks) {
-            b.append('_').append(block.index);
-            if (++ idx >= blocks.size())
-                break;
-        }
+        for (int index : blocks)
+            b.append('_').append(index);
 
+        blocks.addLast(0);
         return b.toString();
-    }
-
-    public Instruction getBlockPostfix () {
-        int idx = 1;
-        for (Block block : blocks) {
-            if (++ idx >= blocks.size())
-                return block.postfix;
-        }
-        return null;
     }
 
     public void popBlock () {
         blocks.removeLast ();
     }
 
-    public void close() {
-        String msg = "Function " + name + " cannot be closed: ";
-        if (blocks.size() != 1)
-            throw new RuntimeException(msg + "blocks.size() = " + blocks.size());
+    private List<LocalVar> assignWATNames() {
+        int N = variables.size();
+        List<LocalVar> localVars = new ArrayList<>();
+        for (int i = 0; i < N; i ++) {
+            Variable vi = variables.get(i);
+            for (LocalVar local: localVars)
+                if (local.numType == vi.getNumType()) {
+                    boolean ok = true;
+                    for (int j = 0; j < i && ok; j ++) {
+                        Variable vj = variables.get(j);
+                        if (vj.watName.equals(local.watName))
+                            ok = vj.block_id != null && (vi.block_id == null || !vi.block_id.startsWith(vj.block_id));
+                    }
+                    if (ok) {
+                        vi.watName = local.watName;
+                        break;
+                    }
+                }
+            if (vi.watName == null) {
+                vi.watName = localVars.stream().anyMatch(x -> x.watName.equals(vi.name))? vi.var_id : vi.name;
+                assert localVars.stream().noneMatch(x -> x.watName.equals(vi.watName));
+                localVars.add(new LocalVar(vi.watName, vi.getNumType(), vi.is_param));
+            }
+        }
 
-        postprocessWat ();
+        return localVars;
+    }
+
+    public void close() {
+        if (blocks.size() != 1)
+            throw new RuntimeException("Function " + name + " cannot be closed: blocks.size() = " + blocks.size());
+
+        is_closed = true;
+        postprocessWat (assignWATNames());
     }
 
     public Instruction wat() {
         return watCode;
     }
 
-    private void postprocessWat() {
+    private void postprocessWat(List<LocalVar> localVars) {
         List<Instruction> attributes = new ArrayList<>();
         List<Instruction> elements = new ArrayList<>();
 
@@ -121,8 +154,9 @@ public class FunctionEnv implements Partial, PostprocessContext {
         if (is_exported)
             attributes.add(new Export(name));
 
-        for (String p : params)
-            attributes.add(new Param(p, variables.get(p).type.asNumType()));
+        for (LocalVar localVar : localVars)
+            if (localVar.is_param)
+                attributes.add(new Param(localVar.watName, localVar.numType));
 
         if (returnType != null)
             attributes.add(new Result(returnType.asNumType()));
@@ -130,10 +164,9 @@ public class FunctionEnv implements Partial, PostprocessContext {
         if (uses_stack)
             elements.add(new Local(STACK_ENTRY_VAR, NumType.I32));
 
-        for (String v : locals) {
-            VariableDecl decl = variables.get(v);
-            elements.add(new Local(v, decl.inStack? NumType.I32 : decl.type.asNumType()));
-        }
+        for (LocalVar localVar : localVars)
+            if (!localVar.is_param)
+                elements.add(new Local(localVar.watName, localVar.numType));
 
         for (NumType numType : tempVars.keySet())
             elements.add(new Local(tempVars.get(numType), numType));
@@ -156,18 +189,40 @@ public class FunctionEnv implements Partial, PostprocessContext {
         watCode = _watCode.postprocessList(this).postprocessList(this).postprocessList(this);
     }
 
-    static class Block {
-        final Instruction postfix;
-        final int index;
+    static private class LocalVar {
+        final String watName;
+        final NumType numType;
+        final boolean is_param;
 
-        Block(Instruction postfix, int index) {
-            this.postfix = postfix;
-            this.index = index;
+        LocalVar(String watName, NumType numType, boolean is_param) {
+            this.watName = watName;
+            this.numType = numType;
+            this.is_param = is_param;
+        }
+    }
+
+    static private class Variable {
+        final String name;
+        final String block_id;
+        final String var_id;
+        final VariableDecl decl;
+        final boolean is_param;
+
+        String watName;
+
+        Variable(String name, String block_id, VariableDecl decl, boolean is_param) {
+            this.name = name;
+            this.block_id = block_id;
+            this.decl = decl;
+            this.is_param = is_param;
+
+            this.var_id = name + (block_id == null? "" : block_id);
+            watName = null;
         }
 
-        Block() {
-            this.postfix = null;
-            this.index = 0;
+        NumType getNumType() {
+            return decl.inStack ? NumType.I32 : decl.type.asNumType();
         }
+
     }
 }

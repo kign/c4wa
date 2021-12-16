@@ -171,24 +171,40 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     static class DelayedLocalDefinition extends Instruction_Delayed {
-        final String name;
-        DelayedLocalDefinition(String name) {
-            this.name = name;
+        final String varId;
+        final Expression sizeExp;
+        DelayedLocalDefinition(String varId, Expression sizeExp) {
+            this.varId = varId;
+            this.sizeExp = sizeExp;
         }
 
         @Override
         public String toString() {
-            return "DelayedLocalDefinition('" + name + "')";
+            return "DelayedLocalDefinition('" + varId + "')";
         }
 
         @Override
         public Instruction[] postprocess(PostprocessContext ppctx) {
             FunctionEnv functionEnv = (FunctionEnv) ppctx;
-            VariableDecl decl = functionEnv.variables.get(name);
+            VariableDecl decl = functionEnv.getVariableDecl(varId);
             assert decl != null;
             if (decl.inStack) {
+                CType type = decl.type;
                 GetGlobal stack = new GetGlobal(NumType.I32, ModuleEnv.STACK_VAR_NAME);
-                return new Instruction[]{new SetLocal(name, stack), new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Add(NumType.I32, stack, new Const(decl.type.size())))};
+                String watName = functionEnv.getVariableWAT(varId);
+
+                if (type.is_struct() || decl.isArray)
+                    return new Instruction[] {
+                            new SetLocal(watName, stack),
+                            new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Add(NumType.I32, stack,
+                                    decl.isArray
+                                            ? new Mul(NumType.I32, sizeExp, new Const(type.deref().size()))
+                                            : new Const(type.size())))};
+                else
+                    return new Instruction[]{
+                            new SetLocal(watName, stack),
+                            new SetGlobal(ModuleEnv.STACK_VAR_NAME,
+                                    new Add(NumType.I32, stack, new Const(type.size())))};
             }
             else
                 return new Instruction[0];
@@ -196,15 +212,15 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     static class DelayedAssignment extends Instruction_Delayed {
-        final String[] names;
+        final String[] varId_a;
         final Expression rhs;
         final CType type;
         final ParserRuleContext ctx;
         final boolean init;
 
-        DelayedAssignment(ParserRuleContext ctx, boolean init, String[] names, Expression rhs, CType type) {
+        DelayedAssignment(ParserRuleContext ctx, boolean init, String[] varId_a, Expression rhs, CType type) {
             this.ctx = ctx;
-            this.names = names;
+            this.varId_a = varId_a;
             this.rhs = rhs;
             this.type = type;
             this.init = init;
@@ -212,25 +228,36 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         @Override
         public String toString() {
-            return "DelayedAssignment(" + String.join(",", names)  + ")";
+            return "DelayedAssignment(" + String.join(",", varId_a)  + ")";
         }
 
         @Override
         public Instruction[] postprocess(PostprocessContext ppctx) {
             FunctionEnv functionEnv = (FunctionEnv) ppctx;
+            String[] watNames = Arrays.stream(varId_a).map(functionEnv::getVariableWAT).toArray(String[]::new);
 
+            /* This is a stupid optimization; we are trying to take advantage of the fact that in WASM
+             * all locals are initialized to 0, so when defining new var like this "int x = 0" initialization
+             * could be dropped.
+             *
+             * Of course, it only works if
+             *    (a) this is initialization, not assignment;
+             *    (b) this is not a stack variable;
+             *    (c) WAT variable name isn't a reuse;
+             *    (d) We are not inside a loop.
+             */
             if (init && rhs instanceof Const) {
                 Const c = (Const) rhs;
                 if (c.is_int() && c.longValue == 0 || !c.is_int() && c.doubleValue == 0.0) {
                     // WASM local variables are initialized to 0
-                    if (names.length != 1)
-                        throw new RuntimeException("names.length = " + names.length);
+                    if (varId_a.length != 1)
+                        throw new RuntimeException("names.length = " + varId_a.length);
 
-                    VariableDecl decl = functionEnv.variables.get(names[0]);
+                    VariableDecl decl = functionEnv.getVariableDecl(varId_a[0]);
                     if (decl == null)
-                        throw new RuntimeException("Missing variable " + names[0]);
+                        throw new RuntimeException("Missing variable " + varId_a[0]);
 
-                    if (!decl.inStack)
+                    if (!decl.inStack && !functionEnv.isWATNameReused(watNames[0]))
                         return new Instruction[0];
                 }
             }
@@ -242,56 +269,58 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
             int iFirst = -1;
             char tFirst = 'X';
-            for (int i = 0; i < names.length; i++) {
-                VariableDecl decl = functionEnv.variables.get(names[i]);
+            for (int i = 0; i < varId_a.length; i++) {
+                VariableDecl decl = functionEnv.getVariableDecl(varId_a[i]);
                 boolean isGlobal = false;
                 if (decl == null) {
-                    decl = moduleEnv.varDecl.get(names[i]);
+                    decl = moduleEnv.varDecl.get(varId_a[i]);
                     isGlobal = true;
                 }
 
                 if (decl == null)
-                    throw fail(ctx, "assignment", "Variable '" + names[i] + "' is not defined");
+                    throw fail(ctx, "assignment", "Variable '" + varId_a[i] + "' is not defined");
 
                 if (!decl.mutable && !init)
-                    throw fail(ctx, "assignment", "Variable '" + names[i] + "' is not assignable");
+                    throw fail(ctx, "assignment", "Variable '" + varId_a[i] + "' is not assignable");
 
                 if (isGlobal || decl.inStack) {
                     if (iFirst >= 0)
                         throw fail(ctx, "assignment", "Can have at most one global or stack variable in chain assignment; found at least two, '" +
-                                names[iFirst] + "' and '" + names[i] + "'");
+                                varId_a[iFirst] + "' and '" + varId_a[i] + "'");
                     iFirst = i;
                     tFirst = isGlobal? GLOBAL : STACK;
                 }
 
                 if (!decl.type.isValidRHS(type))
-                    throw fail(ctx, "init", "Expression of type " + type + " cannot be assigned to variable '" + names[i] + "' of type " + decl.type);
+                    throw fail(ctx, "init", "Expression of type " + type + " cannot be assigned to variable '" + varId_a[i] + "' of type " + decl.type);
             }
 
             Expression res = rhs;
             if (iFirst < 0) {
-                iFirst = names.length - 1;
+                iFirst = varId_a.length - 1;
                 tFirst = LOCAL;
             }
-            for (int i = 0; i < names.length; i++) {
+            for (int i = 0; i < varId_a.length; i++) {
                 if (i == iFirst)
                     continue;
-                res = new TeeLocal(type.asNumType(), names[i], res);
+                res = new TeeLocal(type.asNumType(), watNames[i], res);
             }
 
-            Instruction ires = tFirst == LOCAL ? new SetLocal(names[iFirst], res) :
-                               (tFirst == GLOBAL ? new SetGlobal(names[iFirst], res) :
-                                       memory_store(type, new GetLocal(NumType.I32, names[iFirst]), res));
+            Instruction ires = tFirst == LOCAL ? new SetLocal(watNames[iFirst], res) :
+                               (tFirst == GLOBAL ? new SetGlobal(watNames[iFirst], res) :
+                                       memory_store(type, new GetLocal(NumType.I32, watNames[iFirst]), res));
 
             return new Instruction[]{ires};
         }
     }
 
     static class DelayedLocalAccess extends Expression_Delayed {
-        final String name;
+        final String varId;
+        final boolean address;
 
-        DelayedLocalAccess(String name) {
-            this.name = name;
+        DelayedLocalAccess(String varId, boolean address) {
+            this.varId = varId;
+            this.address = address;
         }
 
         @Override
@@ -301,19 +330,21 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         @Override
         public String toString() {
-            return "DelayedLocalAccess('" + name + "')";
+            return "DelayedLocalAccess('" + varId + "')";
         }
 
         @Override
         public Expression postprocess(PostprocessContext ppctx) {
             FunctionEnv functionEnv = (FunctionEnv) ppctx;
-            VariableDecl decl = functionEnv.variables.get(name);
+            VariableDecl decl = functionEnv.getVariableDecl(varId);
+            String watName = functionEnv.getVariableWAT(varId);
             assert decl != null;
-            if (decl.inStack && !decl.isArray && !decl.type.is_struct()) {
-                return memory_load(decl.type, new GetLocal(decl.type.asNumType(), decl.name));
-            }
+            if (address)
+                return new GetLocal(NumType.I32, watName);
+            else if (decl.inStack && !decl.isArray && !decl.type.is_struct())
+                return memory_load(decl.type, new GetLocal(decl.type.asNumType(), watName));
             else
-                return new GetLocal(decl.type.is_struct()? NumType.I32 : decl.type.asNumType(), decl.name);
+                return new GetLocal(decl.type.is_struct()? NumType.I32 : decl.type.asNumType(), watName);
         }
     }
 
@@ -348,8 +379,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     static class BlockEnv {
         final String block_id;
+        final Map<String,String> varNameToId;
         BlockEnv (String block_id) {
             this.block_id = block_id;
+            varNameToId = new HashMap<>();
         }
     }
 
@@ -471,7 +504,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         functionEnv = new FunctionEnv(funcDecl.name, funcDecl.type, moduleEnv, ctx.EXTERN() != null);
 
-        Arrays.stream(paramList.paramList).forEach(x -> functionEnv.registerVar(x.name, x.type, true, true));
+        Arrays.stream(paramList.paramList).forEach(x -> functionEnv.registerVar(x.name,
+                null, x.type, true, true));
 
         return new OneFunction(functionEnv, ctx.composite_block());
     }
@@ -555,10 +589,22 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 else
                     throw fail(blockElem, "block", "the only way to include expression as a statement is function call");
             }
+            else if (parsedElem instanceof InstructionList)
+                res.addAll(Arrays.asList(((InstructionList) parsedElem).instructions));
             else if (!(parsedElem instanceof NoOp))
                 throw new RuntimeException("Wrong type of parsedElem = " + parsedElem);
         }
         return new InstructionList(res.toArray(Instruction[]::new));
+    }
+
+    @Override
+    public InstructionList visitElement_block(c4waParser.Element_blockContext ctx) {
+        BlockEnv blockEnv = new BlockEnv(functionEnv.pushBlock());
+        blockStack.push(blockEnv);
+        InstructionList iList = (InstructionList) visit(ctx.composite_block());
+        blockStack.pop();
+        functionEnv.popBlock();
+        return iList;
     }
 
     @Override
@@ -576,7 +622,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public OneInstruction visitElement_do_while(c4waParser.Element_do_whileContext ctx) {
         OneExpression condition = (OneExpression) visit(ctx.expression());
 
-        String block_id = functionEnv.pushBlock(null);
+        String block_id = functionEnv.pushBlock();
         String block_id_cont = block_id + CONT_SUFFIX;
         String block_id_break = block_id + BREAK_SUFFIX;
 
@@ -609,7 +655,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         OneExpression testExpression = (OneExpression) visit(ctx.expression());
         OneInstruction updateStatement = (OneInstruction) visit(ctx.post);
 
-        String block_id = functionEnv.pushBlock(updateStatement == null?null:updateStatement.instruction);
+        String block_id = functionEnv.pushBlock();
         String block_id_cont = block_id + CONT_SUFFIX;
         String block_id_break = block_id + BREAK_SUFFIX;
 
@@ -902,25 +948,34 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public OneInstruction visitVariable_init(c4waParser.Variable_initContext ctx) {
         VariableDecl variableDecl = (VariableDecl) visit(ctx.variable_decl());
-        OneExpression rhs = (OneExpression) visit(ctx.expression());
 
+        BlockEnv blockEnv = blockStack.peek();
+
+        OneExpression rhs = (OneExpression) visit(ctx.expression());
         rhs = constantAssignment(ctx, variableDecl.type, rhs);
-        if (functionEnv.variables.containsKey(variableDecl.name))
+
+        String varId = functionEnv.registerVar(variableDecl.name, blockEnv == null? null : blockEnv.block_id,
+                variableDecl.type, false, ctx.CONST() == null);
+        if (varId == null)
             throw fail(ctx, "init", "variable '" + variableDecl.name + "' already defined");
-        functionEnv.registerVar(variableDecl.name, variableDecl.type, false, ctx.CONST() == null);
+
+        if (blockEnv != null)
+            blockEnv.varNameToId.put(variableDecl.name, varId);
 
         return new OneInstruction(
                 new DelayedList(List.of(
-                    new DelayedLocalDefinition(variableDecl.name),
+                    new DelayedLocalDefinition(varId, null),
                     new DelayedAssignment(ctx, blockStack.stream().noneMatch(x -> x instanceof LoopEnv),
-                            new String[]{variableDecl.name}, rhs.expression, rhs.type))));
+                            new String[]{varId}, rhs.expression, rhs.type))));
     }
 
     @Override
     public OneInstruction visitSimple_increment(c4waParser.Simple_incrementContext ctx) {
         String name = ctx.ID().getText();
 
-        VariableDecl variableDecl = functionEnv.variables.get(name);
+        VariableDecl variableDecl = variableDeclByName(name);
+        String varId = variableIdByName(name);
+
         CType type;
         boolean is_global = variableDecl == null;
         if (is_global) {
@@ -959,16 +1014,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         OneExpression binaryOp = binary_op(ctx, accessVariable(ctx, name), rhs, op);
 
-        if (functionEnv.variables.containsKey(name))
-            return new OneInstruction(new SetLocal(name, binaryOp.expression));
-        else {
-            VariableDecl decl = moduleEnv.varDecl.get(name);
-
-            if (!decl.mutable)
-                throw fail(ctx, "increment", "Global variable '" + name + "' is not mutable");
-
-            return new OneInstruction(new SetGlobal(name, binaryOp.expression));
-        }
+        return new OneInstruction(new DelayedAssignment(ctx, false, new String[]{varId}, binaryOp.expression, binaryOp.type));
     }
 
     @Override
@@ -978,7 +1024,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         String[] names = ctx.ID().stream().map(ParseTree::getText).toArray(String[]::new);
         String lastName = names[names.length - 1];
 
-        VariableDecl decl = functionEnv.variables.get(lastName);
+        VariableDecl decl = variableDeclByName(lastName);
         if (decl == null)
             decl = moduleEnv.varDecl.get(lastName);
 
@@ -986,7 +1032,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "assignment", "Variable '" + lastName + "' is not defined");
 
         rhs = constantAssignment(ctx, decl.type, rhs);
-        return new OneInstruction(new DelayedAssignment(ctx, false, names, rhs.expression, rhs.type));
+        return new OneInstruction(new DelayedAssignment(ctx, false, Arrays.stream(names).map(this::variableIdByName).toArray(String[]::new), rhs.expression, rhs.type));
     }
 
     @Override
@@ -1069,6 +1115,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (o_type == null)
             throw fail(ctx, "variable_decl", "void type isn't allowed here");
 
+        BlockEnv blockEnv = blockStack.peek();
+
         for (var v : ctx.local_variable()) {
             LocalVariable localVar = (LocalVariable) visit(v);
 
@@ -1076,12 +1124,31 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             for (int i = 0; i < localVar.ref_level; i++)
                 type = type.make_pointer_to();
 
-            functionEnv.registerVar(localVar.name, localVar.size == null? type: type.make_pointer_to(), false, true);
+            String varId = functionEnv.registerVar(localVar.name, blockEnv == null? null : blockEnv.block_id,
+                    localVar.size == null? type: type.make_pointer_to(), false, true);
+
+            if (varId == null)
+                throw fail(ctx, "init", "variable '" + localVar.name + "' already defined");
+
+            if (blockEnv != null)
+                blockEnv.varNameToId.put(localVar.name, varId);
+
+            res.add(new DelayedLocalDefinition(varId, localVar.size));
 
             if (type.is_struct() || localVar.size != null) {
-                functionEnv.variables.get(localVar.name).mutable = false;
-                functionEnv.variables.get(localVar.name).inStack = true;
-                functionEnv.variables.get(localVar.name).isArray = localVar.size != null;
+                VariableDecl decl = functionEnv.getVariableDecl(varId);
+                decl.mutable = false;
+                decl.inStack = true;
+                decl.isArray = localVar.size != null;
+                functionEnv.markAsUsingStack();
+            }
+
+/*
+            if (type.is_struct() || localVar.size != null) {
+                VariableDecl decl = functionEnv.getVariableDecl(varId);
+                decl.mutable = false;
+                decl.inStack = true;
+                decl.isArray = localVar.size != null;
 
                 GetGlobal stack = new GetGlobal(NumType.I32, ModuleEnv.STACK_VAR_NAME);
                 res.add(new SetLocal(localVar.name, stack));
@@ -1094,6 +1161,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             }
             else
                 res.add(new DelayedLocalDefinition(localVar.name));
+*/
         }
 
         return new OneInstruction(new DelayedList(res));
@@ -1175,7 +1243,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public OneExpression visitExpression_addr_var(c4waParser.Expression_addr_varContext ctx) {
         String name = ctx.ID().getText();
-        VariableDecl decl = functionEnv.variables.get(name);
+        VariableDecl decl = variableDeclByName(name);
+        String varId = variableIdByName(name);
 
         if (decl == null)
             throw fail(ctx, "address of variable", "'" + name + "' is not a local variable");
@@ -1185,7 +1254,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         decl.inStack = true;
 
-        return new OneExpression(new GetLocal(NumType.I32, name), decl.type.make_pointer_to());
+//        return new OneExpression(new GetLocal(NumType.I32, name), decl.type.make_pointer_to());
+        return new OneExpression(new DelayedLocalAccess(varId, true), decl.type.make_pointer_to());
     }
 
     @Override
@@ -1402,10 +1472,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 throw fail(ctx, "AND", "Type '" + exp[i].type + "' is invalid for boolean operations");
 
             condition[i] = is_and ?
-                            exp[i].expression.Not(exp[i].type.asNumType())
-                     :( exp[i].type.is_i64() ?
-                            GenericCast.cast(exp[i].type.asNumType(), NumType.I32, false, exp[i].expression)
-                    :       exp[i].expression);
+                                exp[i].expression.Not(exp[i].type.asNumType()) :
+                            exp[i].type.is_i64() ?
+                                GenericCast.cast(exp[i].type.asNumType(), NumType.I32, false, exp[i].expression)
+                            :
+                                exp[i].expression;
         }
 
         if (exp.length == 2)
@@ -1414,7 +1485,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     new Cmp(exp[1].type.asNumType(), false, exp[1].expression,
                                     new Const(exp[1].type.asNumType(), 0))), CType.INT);
 
-        String block_id = functionEnv.pushBlock(null);
+        String block_id = functionEnv.pushBlock();
         String block_id_break = block_id + BREAK_SUFFIX;
 
         Instruction[] elm = new Instruction[exp.length];
@@ -1627,10 +1698,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (functionEnv == null)
             throw fail(ctx, "variable", "Cannot access variable '" + name + "' outside of function definition");
 
-        VariableDecl decl = functionEnv.variables.get(name);
+        VariableDecl decl = variableDeclByName(name);
+        String varId = variableIdByName(name);
 
         if (decl != null)
-            return new OneExpression(new DelayedLocalAccess(name), decl.type);
+            return new OneExpression(new DelayedLocalAccess(varId, false), decl.type);
 
         decl = moduleEnv.varDecl.get(name);
 
@@ -1697,6 +1769,24 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return new StructDecl(name);
 
         return c_struct;
+    }
+
+    private VariableDecl variableDeclByName(String name) {
+        for(BlockEnv b : blockStack) {
+            String varId = b.varNameToId.get(name);
+            if (varId != null)
+                return functionEnv.getVariableDecl(varId);
+        }
+        return functionEnv.getVariableDecl(name);
+    }
+
+    private String variableIdByName(String name) {
+        for(BlockEnv b : blockStack) {
+            String varId = b.varNameToId.get(name);
+            if (varId != null)
+                return varId;
+        }
+        return name;
     }
 
     private OneExpression parseConstant(ParserRuleContext ctx, String textOfConstant) {

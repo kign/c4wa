@@ -58,6 +58,7 @@ element
     | (BREAK|CONTINUE) ';'                  # element_break_continue
     | IF '(' expression ')' block           # element_if
     | IF '(' expression ')' block ELSE block # element_if_else
+    | composite_block                       # element_block
     ;
 
 statement
