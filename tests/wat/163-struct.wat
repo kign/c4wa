@@ -48,12 +48,12 @@
       (else
         (if (i32.load (i32.add (get_local $list) (i32.const 4)))
           (then
-            (block $@block_1_break
+            (block $@block_2_1_break
               (set_local $v (i32.load (get_local $list)))
-              (loop $@block_1_continue
-                (br_if $@block_1_break (i32.eq (i32.load (get_local $v)) (i32.load (i32.add (get_local $list) (i32.const 4)))))
+              (loop $@block_2_1_continue
+                (br_if $@block_2_1_break (i32.eq (i32.load (get_local $v)) (i32.load (i32.add (get_local $list) (i32.const 4)))))
                 (set_local $v (i32.load (get_local $v)))
-                (br $@block_1_continue)))
+                (br $@block_2_1_continue)))
             (i32.store (get_local $v) (i32.const 0))
             (i32.store (i32.add (get_local $list) (i32.const 4)) (get_local $v)))
           (else

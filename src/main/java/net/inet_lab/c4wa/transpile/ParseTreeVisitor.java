@@ -579,6 +579,17 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public InstructionList visitComposite_block(c4waParser.Composite_blockContext ctx) {
         List<Instruction> res = new ArrayList<>();
 
+        var parent = ctx.getParent();
+        if (parent instanceof c4waParser.BlockContext)
+            parent = parent.getParent();
+        BlockEnv blockEnv =  parent instanceof c4waParser.Element_do_whileContext    ||
+                             parent instanceof c4waParser.Function_definitionContext ||
+                             parent instanceof c4waParser.Element_forContext
+                ? null
+                : new BlockEnv(functionEnv.pushBlock());
+        if (blockEnv != null)
+            blockStack.push(blockEnv);
+
         int idx = 0;
         for (var blockElem : ctx.element()) {
             idx ++;
@@ -600,19 +611,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             else if (!(parsedElem instanceof NoOp))
                 throw new RuntimeException("Wrong type of parsedElem = " + parsedElem);
         }
+        if (blockEnv != null) {
+            blockStack.pop();
+            functionEnv.popBlock();
+        }
         return new InstructionList(res.toArray(Instruction[]::new));
     }
-
-    @Override
-    public InstructionList visitElement_block(c4waParser.Element_blockContext ctx) {
-        BlockEnv blockEnv = new BlockEnv(functionEnv.pushBlock());
-        blockStack.push(blockEnv);
-        InstructionList iList = (InstructionList) visit(ctx.composite_block());
-        blockStack.pop();
-        functionEnv.popBlock();
-        return iList;
-    }
-
+    
     @Override
     public Partial visitStatement(c4waParser.StatementContext ctx) {
         if (ctx.getChildCount() == 1)

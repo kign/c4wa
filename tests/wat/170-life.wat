@@ -60,22 +60,22 @@
               (then
                 (set_local $cnt (i32.add (get_local $cnt) (i32.const 1)))
                 (set_local $hash (i32.xor (get_local $hash) (i32.mul (get_local $idx) (global.get $hash_rand))))
-                (block $@block_1_1_1_break
+                (block $@block_1_1_1_1_break
                   (set_local $dx (i32.const -1))
-                  (loop $@block_1_1_1_continue
-                    (br_if $@block_1_1_1_break (i32.gt_s (get_local $dx) (i32.const 1)))
-                    (block $@block_1_1_1_1_break
+                  (loop $@block_1_1_1_1_continue
+                    (br_if $@block_1_1_1_1_break (i32.gt_s (get_local $dx) (i32.const 1)))
+                    (block $@block_1_1_1_1_1_break
                       (set_local $dy (i32.const -1))
-                      (loop $@block_1_1_1_1_continue
-                        (br_if $@block_1_1_1_1_break (i32.gt_s (get_local $dy) (i32.const 1)))
+                      (loop $@block_1_1_1_1_1_continue
+                        (br_if $@block_1_1_1_1_1_break (i32.gt_s (get_local $dy) (i32.const 1)))
                         (set_local $didx (i32.add (i32.mul (get_local $X) (i32.rem_s (i32.add (i32.add (get_local $y) (get_local $dy)) (get_local $Y)) (get_local $Y))) (i32.rem_s (i32.add (i32.add (get_local $x) (get_local $dx)) (get_local $X)) (get_local $X))))
                         (if (i32.eqz (i32.load8_s (i32.add (get_local $cells) (get_local $didx))))
                           (then
                             (i32.store8 (i32.add (get_local $cells) (get_local $didx)) (i32.const 2))))
                         (set_local $dy (i32.add (get_local $dy) (i32.const 1)))
-                        (br $@block_1_1_1_1_continue)))
+                        (br $@block_1_1_1_1_1_continue)))
                     (set_local $dx (i32.add (get_local $dx) (i32.const 1)))
-                    (br $@block_1_1_1_continue)))))
+                    (br $@block_1_1_1_1_continue)))))
             (set_local $x (i32.add (get_local $x) (i32.const 1)))
             (br $@block_1_1_continue)))
         (set_local $y (i32.add (get_local $y) (i32.const 1)))

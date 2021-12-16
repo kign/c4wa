@@ -227,9 +227,7 @@
     (local $required i32)
     (local $unit i32)
     (local $need i32)
-    (local $a_size i32)
     (local $bits i32)
-    (local $cur i32)
     (local $@temp_i32 i32)
     (global.set $__mm_stat_allocated (i32.add (global.get $__mm_stat_allocated) (i32.const 1)))
     (if (i32.eqz (global.get $__mm_min))
@@ -242,23 +240,23 @@
         (set_local $@temp_i32 (i32.add (global.get $__mm_report_histogram) (i32.mul (call $@min_32s (i32.add (get_local $n) (i32.const 6)) (i32.const 19)) (i32.const 4))))
         (i32.store (get_local $@temp_i32) (i32.add (i32.load (get_local $@temp_i32)) (i32.const 1)))
         (set_local $idx (i32.const 0))
-        (block $@block_1_break
-          (loop $@block_1_continue
-            (br_if $@block_1_break (i32.ge_s (get_local $idx) (global.get $__mm_inuse)))
+        (block $@block_1_1_break
+          (loop $@block_1_1_continue
+            (br_if $@block_1_1_break (i32.ge_s (get_local $idx) (global.get $__mm_inuse)))
             (set_local $state (i32.load (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit)))))
             (if (i32.eqz (get_local $state))
               (then
-                (block $@block_1_1_break
+                (block $@block_1_1_1_1_break
                   (set_local $j (i32.add (get_local $idx) (i32.const 1)))
-                  (loop $@block_1_1_continue
-                    (br_if $@block_1_1_break (i32.eqz (block $@block_1_1_1_break (result i32) (drop (br_if $@block_1_1_1_break (i32.const 0) (i32.ge_s (get_local $j) (global.get $__mm_inuse)))) (drop (br_if $@block_1_1_1_break (i32.const 0) (i32.ge_s (get_local $j) (i32.add (get_local $idx) (get_local $n))))) (drop (br_if $@block_1_1_1_break (i32.const 0) (i32.load (i32.add (global.get $__mm_memory) (i32.mul (get_local $j) (get_local $unit)))))) (i32.const 1))))
+                  (loop $@block_1_1_1_1_continue
+                    (br_if $@block_1_1_1_1_break (i32.eqz (block $@block_1_1_1_1_1_break (result i32) (drop (br_if $@block_1_1_1_1_1_break (i32.const 0) (i32.ge_s (get_local $j) (global.get $__mm_inuse)))) (drop (br_if $@block_1_1_1_1_1_break (i32.const 0) (i32.ge_s (get_local $j) (i32.add (get_local $idx) (get_local $n))))) (drop (br_if $@block_1_1_1_1_1_break (i32.const 0) (i32.load (i32.add (global.get $__mm_memory) (i32.mul (get_local $j) (get_local $unit)))))) (i32.const 1))))
                     (set_local $j (i32.add (get_local $j) (i32.const 1)))
-                    (br $@block_1_1_continue)))
+                    (br $@block_1_1_1_1_continue)))
                 (if (i32.ge_s (i32.sub (get_local $j) (get_local $idx)) (get_local $n))
                   (then
                     (i32.store (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit))) (i32.sub (i32.const 0) (get_local $n)))
                     (return (i32.add (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit))) (i32.const 4)))))
-                (br_if $@block_1_break (i32.eq (get_local $j) (global.get $__mm_inuse)))
+                (br_if $@block_1_1_break (i32.eq (get_local $j) (global.get $__mm_inuse)))
                 (set_local $idx (get_local $j)))
               (else
                 (if (i32.lt_s (get_local $state) (i32.const 0))
@@ -266,7 +264,7 @@
                     (set_local $idx (i32.add (get_local $idx) (i32.sub (i32.const 0) (get_local $state)))))
                   (else
                     (set_local $idx (i32.add (get_local $idx) (i32.const 1)))))))
-            (br $@block_1_continue)))
+            (br $@block_1_1_continue)))
         (if (i32.gt_s (get_local $idx) (global.get $__mm_inuse))
           (then
             (unreachable)))
@@ -281,47 +279,47 @@
         (if (i32.gt_s (get_local $required) (memory.size))
           (then
             (drop (memory.grow (i32.sub (get_local $required) (memory.size))))))
-        (block $@block_2_break
+        (block $@block_1_3_break
           (set_local $i (i32.const 0))
-          (loop $@block_2_continue
-            (br_if $@block_2_break (i32.ge_s (get_local $i) (get_local $need)))
+          (loop $@block_1_3_continue
+            (br_if $@block_1_3_break (i32.ge_s (get_local $i) (get_local $need)))
             (i32.store (i32.add (global.get $__mm_memory) (i32.mul (i32.add (get_local $i) (global.get $__mm_inuse)) (get_local $unit))) (i32.const 0))
             (set_local $i (i32.add (get_local $i) (i32.const 1)))
-            (br $@block_2_continue)))
+            (br $@block_1_3_continue)))
         (global.set $__mm_inuse (i32.add (global.get $__mm_inuse) (get_local $need)))
         (i32.store (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit))) (i32.sub (i32.const 0) (get_local $n)))
         (return (i32.add (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit))) (i32.const 4))))
       (else
-        (set_local $a_size (global.get $__mm_min))
-        (block $@block_3_break
+        (set_local $need (global.get $__mm_min))
+        (block $@block_2_1_break
           (set_local $n (i32.const 0))
-          (loop $@block_3_continue
-            (br_if $@block_3_break (i32.ge_s (get_local $a_size) (get_local $size)))
+          (loop $@block_2_1_continue
+            (br_if $@block_2_1_break (i32.ge_s (get_local $need) (get_local $size)))
             (if (i32.gt_s (get_local $n) (i32.const 6))
               (then
                 (unreachable)))
             (set_local $n (i32.add (get_local $n) (i32.const 1)))
-            (set_local $a_size (i32.mul (get_local $a_size) (i32.const 2)))
-            (br $@block_3_continue)))
+            (set_local $need (i32.mul (get_local $need) (i32.const 2)))
+            (br $@block_2_1_continue)))
         (i32.store (i32.add (global.get $__mm_report_histogram) (i32.mul (get_local $n) (i32.const 4))) (i32.add (i32.load (i32.add (global.get $__mm_report_histogram) (i32.mul (get_local $n) (i32.const 4)))) (i32.const 1)))
         (set_local $idx (i32.load (i32.add (global.get $__mm_avail) (i32.mul (get_local $n) (i32.const 4)))))
         (if (i32.lt_s (get_local $idx) (i32.const 0))
           (then
             (set_local $idx (i32.const 0))
-            (block $@block_4_break
-              (loop $@block_4_continue
-                (br_if $@block_4_break (i32.ge_s (get_local $idx) (global.get $__mm_inuse)))
+            (block $@block_2_2_1_break
+              (loop $@block_2_2_1_continue
+                (br_if $@block_2_2_1_break (i32.ge_s (get_local $idx) (global.get $__mm_inuse)))
                 (set_local $state (i32.load (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit)))))
                 (if (if (result i32) (i32.eqz (get_local $state)) (then (i32.const 1)) (else (i32.ne (if (result i32) (i32.ne (get_local $state) (i32.add (get_local $n) (i32.const 1))) (then (i32.const 0)) (else (i32.ne (i64.ne (i64.load (i32.add (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit))) (i32.const 4))) (i64.const 0)) (i32.const 0)))) (i32.const 0))))
                   (then
-                    (br $@block_4_break))
+                    (br $@block_2_2_1_break))
                   (else
                     (if (i32.gt_s (get_local $state) (i32.const 0))
                       (then
                         (set_local $idx (i32.add (get_local $idx) (i32.const 1))))
                       (else
                         (set_local $idx (i32.add (get_local $idx) (i32.sub (i32.const 0) (get_local $state))))))))
-                (br $@block_4_continue)))
+                (br $@block_2_2_1_continue)))
             (if (i32.lt_s (get_local $idx) (i32.const 0))
               (then
                 (unreachable)))
@@ -346,16 +344,16 @@
             (i32.store (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit))) (i32.add (get_local $n) (i32.const 1)))
             (set_local $bits (i32.shl (i32.const 1) (i32.sub (i32.const 6) (get_local $n))))
             (i64.store (i32.add (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit))) (i32.const 4)) (i64.sub (select (i64.const 0) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $bits))) (i32.eq (get_local $bits) (i32.const 64))) (i64.const 1)))))
-        (set_local $cur (i32.add (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit))) (i32.const 4)))
-        (if (i64.eq (i64.load (get_local $cur)) (i64.const 0))
+        (set_local $bits (i32.add (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit))) (i32.const 4)))
+        (if (i64.eq (i64.load (get_local $bits)) (i64.const 0))
           (then
             (unreachable)))
-        (set_local $j (i32.wrap_i64 (i64.ctz (i64.load (get_local $cur)))))
-        (i64.store (get_local $cur) (i64.xor (i64.load (get_local $cur)) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $j)))))
-        (if (i64.eqz (i64.load (get_local $cur)))
+        (set_local $j (i32.wrap_i64 (i64.ctz (i64.load (get_local $bits)))))
+        (i64.store (get_local $bits) (i64.xor (i64.load (get_local $bits)) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $j)))))
+        (if (i64.eqz (i64.load (get_local $bits)))
           (then
             (i32.store (i32.add (global.get $__mm_avail) (i32.mul (get_local $n) (i32.const 4))) (i32.const -1))))
-        (return (i32.add (i32.add (get_local $cur) (i32.const 8)) (i32.mul (get_local $j) (get_local $a_size))))))
+        (return (i32.add (i32.add (get_local $bits) (i32.const 8)) (i32.mul (get_local $j) (get_local $need))))))
     (unreachable))
   (func $free (param $address i32)
     (local $unit i32)
@@ -379,13 +377,13 @@
         (if (i32.ne (get_local $address) (i32.add (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit))) (i32.const 4)))
           (then
             (unreachable)))
-        (block $@block_1_break
+        (block $@block_1_1_break
           (set_local $i (i32.const 0))
-          (loop $@block_1_continue
-            (br_if $@block_1_break (i32.ge_s (get_local $i) (i32.sub (i32.const 0) (get_local $state))))
+          (loop $@block_1_1_continue
+            (br_if $@block_1_1_break (i32.ge_s (get_local $i) (i32.sub (i32.const 0) (get_local $state))))
             (i32.store (i32.add (global.get $__mm_memory) (i32.mul (i32.add (get_local $idx) (get_local $i)) (get_local $unit))) (i32.const 0))
             (set_local $i (i32.add (get_local $i) (i32.const 1)))
-            (br $@block_1_continue))))
+            (br $@block_1_1_continue))))
       (else
         (set_local $cur (i32.add (i32.add (global.get $__mm_memory) (i32.mul (get_local $idx) (get_local $unit))) (i32.const 4)))
         (set_local $n (i32.sub (get_local $state) (i32.const 1)))
@@ -393,13 +391,13 @@
           (then
             (unreachable)))
         (set_local $a_size (global.get $__mm_min))
-        (block $@block_2_break
+        (block $@block_2_1_break
           (set_local $i (i32.const 0))
-          (loop $@block_2_continue
-            (br_if $@block_2_break (i32.ge_s (get_local $i) (get_local $n)))
+          (loop $@block_2_1_continue
+            (br_if $@block_2_1_break (i32.ge_s (get_local $i) (get_local $n)))
             (set_local $a_size (i32.mul (get_local $a_size) (i32.const 2)))
             (set_local $i (i32.add (get_local $i) (i32.const 1)))
-            (br $@block_2_continue)))
+            (br $@block_2_1_continue)))
         (set_local $bits (i32.shl (i32.const 1) (i32.sub (i32.const 6) (get_local $n))))
         (set_local $j (i32.div_s (i32.sub (i32.sub (get_local $address) (get_local $cur)) (i32.const 8)) (get_local $a_size)))
         (if (i32.eqz (if (result i32) (i32.lt_s (get_local $j) (i32.const 0)) (then (i32.const 0)) (else (i32.ne (i32.lt_s (get_local $j) (get_local $bits)) (i32.const 0)))))

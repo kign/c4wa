@@ -113,7 +113,6 @@
   (func $malloc (param $size i32) (result i32)
     (local $unit_size i32)
     (local $required i32)
-    (local $cur i32)
     (local $j i32)
     (local $result i32)
     (global.set $__mm_stat_allocated (i32.add (global.get $__mm_stat_allocated) (i32.const 1)))
@@ -142,18 +141,18 @@
     (if (i32.lt_s (global.get $__mm_first) (i32.const 0))
       (then
         (unreachable)))
-    (set_local $cur (i32.add (global.get $__mm_start) (i32.mul (i32.mul (global.get $__mm_first) (get_local $unit_size)) (i32.const 8))))
-    (if (i64.eq (i64.load (get_local $cur)) (i64.const 0))
+    (set_local $required (i32.add (global.get $__mm_start) (i32.mul (i32.mul (global.get $__mm_first) (get_local $unit_size)) (i32.const 8))))
+    (if (i64.eq (i64.load (get_local $required)) (i64.const 0))
       (then
         (unreachable)))
-    (set_local $j (i32.wrap_i64 (i64.ctz (i64.load (get_local $cur)))))
-    (i64.store (get_local $cur) (i64.xor (i64.load (get_local $cur)) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $j)))))
-    (set_local $result (i32.add (i32.add (get_local $cur) (i32.const 8)) (i32.mul (get_local $j) (global.get $__mm_size))))
-    (if (i64.eqz (i64.load (get_local $cur)))
+    (set_local $j (i32.wrap_i64 (i64.ctz (i64.load (get_local $required)))))
+    (i64.store (get_local $required) (i64.xor (i64.load (get_local $required)) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $j)))))
+    (set_local $result (i32.add (i32.add (get_local $required) (i32.const 8)) (i32.mul (get_local $j) (global.get $__mm_size))))
+    (if (i64.eqz (i64.load (get_local $required)))
       (then
-        (loop $@block_1_continue
+        (loop $@block_3_1_continue
           (global.set $__mm_first (i32.add (global.get $__mm_first) (i32.const 1)))
-          (br_if $@block_1_continue (if (result i32) (i32.ge_s (global.get $__mm_first) (global.get $__mm_inuse)) (then (i32.const 0)) (else (i32.ne (i64.eqz (i64.load (i32.add (global.get $__mm_start) (i32.mul (i32.mul (global.get $__mm_first) (get_local $unit_size)) (i32.const 8))))) (i32.const 0))))))
+          (br_if $@block_3_1_continue (if (result i32) (i32.ge_s (global.get $__mm_first) (global.get $__mm_inuse)) (then (i32.const 0)) (else (i32.ne (i64.eqz (i64.load (i32.add (global.get $__mm_start) (i32.mul (i32.mul (global.get $__mm_first) (get_local $unit_size)) (i32.const 8))))) (i32.const 0))))))
         (if (i32.eq (global.get $__mm_first) (global.get $__mm_inuse))
           (then
             (global.set $__mm_first (i32.const -1))))))
