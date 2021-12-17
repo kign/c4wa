@@ -44,14 +44,10 @@ void test_3 () {
 
     {
         printf("k = %d\n", k);
-
         double k = -10;
-
         printf("now k = %.2f\n", k);
-
         g = -k - 1.5;
     }
-
     printf("g = %.2f\n", g);
 }
 

@@ -89,7 +89,6 @@ char * mm_malloc (int size) {
     if (!__mm_min)
         mm_init (128);
 
-    int i, j, n, m, idx, state, required;
     const int unit = 64 * __mm_min + 12;
 
 #ifdef USE_PRINTF
@@ -99,18 +98,19 @@ char * mm_malloc (int size) {
 
     if (size > 64 * __mm_min) {
         // big block
-        n = 2 + (size - (64 * __mm_min + 8))/(64 * __mm_min + 12);
+        int n = 2 + (size - (64 * __mm_min + 8))/(64 * __mm_min + 12);
 #ifdef USE_PRINTF
         if (verbose)
             printf("Allocating %d big blocks\n", n);
 #endif
         __mm_report_histogram[min(n + 6, MM_HIST_SIZE - 1)] ++;
 
-        idx = 0;
+        int idx = 0;
         do {
             if (idx >= __mm_inuse) break;
-            state = *(int *)(__mm_memory + idx * unit);
+            int state = *(int *)(__mm_memory + idx * unit);
             if (state == 0) {
+                int j;
                 for (j = idx + 1; j < __mm_inuse && j < idx + n && *(int *)(__mm_memory + j * unit) == 0; j ++);
                 if (j - idx >= n) {
 #ifdef USE_PRINTF
@@ -139,7 +139,7 @@ char * mm_malloc (int size) {
 #endif
         assert (need > 0);
         assert (need <= n);
-        required = (__builtin_offset + __mm_extra_offset + (__mm_inuse + need) * unit)/LM_PAGE + 1;
+        int required = (__builtin_offset + __mm_extra_offset + (__mm_inuse + need) * unit)/LM_PAGE + 1;
         if (required > memsize()) {
 #ifdef USE_PRINTF
             if (verbose)
@@ -147,7 +147,7 @@ char * mm_malloc (int size) {
 #endif
             memgrow(required - memsize());
         }
-        for (i = 0; i < need; i ++)
+        for (int i = 0; i < need; i ++)
             *(int *)(__mm_memory + (i + __mm_inuse) * unit) = 0;
 #ifdef USE_PRINTF
         if (verbose)
@@ -164,10 +164,11 @@ char * mm_malloc (int size) {
     else {
         // small block
         int a_size = __mm_min;
+        int n;
         for(n = 0; a_size < size; n ++, a_size *= 2)
         assert(n <= 6);
         __mm_report_histogram[n] ++;
-        idx = __mm_avail[n];
+        int idx = __mm_avail[n];
 #ifdef USE_PRINTF
         if (verbose)
             printf("Actual size %d, n = %d, idx = %d\n", a_size, n, idx);
@@ -176,7 +177,7 @@ char * mm_malloc (int size) {
             idx = 0;
             do {
                 if (idx >= __mm_inuse) break;
-                state = *(int *)(__mm_memory + idx * unit);
+                int state = *(int *)(__mm_memory + idx * unit);
                 if (state == 0 || (state == n + 1 && *(long *)(__mm_memory + idx * unit + 4) != 0) ) {
                     break;
                 }
@@ -189,7 +190,7 @@ char * mm_malloc (int size) {
             assert (idx >= 0);
             assert (idx <= __mm_inuse);
             if (idx == __mm_inuse) {
-                required = (__builtin_offset + __mm_extra_offset + (__mm_inuse + 1) * unit)/LM_PAGE + 1;
+                int required = (__builtin_offset + __mm_extra_offset + (__mm_inuse + 1) * unit)/LM_PAGE + 1;
                 if (required > memsize()) {
 #ifdef USE_PRINTF
                     if (verbose)
@@ -214,7 +215,7 @@ char * mm_malloc (int size) {
             __mm_avail[n] = idx;
         }
 
-        state = *(int *)(__mm_memory + idx * unit);
+        int state = *(int *)(__mm_memory + idx * unit);
         assert(state == 0 || state == n + 1);
         if (state == 0) {
             *(int *)(__mm_memory + idx * unit) = n + 1;
@@ -228,7 +229,7 @@ char * mm_malloc (int size) {
         }
         unsigned long * cur = (unsigned long *)(__mm_memory + idx * unit + 4);
         assert(*cur != 0);
-        j = __builtin_ctzl(*cur);
+        int j = __builtin_ctzl(*cur);
 
 #ifdef USE_PRINTF
         if (verbose)

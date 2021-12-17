@@ -148,7 +148,7 @@ public class Main {
                     System.err.println(err.msg);
                 else {
                     String realName = fileName;
-                    if (usePP && iarg < fileArgs.size()) {
+                    if (usePP && iarg < fileArgs.size() || programLines.get(0).charAt(0) == '#') {
                         err.locate(programLines);
                         realName = err.fileName;
                         lineno = err.lineno;
