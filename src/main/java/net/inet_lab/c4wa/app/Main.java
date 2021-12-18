@@ -83,7 +83,7 @@ public class Main {
             System.exit(1);
         }
 
-        final boolean usePP = parsedArgs.containsKey("output");
+        final boolean usePP = parsedArgs.containsKey("P");
 
         String output =
                 parsedArgs.containsKey("output") ? parsedArgs.get("output") :

@@ -35,10 +35,12 @@ public class RunAllTests {
                 "150-pointers.c",
                 "161-struct.c", "163-struct.c", "164-struct.c",
                 "mm_incr",
-                "160-struct.c", "172-life.c", "180-memory.c",
+                "160-struct.c", "180-memory.c",
                 "mm_fixed",
                 "182-memory.c",
-                "mm_uni"
+                "mm_uni",
+                "172-life.c",
+                "mm_fixed", "string"
                 );
         while ((fileName = br.readLine()) != null) {
             final String fname = fileName;

@@ -8,6 +8,7 @@ extern char * malloc (int);
 extern void free(char *);
 extern void mm_stat(int*, int*, int*, int*, int*);
 extern void mm_init(int, int);
+extern int strlen(char *);
 #else
 #define max(a,b) ((a) < (b))?(b):(a)
 #include <stdio.h>
@@ -25,7 +26,7 @@ extern void mm_init(int, int);
 // void get_cells_cb(char * /* ptr */, int /* width */, int /* height */);
 
 #define N 5
-#define N0 10
+#define N0 5
 
 struct Box0 {
     int level;
@@ -112,7 +113,7 @@ void verify(struct Box * w) {
         }
 }
 
-void set_cell(int x, int y, int val) {
+void set_cell(int x, int y, int val, int plane) {
     struct Box * w;
     int t, xp, yp;
     const int verbose = 0;
@@ -123,7 +124,7 @@ void set_cell(int x, int y, int val) {
     if (!world) {
         if (!val) return;
         struct Box0 * box = alloc_new_box0(x - N0/2, y - N0/2);
-        box->cells0[N0 * (y - box->y0) + (x - box->x0)] = '\1';
+        box->cells0[N0 * N0 * plane + N0 * (y - box->y0) + (x - box->x0)] = (char)val;
 
         world = (struct Box *) box;
         return;
@@ -217,7 +218,7 @@ void set_cell(int x, int y, int val) {
             yp = y - w->y0;
             if (verbose)
                 printf("Assigned <%d,%d,%d>[%d] = %d\n", w->level, w->x0, w->y0, yp * N0 + xp, val);
-            ((struct Box0 *)w)->cells0[yp * N0 + xp] = (char) val;
+            ((struct Box0 *)w)->cells0[N0 * N0 * plane + N0 * yp + xp] = (char) val;
             break;
         }
         else {
@@ -249,7 +250,7 @@ void set_cell(int x, int y, int val) {
         printf("Done!\n");
 }
 
-int get_cell(int x, int y) {
+int get_cell(int x, int y, int plane) {
     const int verbose = 0;
     int xp, yp, size;
 
@@ -269,7 +270,7 @@ int get_cell(int x, int y) {
             yp = y - w->y0;
             if (verbose)
                 printf("Got to the bottom <%d,%d,%d>[%d]\n", w->level, w->x0, w->y0, yp * N0 + xp);
-            return (int)((struct Box0 *)w)->cells0[yp * N0 + xp];
+            return (int)((struct Box0 *)w)->cells0[N0 * N0 * plane + N0 * yp + xp];
         }
         else {
             size = w->size/N;
@@ -393,89 +394,144 @@ void life_fin_step (
     while(1);
 }
 
+void life_fin_print(char * pos, int X, int Y, int dbg) {
+    for(int y = 0; y < Y; y ++) {
+        for(int x = 0; x < X; x ++) {
+            int val = (int) pos[X * y + x];
+            printf(val == 1? "X" : (((val == 2) & dbg)?"+":"."));
+        }
+        printf("\n");
+    }
+}
+
+void life_fin_read(char * pos, int X, int Y, int x0, int y0, char * src, int sX, int sY) {
+    memset(pos, '\0', X * Y);
+    for(int y = 0; y < sY; y ++)
+        for (int x = 0; x < sX; x ++)
+            pos[(y + y0) * X + (x + x0)] = src[y * sX + x] == 'x' ? (char)1 : (char)0;
+}
+
 /* -------------------------------------------------- *\
 |*                LIFE (INFINITE)                     *|
 \* -------------------------------------------------- */
 
+void life_prepare_box(struct Box * w) {
+    assert(w);
+    if (w->level > 0) {
+        for(int idx = 0; idx < N*N; idx ++)
+            if (w->cells[idx])
+                life_prepare_box(w->cells[idx]);
+    }
+    else {
+        for(int idx = 0; idx < N0*N0; idx ++)
+            if (((struct Box0 *)w)->cells0[idx] == 1) {
+                int y = idx / N0;
+                int x = idx % N0;
+                for (int j = 0; j < 9; j ++) {
+                    if (j == 4) continue;
+                    int vx = x + j % 3 - 1;
+                    int vy = y + j / 3 - 1;
+                    if (0 <= vx && vx < N0 && 0 <= vy && vy < N0) {
+                        int ind = vy * N0 + vx;
+                        if (0 == ((struct Box0 *)w)->cells0[ind])
+                            ((struct Box0 *)w)->cells0[ind] = 2;
+                    }
+                    else
+                        if (0 == get_cell(vx + w->x0, vy + w->y0, 0))
+                            set_cell(vx + w->x0, vy + w->y0, 2, 0);
+                }
+            }
+    }
+}
+
+void life_step_box(struct Box * w, int dst) {
+    assert(w);
+    if (w->level > 0) {
+        for(int idx = 0; idx < N*N; idx ++)
+            if (w->cells[idx])
+                life_step_box(w->cells[idx], dst);
+    }
+    else {
+#define w0 ((struct Box0 *)w)
+        char * start = w0->cells0 + N0*N0*(1 - dst);
+        char * end = w0->cells0 + N0*N0*(2 - dst);
+        for (char * p = start; p < end; p ++) {
+            if (!*p) continue;
+            int idx = p - start;
+            int y = idx / N0;
+            int x = idx % N0;
+            int n = 0;
+            for (int j = 0; j < 9; j ++) {
+                if (j == 4) continue;
+                int vx = x + j % 3 - 1;
+                int vy = y + j / 3 - 1;
+                n += 1 == (0 <= vx && vx < N0 && 0 <= vy && vy < N0
+                            ? (int) start[vy * N0 + vx]
+                            : get_cell(vx + w->x0, vy + w->y0, 1 - dst));
+            }
+            if ((n == 3) | ((n == 2) & (*p == 1))) {
+                char * dst_st = w0->cells0 + N0*N0*dst;
+                dst_st[idx] = (char)1;
+
+                for (int j = 0; j < 9; j ++) {
+                    if (j == 4) continue;
+                    int vx = x + j % 3 - 1;
+                    int vy = y + j / 3 - 1;
+                    if (0 <= vx && vx < N0 && 0 <= vy && vy < N0) {
+                        char * xd = dst_st + vy * N0 + vx;
+                        if (*xd != 1) *xd = (char)2;
+                    }
+                    else if (1 != get_cell(vx + w->x0, vy + w->y0, dst))
+                        set_cell(vx + w->x0, vy + w->y0, 2, dst);
+                }
+            }
+        }
+#undef w0
+    }
+}
+
+void life_clean_plane(struct Box * w, int dst) {
+    assert(w);
+    if (w->level > 0) {
+        for(int idx = 0; idx < N*N; idx ++)
+            if (w->cells[idx])
+                life_clean_plane(w->cells[idx], dst);
+    }
+    else
+        memset((char *)(((struct Box0 *)w)->cells0 + N0*N0*dst), '\0', N0*N0);
+}
+
 void life_prepare () {
-
+    if (world)
+        life_prepare_box(world);
 }
 
-void life_step () {
-
+void life_step (int dst) {
+    if (world) {
+        life_clean_plane(world, dst);
+        life_step_box(world, dst);
+    }
 }
 
+void life_infin_read(int X, int Y, int x0, int y0, char * src, int sX, int sY) {
+    for(int y = 0; y < sY; y ++)
+        for (int x = 0; x < sX; x ++)
+            set_cell(x + x0, y + y0, src[y * sX + x] == 'x', 0);
+}
+
+void life_infin_print(int X, int Y, int plane, int dbg) {
+    for(int y = 0; y < Y; y ++) {
+        for(int x = 0; x < X; x ++) {
+            int val = (int) get_cell(x,y,plane);
+            printf(val == 1? "X" : (((val == 2) & dbg)?"+":"."));
+        }
+        printf("\n");
+    }
+}
 
 /* -------------------------------------------------- *\
 |*                     TESTING                        *|
 \* -------------------------------------------------- */
-
-void dump_cells0(struct Box0 * w, int verbose) {
-    if (verbose)
-        printf ("[<%d,%d,%d>", w->level, w->x0, w->y0);
-    for (int y = 0; y < N0; y ++)
-        for (int x = 0; x < N0; x ++)
-            if (w->cells0[y * N0 + x]) {
-                printf(" (%d,%d)", w->x0 + x, w->y0 + y);
-            }
-    if (verbose)
-        printf ("]");
-}
-
-void dump_cells(struct Box * w, int verbose) {
-    if (verbose)
-        printf ("[<%d,%d,%d>", w->level, w->x0, w->y0);
-    for (int y = 0; y < N; y ++)
-        for (int x = 0; x < N; x ++)
-            if (w->cells[y * N + x]) {
-                if (w->level == 1)
-                    dump_cells0((struct Box0 *) w->cells[y * N + x], verbose);
-                else
-                    dump_cells(w->cells[y * N + x], verbose);
-            }
-            else if (verbose)
-                printf (".");
-    if (verbose)
-        printf ("]");
-}
-
-void dump_all(int verbose) {
-    if (world->level == 0)
-        dump_cells0((struct Box0 *) world, verbose);
-    else
-        dump_cells(world, verbose);
-    printf("\n");
-}
-
-void to_arr0(struct Box0 * w, int n, int pts[], int *k) {
-    for (int y = 0; y < N0; y ++)
-        for (int x = 0; x < N0; x ++)
-            if (w->cells0[y * N0 + x]) {
-                assert(*k < n);
-                pts[*k * 2]     = w->x0 + x;
-                pts[*k * 2 + 1] = w->y0 + y;
-                *k = *k + 1;
-            }
-}
-
-void to_arr1(struct Box * w, int n, int pts[], int *k) {
-    for (int y = 0; y < N; y ++)
-        for (int x = 0; x < N; x ++)
-            if (w->cells[y * N + x]) {
-                if (w->level == 1)
-                    to_arr0((struct Box0 *) w->cells[y * N + x], n, pts, k);
-                else
-                    to_arr1(w->cells[y * N + x], n, pts, k);
-            }
-}
-
-void to_arr(int n, int pts[]) {
-    int k = 0;
-    if (world->level == 0)
-        to_arr0((struct Box0 *) world, n, pts, &k);
-    else
-        to_arr1(world, n, pts, &k);
-}
 
 static unsigned int seed = 57;
 
@@ -491,109 +547,58 @@ int rand_int() {
     return (int)(10000.0 * (mulberry32() - 0.5));
 }
 
-void sort_points(int n, int pts[]) {
-    int cnt, i;
-    do {
-        for (i = 0, cnt = 0; i < n - 1; i ++) {
-            if (pts[2*i] < pts[2*i + 2] || (pts[2*i] == pts[2*i + 2] && pts[2*i+1] < pts[2*i + 3]))
-                continue;
-            int t = pts[2*i];
-            pts[2*i] = pts[2*i + 2];
-            pts[2*i + 2] = t;
-            t = pts[2*i + 1];
-            pts[2*i + 1] = pts[2*i + 3];
-            pts[2*i + 3] = t;
-
-            cnt ++;
-        }
-    }
-    while(cnt > 0);
-}
-
-void test_1 () {
-    int i;
-    const int n_pts = 20;
-    int pts[2 * n_pts];
-
-    for(i = 0; i < 2 * n_pts; i ++)
-        pts[i] = rand_int ();
-
-    for(i = 0; i < n_pts; i ++)
-        set_cell(pts[2 * i], pts[2 * i + 1], 1);
-
-    verify(world);
-
-    printf("Raw In    :");
-    for(i = 0; i < n_pts; i ++)
-        printf(" (%d,%d)", pts[2 * i], pts[2 * i + 1]);
-
-    sort_points(n_pts, pts);
-
-    printf("\nSorted In :");
-    for(i = 0; i < n_pts; i ++)
-        printf(" (%d,%d)", pts[2 * i], pts[2 * i + 1]);
-
-    to_arr(n_pts, pts);
-    sort_points(n_pts, pts);
-
-    printf("\nSorted Out:");
-
-    for(i = 0; i < n_pts; i ++)
-        printf(" (%d,%d)", pts[2 * i], pts[2 * i + 1]);
-
-    printf("\nRaw Out   :");
-    dump_all (0);
-}
-
-void test_2 () {
-    int x, y;
-    const unsigned int original_seed = seed;
-    const double density = 0.4;
-    const int X = 1200;
-    const int Y = 1600;
-
-    for (y = 0; y < Y; y ++)
-        for(x = 0; x < X; x ++)
-            set_cell(x, y, mulberry32() < density);
-
-    seed = original_seed;
-
-    for (y = 0; y < Y; y ++)
-        for(x = 0; x < X; x ++)
-            assert(get_cell(x,y) == mulberry32() < density);
-
-    printf("OK\n");
-}
-
 extern int main () {
+    const int X = 20;
+    const int Y = 20;
+
 #ifdef C4WA
-    mm_init(0, max(sizeof(struct Box0), sizeof(struct Box)));
+    char * pos_0 = __builtin_memory + __builtin_offset;
+    char * pos_1 = __builtin_memory + __builtin_offset + (X*Y + 1);
+    mm_init(2*(X*Y+1), max(sizeof(struct Box0), sizeof(struct Box)));
+#else
+    char * pos_0 = malloc(X*Y + 1);
+    char * pos_1 = malloc(X*Y + 1);
 #endif
 
-    for (int test = 1; test <= 2; test ++) {
-        printf("🧪 Test %d\n", test);
-        if (test == 1)
-            test_1 ();
-        else
-            test_2 ();
-        verify(world);
-        if (test > 1) {
-            release_box(world);
-            world = 0;
-        }
-        memory_stat ();
-    }
-    printf("Done!\n");
+    memset(pos_0, '\0', X*Y);
+    memset(pos_1, '\0', X*Y);
+    pos_0[X*Y] = 3;
+    pos_1[X*Y] = 3;
+
+    char * initial_pos = "........."
+                         ".....x..."
+                         "...xxx..."
+                         "....x...."
+                         ".........";
+    const int sX = 9;
+    const int sY = 5;
+    assert(sX * sY == strlen(initial_pos));
+    life_fin_read(pos_0, X, Y, (X - sX)/2, (Y - sY)/2, initial_pos, sX, sY);
+    life_infin_read(X, Y, (X - sX)/2, (Y - sY)/2, initial_pos, sX, sY);
+
+    for(int x = 0; x < X; x ++)
+        for(int y = 0; y < Y; y ++)
+            assert(get_cell(x, y, 0) == pos_0[y*X+x]);
+
+    life_fin_prepare(pos_0, X, Y);
+    life_fin_step(pos_0, pos_1, X, Y);
+
+    life_prepare();
+    life_step(1);
+
+    for(int x = 0; x < X; x ++)
+        for(int y = 0; y < Y; y ++)
+            assert(get_cell(x, y, 1) == pos_1[y*X+x]);
+
+#if 0
+    printf("⑩ FINITE\n");
+    life_fin_print(pos_1, X, Y, 1);
+    printf("∞ INFINITE\n");
+    life_infin_print(X, Y, 1, 1);
+#endif
+
+    printf("OK!\n");
 
     return 0;
 }
-// 🧪 Test 1
-// Raw In    : (2371,-2971) (-3610,1301) (-332,1053) (-2607,153) (-26,-529) (470,1330) (-1333,-3258) (3181,2599) (-1572,-3553) (1823,3825) (4886,2280) (-99,-4440) (-688,1954) (-2862,1293) (-3032,-3204) (866,3016) (-4715,-3007) (1026,-543) (-2933,1462) (-678,-839)
-// Sorted In : (-4715,-3007) (-3610,1301) (-3032,-3204) (-2933,1462) (-2862,1293) (-2607,153) (-1572,-3553) (-1333,-3258) (-688,1954) (-678,-839) (-332,1053) (-99,-4440) (-26,-529) (470,1330) (866,3016) (1026,-543) (1823,3825) (2371,-2971) (3181,2599) (4886,2280)
-// Sorted Out: (-4715,-3007) (-3610,1301) (-3032,-3204) (-2933,1462) (-2862,1293) (-2607,153) (-1572,-3553) (-1333,-3258) (-688,1954) (-678,-839) (-332,1053) (-99,-4440) (-26,-529) (470,1330) (866,3016) (1026,-543) (1823,3825) (2371,-2971) (3181,2599) (4886,2280)
-// Raw Out   : (-99,-4440) (-4715,-3007) (-3032,-3204) (-1572,-3553) (-1333,-3258) (2371,-2971) (-678,-839) (-26,-529) (1026,-543) (-2607,153) (-3610,1301) (-2862,1293) (-2933,1462) (-332,1053) (-688,1954) (470,1330) (4886,2280) (866,3016) (1823,3825) (3181,2599)
-// A/R 81/0
-// 🧪 Test 2
-// OK
-// A/R 20434/20434
-// Done!
+// OK!

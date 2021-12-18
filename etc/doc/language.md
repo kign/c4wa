@@ -25,7 +25,7 @@ unavoidable inconsistencies with the standard C compiler, and differences betwee
 Web Assembly environment.
 
   * Your code might successfully pass through `c4wa` but still fail `wat2wasm` compilation. 
-    With version 0.3 of the compiler, there are no known cases of this happening, but it can't be ruled out yet.
+    As of version 0.3 of the compiler, there are no known cases of this happening, but it can't be ruled out yet.
   * Your code might successfully compile with both regular compiler and `c4wa`, generate correctly working
     native executable, but still work incorrectly in Web Assembly. This could be due to a limited number of known
     inconsistencies you should be aware of when writing code for `c4wa`.
@@ -35,6 +35,8 @@ Web Assembly environment.
     in Web Assembly, yet still require some adaptation to pass through C compiler 
     (for example, `c4wa` doesn't require you to define or declare functions before they are called, as long as they
     are defined later in the code).
+  * While `c4wa` is designed to properly report most common syntax error in a way which is broadly consistent with 
+    standard C compiler, there is no guarantee it won't successfully compile some obviously invalid C code.
   * There is no expectation that any existing C code, other than completely trivial, would pass through `c4wa`
     compilation unchanged. Moreover, we are not making too much effort to make adaptation to `c4wa` easier,
     since it would be mostly pointless. However, for any normal C code, which doesn't rely on external functions
@@ -61,7 +63,6 @@ here are some of the most commonly used features of C language **NOT** supported
   * Assignment of `struct`s or using `struct` (not pointer) as an argument
   * `long`/`float` literals
   * labels and `goto`
-  * block scope for local variables
   * Pointers to arrays, arrays of arrays
   * Function names as variables, indirect function calls
   * Bit Fields
@@ -105,9 +106,6 @@ Built-in functions like `memcpy` use `char *`.
 Technically `0` could be a valid value for a pointer,
 
 Almost all arithmetic operations, function calls and assignment require explicit type cast if types are different.
-
-Local variables can be introduced anywhere in the program, but all share scope of the function. There aren't 
-block-level locals.
 
 The ony "native" loop type in Web Assembly is `do ... while()`; you are encouraged to use it whenever practical 
 since this creates cleaner and simpler WAT/WASM code. Since it is so common C, we do 
@@ -547,6 +545,48 @@ extern int main () {
     char __ignored__[1];
 }
 ```
+
+## Local variables mapping
+
+Since WAT format supports local variables, it is tempting to simply map local variables in C directly to WAT
+names, so that if for example you have variable `long acnt_id` in C code, it'd be mapped to `(local $acnt_id i64)`
+in WAT, as that's exactly what `c4wa` does, most of the time. However, since release 0.4, `c4wa` supports
+block scope for local variables, and it makes things more complicated.
+
+Consider this fragment of C code:
+
+```c
+int a;
+
+for (...) {
+   double a = ...;
+.....................   
+```
+
+Now we have two variables with names `a`, in exterior scope and inside the block; they even have different types,
+and so we must choose two separate WAT names for them. In this case, `c4wa` maps first `a` to `$a`, and
+all variables `a` inside the embedded blocks to some auto-generated names based off original variable name `a`
+and unique block id.
+
+Now, let's consider the subsequent code in the same fragment:
+
+```c
+int a;
+
+for (...) {
+   double a = ...;
+.....................
+}
+
+double x = -57;   
+```
+
+When we get to variable `x`, we _could_ map it directly to `$x` in WAT code; however, this would not be 
+the most optimal solution, since we already had to add a `double`=`f64` variable for interior `a` ;
+thus `c4wa` always attempts to re-use no longer needed (out of scope) variables, if type matches.
+
+At the end, mapping to WAT names could get complicated; the end result however is WAT code which fully
+respect block scope for variables and uses only minimal necessary number of `local`'s. 
 
 ## Globals
 

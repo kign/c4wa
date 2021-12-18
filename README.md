@@ -32,10 +32,10 @@ Web Assembly. Instead of a binary WASM file, it generates a well-formatted WAT o
 which is trying to be similar to what a human programmer would have written when solving the problem directly in WAT.
 
 `c4wa` is not a full C implementation and isn't trying to be one. Still, most of the typical day-to-day
-coding in `c4wa` isn't much more complicated than coding in standard C. It supports loops, conditionals,
-all of C operators, `struct`s, arrays, pointers and dynamic memory allocation. 
-It can also optionally apply external C preprocessor to your code
-before parsing.
+coding targeting `c4wa` isn't much more complicated than coding in standard C. 
+It supports loops, conditionals, block scope of
+variables, all of C operators and primitive types, `struct`s, arrays, pointers and dynamic memory allocation. 
+It can also optionally apply external C preprocessor to your code before parsing.
 
 ## Installation
 

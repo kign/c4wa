@@ -1600,7 +1600,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         } else if (arg1.type.is_f64() && arg2.type.is_f64()) {
             numType = NumType.F64;
             resType = CType.DOUBLE;
-        } else if (arg1.type.is_ptr() && arg2.type.is_ptr() && arg1.type.same(arg2.type) && List.of( "==", "!=").contains(op)) {
+        } else if (arg1.type.is_ptr() && arg2.type.is_ptr() && arg1.type.same(arg2.type)
+                        && List.of( "==", "!=", "<", "<=", ">", ">=").contains(op)) {
             numType = NumType.I32;
             resType = CType.INT;
         }
