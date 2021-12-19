@@ -130,6 +130,11 @@ public class FunctionEnv implements Partial, PostprocessContext {
             }
         }
 
+        if (name.equals("some_function_for_testing...")) {
+            System.out.println("==> Function " + name);
+            for (Variable v : variables)
+                System.out.printf("%-15s%-20s%s\n", v.name, v.block_id == null?"<top level>":v.block_id, v.watName);
+        }
         return localVars;
     }
 

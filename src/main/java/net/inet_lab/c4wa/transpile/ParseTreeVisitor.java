@@ -216,14 +216,16 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         final Expression rhs;
         final CType type;
         final ParserRuleContext ctx;
+        final boolean topLevelInit;
         final boolean init;
 
-        DelayedAssignment(ParserRuleContext ctx, boolean init, String[] varId_a, Expression rhs, CType type) {
+        DelayedAssignment(ParserRuleContext ctx, boolean init, boolean topLevelInit, String[] varId_a, Expression rhs, CType type) {
             this.ctx = ctx;
             this.varId_a = varId_a;
             this.rhs = rhs;
             this.type = type;
             this.init = init;
+            this.topLevelInit = topLevelInit;
         }
 
         @Override
@@ -246,7 +248,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
              *    (c) WAT variable name isn't a reuse;
              *    (d) We are not inside a loop.
              */
-            if (init && rhs instanceof Const) {
+            if (topLevelInit && rhs instanceof Const) {
                 Const c = (Const) rhs;
                 if (c.is_int() && c.longValue == 0 || !c.is_int() && c.doubleValue == 0.0) {
                     // WASM local variables are initialized to 0
@@ -980,7 +982,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return new OneInstruction(
                 new DelayedList(List.of(
                     new DelayedLocalDefinition(varId, null),
-                    new DelayedAssignment(ctx, blockStack.stream().noneMatch(x -> x instanceof LoopEnv && !((LoopEnv) x).in_initialization),
+                    new DelayedAssignment(ctx, true, blockStack.stream().noneMatch(x -> x instanceof LoopEnv && !((LoopEnv) x).in_initialization),
                             new String[]{varId}, rhs.expression, rhs.type))));
     }
 
@@ -1029,7 +1031,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         OneExpression binaryOp = binary_op(ctx, accessVariable(ctx, name), rhs, op);
 
-        return new OneInstruction(new DelayedAssignment(ctx, false, new String[]{varId}, binaryOp.expression, binaryOp.type));
+        return new OneInstruction(new DelayedAssignment(ctx, false, false, new String[]{varId}, binaryOp.expression, binaryOp.type));
     }
 
     @Override
@@ -1047,7 +1049,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "assignment", "Variable '" + lastName + "' is not defined");
 
         rhs = constantAssignment(ctx, decl.type, rhs);
-        return new OneInstruction(new DelayedAssignment(ctx, false, Arrays.stream(names).map(this::variableIdByName).toArray(String[]::new), rhs.expression, rhs.type));
+        return new OneInstruction(new DelayedAssignment(ctx, false, false, Arrays.stream(names).map(this::variableIdByName).toArray(String[]::new), rhs.expression, rhs.type));
     }
 
     @Override

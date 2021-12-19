@@ -288,11 +288,11 @@ int get_cell(int x, int y, int plane) {
 /* -------------------------------------------------- *\
 |*                 LIFE (FINITE)                      *|
 \* -------------------------------------------------- */
+struct Stat {unsigned int hash; int count; };
+const unsigned int rand_x = 179424673;
+const unsigned int rand_y = 376424971;
 
-void life_fin_prepare (
-    char               * cells,
-    int                  X,
-    int                  Y) {
+void life_fin_prepare (char * cells, int X, int Y, struct Stat * stat) {
     int cnt = 0;
     unsigned int hash = 0;
 
@@ -301,6 +301,7 @@ void life_fin_prepare (
             int idx = X * y + x;
             if (cells[idx] == 1) {
                 cnt ++;
+                hash ^= (unsigned int)x * rand_x + (unsigned int)y * rand_y;
                 for (int dx = -1; dx <= 1; dx ++)
                     for (int dy = -1; dy <= 1; dy ++) {
                         int didx = X * ((y + dy + Y) % Y) + ((x + dx + X) % X);
@@ -309,14 +310,11 @@ void life_fin_prepare (
                     }
             }
         }
+    stat->count = cnt;
+    stat->hash = hash;
 }
 
-void life_fin_step (
-    char                 * cells,
-    char                 * cellsnew,
-    int                  X,
-    int                  Y) {
-
+void life_fin_step (char * cells, char * cellsnew, int X, int Y, struct Stat * stat) {
     int                  ind, x, y,  n, newv;
     int                  n00, n01, n02, n10, n12, n20, n21, n22;
     int                  v00, v01, v02, v10, v11, v12, v20, v21, v22;
@@ -379,6 +377,7 @@ void life_fin_step (
 
         if ( newv ) {
             cnt ++;
+            hash ^= (unsigned int)x * rand_x + (unsigned int)y * rand_y;
 
             cellsnew[ind] = (char)newv;
             if (cellsnew[n00] != 1) cellsnew[n00] = 2;
@@ -392,11 +391,14 @@ void life_fin_step (
         }
     }
     while(1);
+
+    stat->count = cnt;
+    stat->hash = hash;
 }
 
-void life_fin_print(char * pos, int X, int Y, int dbg) {
-    for(int y = 0; y < Y; y ++) {
-        for(int x = 0; x < X; x ++) {
+void life_fin_print(char * pos, int X, int x0, int x1, int y0, int y1, int dbg) {
+    for(int y = y0; y <= y1; y ++) {
+        for(int x = x0; x <= x1; x ++) {
             int val = (int) pos[X * y + x];
             printf(val == 1? "X" : (((val == 2) & dbg)?"+":"."));
         }
@@ -415,18 +417,23 @@ void life_fin_read(char * pos, int X, int Y, int x0, int y0, char * src, int sX,
 |*                LIFE (INFINITE)                     *|
 \* -------------------------------------------------- */
 
-void life_prepare_box(struct Box * w) {
-    assert(w);
+void life_prepare_box(struct Box * w, struct Stat * stat) {
     if (w->level > 0) {
         for(int idx = 0; idx < N*N; idx ++)
             if (w->cells[idx])
-                life_prepare_box(w->cells[idx]);
+                life_prepare_box(w->cells[idx], stat);
     }
     else {
+        unsigned int hash = 0;
+        int cnt = 0;
         for(int idx = 0; idx < N0*N0; idx ++)
             if (((struct Box0 *)w)->cells0[idx] == 1) {
                 int y = idx / N0;
                 int x = idx % N0;
+
+                cnt ++;
+                hash ^= (unsigned int)(x + w->x0) * rand_x + (unsigned int)(y + w->y0) * rand_y;
+
                 for (int j = 0; j < 9; j ++) {
                     if (j == 4) continue;
                     int vx = x + j % 3 - 1;
@@ -441,18 +448,22 @@ void life_prepare_box(struct Box * w) {
                             set_cell(vx + w->x0, vy + w->y0, 2, 0);
                 }
             }
+        stat->hash ^= hash;
+        stat->count += cnt;
     }
 }
 
-void life_step_box(struct Box * w, int dst) {
+void life_step_box(struct Box * w, int dst, struct Stat * stat) {
     assert(w);
     if (w->level > 0) {
         for(int idx = 0; idx < N*N; idx ++)
             if (w->cells[idx])
-                life_step_box(w->cells[idx], dst);
+                life_step_box(w->cells[idx], dst, stat);
     }
     else {
 #define w0 ((struct Box0 *)w)
+        unsigned int hash = 0;
+        int cnt = 0;
         char * start = w0->cells0 + N0*N0*(1 - dst);
         char * end = w0->cells0 + N0*N0*(2 - dst);
         for (char * p = start; p < end; p ++) {
@@ -470,6 +481,9 @@ void life_step_box(struct Box * w, int dst) {
                             : get_cell(vx + w->x0, vy + w->y0, 1 - dst));
             }
             if ((n == 3) | ((n == 2) & (*p == 1))) {
+                cnt ++;
+                hash ^= (unsigned int)(x + w->x0) * rand_x + (unsigned int)(y + w->y0) * rand_y;
+
                 char * dst_st = w0->cells0 + N0*N0*dst;
                 dst_st[idx] = (char)1;
 
@@ -486,6 +500,8 @@ void life_step_box(struct Box * w, int dst) {
                 }
             }
         }
+        stat->hash ^= hash;
+        stat->count += cnt;
 #undef w0
     }
 }
@@ -501,15 +517,20 @@ void life_clean_plane(struct Box * w, int dst) {
         memset((char *)(((struct Box0 *)w)->cells0 + N0*N0*dst), '\0', N0*N0);
 }
 
-void life_prepare () {
-    if (world)
-        life_prepare_box(world);
+void life_prepare (struct Stat * stat) {
+    if (world) {
+        stat->count = 0;
+        stat->hash = 0;
+        life_prepare_box(world, stat);
+    }
 }
 
-void life_step (int dst) {
+void life_step (int dst, struct Stat * stat) {
     if (world) {
+        stat->count = 0;
+        stat->hash = 0;
         life_clean_plane(world, dst);
-        life_step_box(world, dst);
+        life_step_box(world, dst, stat);
     }
 }
 
@@ -519,9 +540,9 @@ void life_infin_read(int X, int Y, int x0, int y0, char * src, int sX, int sY) {
             set_cell(x + x0, y + y0, src[y * sX + x] == 'x', 0);
 }
 
-void life_infin_print(int X, int Y, int plane, int dbg) {
-    for(int y = 0; y < Y; y ++) {
-        for(int x = 0; x < X; x ++) {
+void life_infin_print(int x0, int x1, int y0, int y1, int plane, int dbg) {
+    for(int y = y0; y <= y1; y ++) {
+        for(int x = x0; x <= x1; x ++) {
             int val = (int) get_cell(x,y,plane);
             printf(val == 1? "X" : (((val == 2) & dbg)?"+":"."));
         }
@@ -548,8 +569,8 @@ int rand_int() {
 }
 
 extern int main () {
-    const int X = 20;
-    const int Y = 20;
+    const int X = 500;
+    const int Y = 500;
 
 #ifdef C4WA
     char * pos_0 = __builtin_memory + __builtin_offset;
@@ -560,10 +581,6 @@ extern int main () {
     char * pos_1 = malloc(X*Y + 1);
 #endif
 
-    memset(pos_0, '\0', X*Y);
-    memset(pos_1, '\0', X*Y);
-    pos_0[X*Y] = 3;
-    pos_1[X*Y] = 3;
 
     char * initial_pos = "........."
                          ".....x..."
@@ -573,32 +590,112 @@ extern int main () {
     const int sX = 9;
     const int sY = 5;
     assert(sX * sY == strlen(initial_pos));
-    life_fin_read(pos_0, X, Y, (X - sX)/2, (Y - sY)/2, initial_pos, sX, sY);
+
+    /* This call would expands memory to fit pos_0 and pos_1 */
     life_infin_read(X, Y, (X - sX)/2, (Y - sY)/2, initial_pos, sX, sY);
+
+    memset(pos_0, '\0', X*Y);
+    memset(pos_1, '\0', X*Y);
+    pos_0[X*Y] = 3;
+    pos_1[X*Y] = 3;
+
+    life_fin_read(pos_0, X, Y, (X - sX)/2, (Y - sY)/2, initial_pos, sX, sY);
 
     for(int x = 0; x < X; x ++)
         for(int y = 0; y < Y; y ++)
             assert(get_cell(x, y, 0) == pos_0[y*X+x]);
 
-    life_fin_prepare(pos_0, X, Y);
-    life_fin_step(pos_0, pos_1, X, Y);
+    struct Stat stat_f, stat_i;
+    life_fin_prepare(pos_0, X, Y, &stat_f);
+    life_prepare(&stat_i);
+    assert(stat_f.count == stat_i.count);
+    assert(stat_f.hash == stat_i.hash);
 
-    life_prepare();
-    life_step(1);
+    int iter;
+    int ok = 1;
+    unsigned int hash[4];
+    hash[3] = stat_i.hash;
+    for (iter = 0; iter < 10000 && ok; iter ++) {
+        int i = iter % 2;
+        life_fin_step(i?pos_1:pos_0, i?pos_0:pos_1, X, Y, &stat_f);
+        life_step(1 - i, &stat_i);
 
-    for(int x = 0; x < X; x ++)
-        for(int y = 0; y < Y; y ++)
-            assert(get_cell(x, y, 1) == pos_1[y*X+x]);
+        int j;
+        for(j = 0; j < 4 && hash[j] != stat_i.hash; j ++);
+        if (j < 4) {
+            printf("Cycle detected at iter = %d\n", iter);
+            break;
+        }
+        for(j = 0; j < 4; j ++)
+            hash[j] = j < 3? hash[j+1]: stat_i.hash;
 
-#if 0
-    printf("⑩ FINITE\n");
-    life_fin_print(pos_1, X, Y, 1);
-    printf("∞ INFINITE\n");
-    life_infin_print(X, Y, 1, 1);
-#endif
+        for(int x = 0; x < X && ok; x ++)
+            for(int y = 0; y < Y && ok; y ++) {
+                ok = get_cell(x, y, 1-i) == (i?pos_0:pos_1)[y*X+x];
+                if (!ok) {
+                    printf("(%d,%d): ⑩=%d, ∞=%d\n", x, y, (i?pos_0:pos_1)[y*X+x], get_cell(x, y, 1-i));
 
-    printf("OK!\n");
+                    printf("Consistency broke down on iteration %d\n", iter);
+                    int i = iter % 2;
+
+                    const int xwin = 40;
+                    const int ywin = 10;
+                    int x0 = x - xwin/2;
+                    int x1 = x0 + xwin - 1;
+                    if (x0 < 0) {
+                        x1 += -x0;
+                        x0 = 0;
+                    }
+                    if (x1 > X - 1)
+                        x1 = X - 1;
+
+                    int y0 = y - ywin/2;
+                    int y1 = y0 + ywin - 1;
+                    if (y0 < 0) {
+                        y1 += -y0;
+                        y0 = 0;
+                    }
+                    if (y1 > Y - 1)
+                        y1 = Y - 1;
+
+                    printf("Showing window %d <= x <= %d, %d <= y <= %d\n", x0, x1, y0, y1);
+                    printf("⑩ FINITE\n");
+                    life_fin_print(i?pos_0:pos_1, X, x0, x1, y0, y1, 1);
+                    printf("∞ INFINITE\n");
+                    life_infin_print(x0, x1, y0, y1, 1-i, 1);
+                }
+            }
+        assert(stat_f.count == stat_i.count);
+        assert(stat_f.hash == stat_i.hash);
+    }
+
+    if (ok)
+        printf("Successfully completed %d iterations\n", iter);
 
     return 0;
 }
-// OK!
+// (499,51): ⑩=2, ∞=0
+// Consistency broke down on iteration 1036
+// Showing window 479 <= x <= 499, 46 <= y <= 55
+// ⑩ FINITE
+// .....................
+// .....................
+// .....................
+// .....................
+// .....................
+// ....................+
+// ....................+
+// ....................+
+// .....................
+// .....................
+// ∞ INFINITE
+// .....................
+// .....................
+// .....................
+// .....................
+// .....................
+// .....................
+// .....................
+// .....................
+// .....................
+// .....................
