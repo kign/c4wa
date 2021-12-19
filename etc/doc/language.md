@@ -132,6 +132,23 @@ more on this below. You can't currently have a global variables shared between m
 files in a way which would be consistent with C compiler and won't depend on files order, 
 so better not try.
 
+## C Preprocessor
+
+`c4wa` relies on external preprocessor installed on your system; by default it is invoked as 
+"gcc -E -C", this could be changed with command line option `-Xpreprocessor.command`. 
+Preprocessor is not required though, `c4wa` first checks all incoming files for any preprocessor
+directives and only runs them through preprocessor when necessary, _or_ if there is `-D<name>` command
+line option.
+
+When preprocessor is used by `c4wa`, symbol `C4WA` is always defined. You can use it to create separate branches
+for `c4wa` and standard C compiler.
+
+`c4wa` does also come some include files of its own; they are installed as part of ZIP distribution and path is
+automatically added to the preprocessor.
+
+Finally, `c4wa` does process so-called "line directives" inserted by a preprocessor and therefore 
+will use proper line numbers when reporting syntax errors.
+
 ## Built-in functions and built-in libraries
 
 While there is nothing resembling C standard library in `c4wa`, it does support a few utilities. 
@@ -221,8 +238,9 @@ Any C attribute not listed above is explicitly not allowed
 A simple C program might not require a linear memory at all; you can use 
 [compiler option](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md) `module.memoryStatus=none`
 to not add any memory declaration to generated WAT file. However, many features, such as 
-taking address of a local variable, using `struct`s or arrays, calling imported function with 
-arbitrary number of arguments (like `printf`), and obviously allocating memory directly, won't work without 
+taking address of a local variable, using `struct`s or arrays, 
+calling functions with variable number of arguments (like `printf`), 
+and obviously allocating memory directly, won't work without 
 linear memory.
 
 ### Composition of linear memory
@@ -432,40 +450,77 @@ It must be acknowledged that `c4wa` isn't a good environment to write a code dea
 This is in part because C itself isn't, and in part because working with strings means often 
 allocation and freeing up memory, and you do need a decent memory manager for that.
 
-## `printf`
+### Functions with variable number of arguments
 
-`c4wa` doesn't have any built-in support for `printf` function; if you need, you can implement it in your runtime
-and import into Web Assembly code. 
-
-This however raises a problem how to deal with function with variable argument list. Normally,
-an imported function must have a specific declared signature. We solve this problem by introducing special kind
-of imported function, which could accept any number or type of arguments via memory pointers.
-
-Specifically, if you declare a function _without signature_ (remember that a non-static declaration is considered
-an import declaration):
+`c4wa` fully supports standard C syntax to define or declare functions with variable argument list.
+The following example (borrowed from [here](https://www.cprogramming.com/tutorial/c/lesson17.html)) 
+will compile and produce same output in both `c4wa` and standard C:
 
 ```c
-void printf();
+#include <stdio.h>
+#include <stdarg.h>
+
+double average (int num, ...) {
+    va_list arguments;
+    double sum = 0;
+    va_start ( arguments, num );
+    for ( int x = 0; x < num; x++ )
+        sum += va_arg ( arguments, double );
+    va_end ( arguments );
+    return sum / (double)num;
+}
+
+extern int main() {
+    printf( "%.2f\n", average ( 3, 12.2, 22.3, 4.5 ) );
+    printf( "%.2f\n", average ( 5, 3.3, 2.2, 1.1, 5.5, 3.3 ) );
+    return 0;
+}
 ```
 
-generated WASM code would expect an imported function `printf` with **two** arguments: **memory address** to begin
-reading arguments from and actual **number of arguments**; 
-every argument takes exactly 8 bytes (64 bits) in linear memory.
+You can also have imported functions with variable arguments; when adding them to your runtime,
+actual implementation will have one additional argument after required ones, which is a memory
+address where all subsequent arguments shall be read (it'll be passed even there are no
+additional arguments in the function call). Each optional argument, regardless of type,
+will occupy exactly 8 bytes in linear memory.
 
-If for example `printf` is actually called with 5 arguments, your implementation will receive two arguments,
-let's call them `offset` and `count`; 
-`count` will be number of arguments, 5 in this case, and values of these arguments will be stored in memory as follows:
+## `printf`
 
-1-st argument at address `offset`;<br>
-2-nd argument at address `offset + 8`;<br>
-3-rd argument at address `offset + 16`;<br>
-4-th argument at address `offset + 24`;<br>
-5-th argument at address `offset + 32`.
+The best example of this approach is function `printf` as it is used in the test suite.
+
+For the purposes of `c4wa`, it is defined as follows:
+
+```c
+void printf(char *, ...);
+```
+
+(You can also include file `stdio.h`, which as of current version doesn't have anything except this one line).
+
+Since there are no attributes, this is imported function; since there is exactly one required argument,
+actual runtime implementation would have _two_ arguments, `format` and `offset`.
+
+Let's consider this call of `printf` :
+
+```c
+int A;
+unsigned long B;
+double C;
+........................
+printf("A = %d, B = %lx, C = %.6f\n", A, B, C);
+```
+
+In this case, there are 4 _actual_ arguments, but imported function will still be called with two arguments:
+
+1-st argument `format`: memory address to read format string from;<br>
+2-nd argument `offset`: memory address to read the read of arguments from.
+
+To acquire actual values `A`, `B`, and `C`, implementation will then need to gain access to liner memory
+and read arguments at following locations:
+
+Variable `A` at address `offset`;<br>
+Variable `B` at address `offset + 8`;<br>
+Variable `C` at address `offset + 16`;
 
 When passing arguments, all integer values are converted to `long`, and all float values to `double`.
-
-Note that if passing a string as one of the arguments (as would be the case with an actual `printf` implementation),
-value stored in memory would _itself_ be a memory address of the string.
 
 There is a sample `node.js` runtime implementation of `printf` 
 [here](https://github.com/kign/c4wa/blob/master/etc/wasm-printf.js), which you can re-use. 
@@ -613,16 +668,6 @@ const int x = N + 1;         // OK, `x` can no longer be assigned to
 const int x;                 // invalid
 void main(const char * []);  // invalid 
 ```
-
-## C Preprocessor
-
-While preprocessor is not part of `c4wa`, it can optionally run your code through external preprocessor
-if available on the host, with `-P` command line option. Any command line option which begins with `-D` 
-will be directly passed to the preprocessor (or ignored if `-P` isn't present). `-DC4WA` is always added;
-use `-Ph` for the full list of predefined symbols.
-
-`c4wa` is fully aware of so-called "line directives" inserted by a preprocessor and will use 
-proper line numbers when reporting syntax errors.
 
 ## Cross-compiling with C
 

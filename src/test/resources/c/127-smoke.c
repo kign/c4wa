@@ -1,15 +1,5 @@
-#ifdef C4WA
-void printf(char *, ...);
-
-#define va_list char*
-#define va_start(__va_list, __ignore) __va_list=__offset-8
-#define va_arg(__va_list, type) __va_list+=8,*(type *)__va_list
-#define va_end(__va_list)
-
-#else
 #include <stdio.h>
 #include <stdarg.h>
-#endif
 
 // example from: https://www.cprogramming.com/tutorial/c/lesson17.html
 

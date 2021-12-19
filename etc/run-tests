@@ -288,7 +288,7 @@ async function run_c_file(cfile) {
         } else if (f)
             libs.push("-l" + x);
     }
-    res = spawnSync(compile, [cfile, '-o', wat].concat(libs).concat(needsPP? ['-P']: []), {stdio: 'inherit'});
+    res = spawnSync(compile, [cfile, '-o', wat].concat(libs), {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ c4wa compilation failed, not proceeding");

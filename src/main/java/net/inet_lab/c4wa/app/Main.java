@@ -11,7 +11,6 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -48,19 +47,21 @@ public class Main {
     public static void main(String[] args) throws IOException {
         Properties prop = defaultProperties();
         String appName = prop.getProperty("appName");
+        String ppCmd = prop.getProperty("preprocessor.command");
 
         List<String> ppOptions = new ArrayList<>();
         Map<String, String> parsedArgs = new HashMap<>();
         List<String> fileArgs = new ArrayList<>();
         List<String> builtin_libs = new ArrayList<>();
 
-        addPreprocessorSymbolsFromProperties(ppOptions, prop);
-
         String error = parseCommandLineArgs(args,
                 List.of(new Option('o', "output", true),
-                        new Option('h', "help"),
-                        new Option('P', null)),
+                        new Option('h', "help")),
                 parsedArgs, fileArgs, prop, ppOptions, builtin_libs);
+
+        final boolean forcePP = !ppOptions.isEmpty();
+
+        addPreprocessorSymbolsFromProperties(ppOptions, prop);
 
         if (error != null) {
             System.err.println("Error parsing command line: " + error);
@@ -69,12 +70,7 @@ public class Main {
 
         String usage = "Usage: " + appName + " [OPTIONS] <FILE.c> [<FILE_2.c> .... <FILE_N.c>]";
         if (parsedArgs.containsKey("help")) {
-            if (parsedArgs.containsKey("P")) {
-                for (String x: ppOptions)
-                    System.out.println(x);
-            }
-            else
-                printUsage(prop, usage);
+            printUsage(prop, usage);
             System.exit(0);
         }
 
@@ -82,8 +78,6 @@ public class Main {
             System.err.println(usage);
             System.exit(1);
         }
-
-        final boolean usePP = parsedArgs.containsKey("P");
 
         String output =
                 parsedArgs.containsKey("output") ? parsedArgs.get("output") :
@@ -99,7 +93,9 @@ public class Main {
 
         ModuleEnv moduleEnv = new ModuleEnv(prop);
         String wat = null;
+        Pattern ppp = Pattern.compile("^#\\s*(define|if|undef|include)");
         final int n_units = fileArgs.size() + builtin_libs.size();
+
         for (int iarg = 0; iarg < n_units; iarg ++) {
             List<String> programLines;
             String fileName;
@@ -111,11 +107,15 @@ public class Main {
                     System.exit(1);
                 }
 
-                programLines = usePP
-                        ? runFileThroughCPreprocessor(fileName, ppOptions)
-                        : Files.lines(Paths.get(fileName), StandardCharsets.UTF_8).collect(Collectors.toUnmodifiableList());
+                if (forcePP)
+                    programLines = runFileThroughCPreprocessor(ppCmd, fileName, ppOptions);
+                else {
+                    programLines = Files.lines(Paths.get(fileName), StandardCharsets.UTF_8).collect(Collectors.toUnmodifiableList());
+                    if (programLines.stream().anyMatch(line -> ppp.matcher(line).find()))
+                        programLines = runFileThroughCPreprocessor(ppCmd, fileName, ppOptions);
+                }
 
-                if (programLines.size() == 0) {
+                if (programLines.isEmpty()) {
                     System.err.println("file '" + fileName + "': no text, could be preprocessor error");
                     System.exit(1);
                 }
@@ -133,9 +133,6 @@ public class Main {
 
             String programText = String.join("\n", programLines);
 
-            if (!usePP && hasPreprocessorDirectives(programText))
-                System.err.println("WARNING: file '" + fileName + "' contains preprocessor directives, use -P option");
-
             try {
                 ParseTree tree = buildParseTree(programText);
                 ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
@@ -148,7 +145,7 @@ public class Main {
                     System.err.println(err.msg);
                 else {
                     String realName = fileName;
-                    if (usePP && iarg < fileArgs.size() || programLines.get(0).charAt(0) == '#') {
+                    if (programLines.get(0).charAt(0) == '#') {
                         err.locate(programLines);
                         realName = err.fileName;
                         lineno = err.lineno;
@@ -209,7 +206,6 @@ public class Main {
 
     private static Properties defaultProperties () throws IOException {
         Properties prop = new Properties();
-//        prop.load(Main.class.getClassLoader().getResourceAsStream("gradle.properties"));
         prop.load(loader.getResourceAsStream("gradle.properties"));
 
         return prop;
@@ -231,12 +227,11 @@ public class Main {
                 "\n" +
                 "Options are: \n" +
                 "\n" +
-                " -P              invoke C preprocessor via GCC (use -Ph to print predefined symbols)\n" +
-                " -D<name>=value  when option -P is used, pass definition to C preprocessor\n" +
-                " -X<name>=value  define compiler property (see below)\n" +
+                " -D<name>=value  pass definition to C preprocessor\n" +
+                " -X<name>=value  override compiler property (see below)\n" +
                 " -l<name>        include built-in library <name> (use -lh to list available libraries)\n" +
-                " -o, --output <FILE>  specify output files, either .wat or .wasm (or - for stdout)\n" +
-                " -k, --keep      when compiling to WASM, keep intermediate WAT file\n" +
+                " -o, --output <FILE>  specify output WAT file (or - for stdout)\n" +
+//                " -k, --keep      when compiling to WASM, keep intermediate WAT file\n" +
                 " -h, --help      this help screen\n" +
                 "\n" +
                 "Compiler properties:\n" +
@@ -335,12 +330,14 @@ public class Main {
         return null;
     }
 
-    private static List<String> runFileThroughCPreprocessor(String fileName, List<String> ppOptions) throws IOException {
+    private static List<String> runFileThroughCPreprocessor(String ppCmd, String fileName, List<String> ppOptions) throws IOException {
         // https://gcc.gnu.org/onlinedocs/gcc/Preprocessor-Options.html
         // -E invokes preprocessor
         // -P inhibits line markers [no longer needed]
         // -C preserves comments
-        String command = "gcc -E -C " + String.join(" ", ppOptions) + " " + fileName;
+
+        String include = getIncludePath();
+        String command = ppCmd + " " + String.join(" ", ppOptions) + " -I" + include + " " + fileName;
         Process process = Runtime.getRuntime().exec(command);
         List<String> output = new BufferedReader(new InputStreamReader(process.getInputStream()))
                 .lines().collect(Collectors.toUnmodifiableList());
@@ -361,13 +358,11 @@ public class Main {
         FileWriter w = new FileWriter(tempFile);
         w.write(src);
         w.close();
-        return runFileThroughCPreprocessor(tempFile.getAbsolutePath(), ppOptions);
-    }
 
-    private static boolean hasPreprocessorDirectives(String src) {
-        Pattern ppp = Pattern.compile("^#define", Pattern.MULTILINE);
-        Matcher m = ppp.matcher(src);
-        return m.find();
+        Properties prop = defaultProperties();
+        String ppCmd = prop.getProperty("preprocessor.command");
+
+        return runFileThroughCPreprocessor(ppCmd, tempFile.getAbsolutePath(), ppOptions);
     }
 
     static private class ThrowingErrorListener extends BaseErrorListener {
@@ -397,6 +392,28 @@ public class Main {
             throw new RuntimeException("Syntax errors were detected; this should never happen, as we throw exception of 1-st error");
 
         return tree;
+    }
+
+    private static String getIncludePath() {
+        URL testURL = Main.class.getClassLoader().getResource("gradle.properties");
+        if (testURL == null)
+            throw new RuntimeException("testURL = null");
+
+        String protocol = testURL.getProtocol();
+
+        if (protocol.equals("file")) {
+            Path include = Paths.get(Paths.get(testURL.getPath()).getParent().toString(), "..", "..", "..", "src", "dist", "include").normalize();
+            return include.toString();
+        }
+
+        else if(protocol.equals("jar")) {
+            String jarPath = testURL.getPath().substring(5, testURL.getPath().indexOf("!")); //strip out only the JAR file
+            Path include = Paths.get(Paths.get(jarPath).getParent().toString(), "..", "include").normalize();
+            return include.toString();
+        }
+
+        else
+            throw new RuntimeException("Unknown protocol " + protocol);
     }
 
     private static String[] getResourceListing(Class<?> clazz, String path) throws IOException, URISyntaxException {

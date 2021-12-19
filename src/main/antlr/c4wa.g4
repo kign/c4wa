@@ -51,7 +51,6 @@ block : composite_block | element;
 element
     : ';'                                   # element_empty
     | statement ';'                         # element_statement
-//    | ASM                                   # element_asm
     | DO block WHILE '(' expression ')' ';' # element_do_while
     | FOR '(' pre=statement? ';' expression? ';' post=statement? ')' block  # element_for
     | IF '(' expression ')' (BREAK|CONTINUE) ';' # element_break_continue_if
@@ -200,21 +199,15 @@ EXTERN :  'extern';
 STATIC :  'static';
 CONST  :  'const';
 DO     :  'do';
-//WHILE  :  'while';
 FOR    :  'for';
 BREAK  :  'break';
 CONTINUE : 'continue';
-//IF     :  'if';
-//ELSE   :  'else';
 DOUBLE :  'double';
 FLOAT  :  'float';
 VOID   :  'void';
 SIZEOF :  'sizeof';
 
 ID     :  [a-zA-Z_][a-zA-Z0-9_]*;
-//ASM    :  'asm' [ \t\n\r]* '{' .*? '}';
-
-//CONSTANT : Constant;
 
 STRING
     :   '"' SCharSequence? '"'

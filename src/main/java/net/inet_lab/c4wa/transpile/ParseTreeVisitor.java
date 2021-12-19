@@ -498,25 +498,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         return new FunctionDecl(variableDecl.name, variableDecl.type, params,
                             ctx.ELLIPSIS() != null, storage);
-/*
-
-        boolean anytype = false;
-
-        if (storage == FunctionDecl.SType.IMPORTED) {
-            anytype = params.length == 0;
-            if (params.length == 1 && params[0] == null) // no_arg_func(void)
-                params = new CType[0];
-        }
-
-        if (Arrays.stream(params).anyMatch(Objects::isNull))
-            throw fail(ctx, "function_decl", "can't have void argument (unless it's the only one)");
-
-
-        return anytype
-                ? new FunctionDecl(variableDecl.name, variableDecl.type, null, true, storage)
-                : new FunctionDecl(variableDecl.name, variableDecl.type, params, false, storage)
-                ;
-*/
     }
 
     @Override
@@ -879,7 +860,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "function call", "Function '" + fname + "' not defined or declared");
         decl.used = true;
 
-        if (decl.params != null && Arrays.stream(decl.params).anyMatch(Objects::isNull))
+        if (Arrays.stream(decl.params).anyMatch(Objects::isNull))
             throw fail(ctx, "function_call", "void parameters aren't allowed (function '" + fname + "')");
 
         functionEnv.calls.add(fname);
@@ -887,92 +868,60 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         Expression[] call_args;
         Instruction func_call_void = null;
         Expression func_call_with_return = null;
-        if (false) {
-            if (decl.returnType != null)
-                throw fail(ctx, "function call", "'anytype' function with return value isn;t supported yet");
 
+        if (!decl.vararg && decl.params.length != args.expressions.length)
+            throw fail(ctx, "function call", "Function '" + fname +
+                    "' expects " + decl.params.length + " arguments, provided " + args.expressions.length);
+        if (decl.vararg && decl.params.length > args.expressions.length)
+            throw fail(ctx, "function call", "Function '" + fname +
+                    "' expects at least " + decl.params.length + " arguments, provided " + args.expressions.length);
+
+        call_args = new Expression[decl.params.length + (decl.vararg? 1: 0)];
+        int idx;
+        for(idx = 0; idx < decl.params.length; idx ++) {
+            if (!decl.params[idx].isValidRHS(args.expressions[idx].type))
+                throw fail(ctx, "function call", "Argument number " + (idx + 1) +
+                        " of function '" + fname + "' expects type '" + decl.params[idx] +
+                        "', received type '" + args.expressions[idx].type + "'");
+
+            call_args[idx] = args.expressions[idx].expression;
+        }
+
+        if (decl.vararg) {
             List<Instruction> func_call_elms = new ArrayList<>();
             Expression getStack = new GetGlobal(NumType.I32, ModuleEnv.STACK_VAR_NAME);
             functionEnv.markAsUsingStack();
 
-            for (int idx = 0; idx < args.expressions.length; idx ++) {
+            call_args[idx] = getStack;
+            int stack_increment = 0;
+            for (; idx < args.expressions.length; idx++) {
                 var arg = args.expressions[idx];
 
                 if (arg.type.is_32() || arg.type.is_ptr()) {
-                    NumType t64 = arg.type.is_int()|| arg.type.is_ptr()? NumType.I64 : NumType.F64;
+                    NumType t64 = arg.type.is_int() || arg.type.is_ptr() ? NumType.I64 : NumType.F64;
                     func_call_elms.add(new Store(t64, getStack,
                             GenericCast.cast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.expression)));
-                }
-                else if (arg.type.is_struct())
+                } else if (arg.type.is_struct())
                     func_call_elms.add(new Store(NumType.I32, getStack, arg.expression));
                 else
                     func_call_elms.add(new Store(arg.type.asNumType(), getStack, arg.expression));
-                if (idx < args.expressions.length - 1)
+                if (idx < args.expressions.length - 1) {
                     func_call_elms.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Add(NumType.I32, getStack, new Const(8))));
-                else
-                    func_call_elms.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Sub(NumType.I32, getStack, new Const(8 * idx))));
+                    stack_increment += 8;
+                }
+                else if (stack_increment > 0)
+                    func_call_elms.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Sub(NumType.I32, getStack, new Const(stack_increment))));
             }
-
-            call_args = new Expression[2];
-            call_args[0] = getStack;
-            call_args[1] = new Const(args.expressions.length);
-            func_call_elms.add(new Call(fname, call_args));
-            func_call_void = new DelayedList(func_call_elms);
-        }
-        else {
-            if (!decl.vararg && decl.params.length != args.expressions.length)
-                throw fail(ctx, "function call", "Function '" + fname +
-                        "' expects " + decl.params.length + " arguments, provided " + args.expressions.length);
-            if (decl.vararg && decl.params.length > args.expressions.length)
-                throw fail(ctx, "function call", "Function '" + fname +
-                        "' expects at least " + decl.params.length + " arguments, provided " + args.expressions.length);
-
-            call_args = new Expression[decl.params.length + (decl.vararg? 1: 0)];
-            int idx;
-            for(idx = 0; idx < decl.params.length; idx ++) {
-                if (!decl.params[idx].isValidRHS(args.expressions[idx].type))
-                    throw fail(ctx, "function call", "Argument number " + (idx + 1) +
-                            " of function '" + fname + "' expects type '" + decl.params[idx] +
-                            "', received type '" + args.expressions[idx].type + "'");
-
-                call_args[idx] = args.expressions[idx].expression;
+            if (decl.returnType == null) {
+                func_call_elms.add(new Call(fname, call_args));
+                return new InstructionList(func_call_elms.toArray(Instruction[]::new));
             }
-
-            if (decl.vararg) {
-                List<Instruction> func_call_elms = new ArrayList<>();
-                Expression getStack = new GetGlobal(NumType.I32, ModuleEnv.STACK_VAR_NAME);
-                functionEnv.markAsUsingStack();
-
-                call_args[idx] = getStack;
-                int stack_increment = 0;
-                for (; idx < args.expressions.length; idx++) {
-                    var arg = args.expressions[idx];
-
-                    if (arg.type.is_32() || arg.type.is_ptr()) {
-                        NumType t64 = arg.type.is_int() || arg.type.is_ptr() ? NumType.I64 : NumType.F64;
-                        func_call_elms.add(new Store(t64, getStack,
-                                GenericCast.cast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.expression)));
-                    } else if (arg.type.is_struct())
-                        func_call_elms.add(new Store(NumType.I32, getStack, arg.expression));
-                    else
-                        func_call_elms.add(new Store(arg.type.asNumType(), getStack, arg.expression));
-                    if (idx < args.expressions.length - 1) {
-                        func_call_elms.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Add(NumType.I32, getStack, new Const(8))));
-                        stack_increment += 8;
-                    }
-                    else if (stack_increment > 0)
-                        func_call_elms.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Sub(NumType.I32, getStack, new Const(stack_increment))));
-                }
-                if (decl.returnType == null) {
-                    func_call_elms.add(new Call(fname, call_args));
-                    return new InstructionList(func_call_elms.toArray(Instruction[]::new));
-                }
-                else {
-                    return new OneExpression(new BlockExp(null, decl.returnType.asNumType(),
-                            func_call_elms.toArray(Instruction[]::new), new CallExp(fname, decl.returnType.asNumType(), call_args)), decl.returnType);
-                }
+            else {
+                return new OneExpression(new BlockExp(null, decl.returnType.asNumType(),
+                        func_call_elms.toArray(Instruction[]::new), new CallExp(fname, decl.returnType.asNumType(), call_args)), decl.returnType);
             }
         }
+
 
         if ("memset".equals(fname))
             func_call_void = new MemoryFill(call_args[0], call_args[1], call_args[2]);
@@ -1223,26 +1172,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 decl.isArray = localVar.size != null;
                 functionEnv.markAsUsingStack();
             }
-
-/*
-            if (type.is_struct() || localVar.size != null) {
-                VariableDecl decl = functionEnv.getVariableDecl(varId);
-                decl.mutable = false;
-                decl.inStack = true;
-                decl.isArray = localVar.size != null;
-
-                GetGlobal stack = new GetGlobal(NumType.I32, ModuleEnv.STACK_VAR_NAME);
-                res.add(new SetLocal(localVar.name, stack));
-                res.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Add(NumType.I32, stack,
-                        localVar.size == null
-                                ? new Const(type.size())
-                                : new Mul(NumType.I32, localVar.size, new Const(type.size())))));
-
-                functionEnv.markAsUsingStack();
-            }
-            else
-                res.add(new DelayedLocalDefinition(localVar.name));
-*/
         }
 
         return new OneInstruction(new DelayedList(res));

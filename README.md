@@ -34,8 +34,9 @@ which is trying to be similar to what a human programmer would have written when
 `c4wa` is not a full C implementation and isn't trying to be one. Still, most of the typical day-to-day
 coding targeting `c4wa` isn't much more complicated than coding in standard C. 
 It supports loops, conditionals, block scope of
-variables, all of C operators and primitive types, `struct`s, arrays, pointers and dynamic memory allocation. 
-It can also optionally apply external C preprocessor to your code before parsing.
+variables, all of C operators and primitive types, `struct`s, arrays, pointer, variable arguments
+and dynamic memory allocation. 
+It can also apply external C preprocessor to your code before parsing.
 
 ## Installation
 
