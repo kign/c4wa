@@ -1286,12 +1286,15 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public OneExpression visitExpression_struct_member(c4waParser.Expression_struct_memberContext ctx) {
         OneExpression ptr = (OneExpression) visit(ctx.expression());
 
-        if (ptr.type.deref() == null)
+        CType type = ptr.type.deref();
+        if (type == null)
             throw fail(ctx, "struct_member", "'" + ptr.type + "' is not a pointer");
-        if (!ptr.type.deref().is_struct())
-            throw fail(ctx, "struct_member", "'" + ptr.type.deref() + "' is not a defined struct");
+        if (!type.is_struct())
+            throw fail(ctx, "struct_member", "'" + ptr.type.deref() + "' is not a struct");
+        if (type.is_undefined_struct())
+            type = resolveStruct(ctx, type);
 
-        return rhs_struct_member(ctx, (Struct) ptr.type.deref(), ctx.ID().getText(), ptr.expression);
+        return rhs_struct_member(ctx, (Struct) type, ctx.ID().getText(), ptr.expression);
     }
 
     @Override

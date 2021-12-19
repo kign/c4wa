@@ -17,14 +17,14 @@
   (global $__mm_start (mut i32) (i32.const 0))
   (global $__mm_stat_allocated (mut i32) (i32.const 0))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "A/R %d/%d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22g->level == w->level - 1\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22g->size == w->size/N\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22g->x0 == w->x0 + g->size * x\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22g->y0 == w->y0 + g->size * y\22 @ line %d\0A\00set_cell(%d, %d, %d)\0A\00Point %d, %d is outside the world %d, %d, %d, %d\0A\00xmin = %d, xmax = %d, ymin = %d, ymax = %d\0A\00Level: %d => %d, Size: %d => %d\0A\00Converged to original box @ %d, %d (size %d)\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22w->x0 + xp*wsize == world->x0\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22w->y0 + yp*wsize == world->y0\22 @ line %d\0A\00w->x0 = %d, xp = %d, wsize = %d, w->y0 = %d, yp = %d\0A\00Entering (%d,%d) into <%d,%d,%d,%d>\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22w->x0 <= x && x < w->x0 + w->size && w->y0 <= y && y < w->y0 + w->size\22 @ line %d\0A\00Assigned <%d,%d,%d>[%d] = %d\0A\00Going down to level %d, xp = %d, yp = %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22t1 == w->level\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22t2 == w->x0\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22t3 == w->y0\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22size == w->size\22 @ line %d\0A\00Done!\0A\00Trying to locate (%d,%d) in <%d,%d,%d,%d>\0A\00Got to the bottom <%d,%d,%d>[%d]\0A\00X\00+\00.\00\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22w\22 @ line %d\0A\00..............x......xxx.......x.............\00\E2\80\BC\EF\B8\8F ASSERTION: \22sX * sY == strlen(initial_pos)\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22get_cell(x, y, 0) == pos_0[y*X+x]\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22stat_f.count == stat_i.count\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22stat_f.hash == stat_i.hash\22 @ line %d\0A\00Cycle detected at iter = %d\0A\00(%d,%d): \E2\91\A9=%d, \E2\88\9E=%d\0A\00Consistency broke down on iteration %d\0A\00Showing window %d <= x <= %d, %d <= y <= %d\0A\00\E2\91\A9 FINITE\0A\00\E2\88\9E INFINITE\0A\00Successfully completed %d iterations\0A\00")
+  (data (i32.const 1024) "A/R %d/%d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22g->level == w->level - 1\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22g->size == w->size/N\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22g->x0 == w->x0 + g->size * x\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22g->y0 == w->y0 + g->size * y\22 @ line %d\0A\00set_cell(%d, %d, %d)\0A\00Point %d, %d is outside the world %d, %d, %d, %d\0A\00xmin = %d, xmax = %d, ymin = %d, ymax = %d\0A\00Level: %d => %d, Size: %d => %d\0A\00Converged to original box @ %d, %d (size %d)\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22w->x0 + xp*wsize == world->x0\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22w->y0 + yp*wsize == world->y0\22 @ line %d\0A\00w->x0 = %d, xp = %d, wsize = %d, w->y0 = %d, yp = %d\0A\00Entering (%d,%d) into <%d,%d,%d,%d>\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22w->x0 <= x && x < w->x0 + w->size && w->y0 <= y && y < w->y0 + w->size\22 @ line %d\0A\00Assigned <%d,%d,%d>[%d] = %d\0A\00Going down to level %d, xp = %d, yp = %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22t1 == w->level\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22t2 == w->x0\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22t3 == w->y0\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22size == w->size\22 @ line %d\0A\00Done!\0A\00Trying to locate (%d,%d) in <%d,%d,%d,%d>\0A\00Got to the bottom <%d,%d,%d>[%d]\0A\00X\00+\00.\00\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22w\22 @ line %d\0A\00..............x......xxx.......x.............\00\E2\80\BC\EF\B8\8F ASSERTION: \22sX * sY == strlen(initial_pos)\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22get_cell(x, y, 0) == pos_0[y*X+x]\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22stat_f.count == stat_i.count\22 @ line %d\0A\00\E2\80\BC\EF\B8\8F ASSERTION: \22stat_f.hash == stat_i.hash\22 @ line %d\0A\00Cycle detected at iter = %d\0A\00(%d,%d): \E2\91\A9=%d, \E2\88\9E=%d\0A\00Consistency broke down on iteration %d\0A\00Showing window %d <= x <= %d, %d <= y <= %d\0A\00\E2\91\A9 FINITE\0A\00\E2\88\9E INFINITE\0A\00Successfully completed %d iterations\0A\00A/R/C: %d/%d/%d; CAP: %d/%d\0A\00")
   (func $alloc_new_box (param $level i32) (param $x0 i32) (param $y0 i32) (result i32)
     (local $box i32)
     (local $size i32)
     (local $k i32)
     (global.set $mm_allocated (i32.add (global.get $mm_allocated) (i32.const 1)))
-    (set_local $box (call $malloc (select (i32.const 66) (i32.const 116) (i32.eqz (get_local $level)))))
-    (memory.fill (get_local $box) (i32.const 0) (select (i32.const 66) (i32.const 116) (i32.eqz (get_local $level))))
+    (set_local $box (call $malloc (select (i32.const 70) (i32.const 120) (i32.eqz (get_local $level)))))
+    (memory.fill (get_local $box) (i32.const 0) (select (i32.const 70) (i32.const 120) (i32.eqz (get_local $level))))
     (set_local $size (i32.const 5))
     (block $@block_1_break
       (loop $@block_1_continue
@@ -37,7 +37,7 @@
     (i32.store (i32.add (get_local $box) (i32.const 8)) (get_local $y0))
     (i32.store (i32.add (get_local $box) (i32.const 12)) (get_local $size))
     (get_local $box))
-  (func $set_cell (param $x i32) (param $y i32) (param $val i32) (param $plane i32)
+  (func $set_cell (param $x i32) (param $y i32) (param $val i32) (param $plane i32) (param $age i32)
     (local $@stack_entry i32)
     (local $w i32)
     (local $t i32)
@@ -74,7 +74,7 @@
             (global.set $@stack (get_local $@stack_entry))
             (return)))
         (set_local $box (call $alloc_new_box (i32.const 0) (i32.sub (get_local $x) (i32.const 2)) (i32.sub (get_local $y) (i32.const 2))))
-        (i32.store8 (i32.add (i32.add (get_local $box) (i32.const 16)) (i32.add (i32.add (i32.mul (i32.const 25) (get_local $plane)) (i32.mul (i32.const 5) (i32.sub (get_local $y) (i32.load (i32.add (get_local $box) (i32.const 8)))))) (i32.sub (get_local $x) (i32.load (i32.add (get_local $box) (i32.const 4)))))) (get_local $val))
+        (i32.store8 (i32.add (i32.add (get_local $box) (i32.const 20)) (i32.add (i32.add (i32.mul (i32.const 25) (get_local $plane)) (i32.mul (i32.const 5) (i32.sub (get_local $y) (i32.load (i32.add (get_local $box) (i32.const 8)))))) (i32.sub (get_local $x) (i32.load (i32.add (get_local $box) (i32.const 4)))))) (get_local $val))
         (global.set $world (get_local $box))
         (global.set $@stack (get_local $@stack_entry))
         (return)))
@@ -210,7 +210,7 @@
                     (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
                     (call $printf (global.get $@stack) (i32.const 2))
                     (unreachable)))
-                (i32.store (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (i32.add (i32.mul (i32.const 5) (get_local $yp)) (get_local $xp)) (i32.const 4))) (global.get $world))
+                (i32.store (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (i32.add (i32.mul (i32.const 5) (get_local $yp)) (get_local $xp)) (i32.const 4))) (global.get $world))
                 (br $@block_3_6_break)))
             (set_local $new_level (i32.sub (get_local $new_level) (i32.const 1)))
             (if (get_local $verbose)
@@ -228,8 +228,8 @@
                 (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $yp)))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 40)))
                 (call $printf (global.get $@stack) (i32.const 6))))
-            (i32.store (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (i32.add (i32.mul (i32.const 5) (get_local $yp)) (get_local $xp)) (i32.const 4))) (call $alloc_new_box (get_local $new_level) (i32.add (i32.load (i32.add (get_local $w) (i32.const 4))) (i32.mul (get_local $xp) (get_local $wsize))) (i32.add (i32.load (i32.add (get_local $w) (i32.const 8))) (i32.mul (get_local $yp) (get_local $wsize)))))
-            (set_local $w (i32.load (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (i32.add (i32.mul (i32.const 5) (get_local $yp)) (get_local $xp)) (i32.const 4)))))
+            (i32.store (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (i32.add (i32.mul (i32.const 5) (get_local $yp)) (get_local $xp)) (i32.const 4))) (call $alloc_new_box (get_local $new_level) (i32.add (i32.load (i32.add (get_local $w) (i32.const 4))) (i32.mul (get_local $xp) (get_local $wsize))) (i32.add (i32.load (i32.add (get_local $w) (i32.const 8))) (i32.mul (get_local $yp) (get_local $wsize)))))
+            (set_local $w (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (i32.add (i32.mul (i32.const 5) (get_local $yp)) (get_local $xp)) (i32.const 4)))))
             (set_local $wsize (i32.div_s (get_local $wsize) (i32.const 5)))
             (br $@block_3_6_continue)))
         (global.set $world (get_local $new_world))))
@@ -261,6 +261,9 @@
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
+        (if (get_local $val)
+          (then
+            (i32.store (i32.add (get_local $w) (i32.const 16)) (get_local $age))))
         (if (i32.eqz (i32.load (get_local $w)))
           (then
             (set_local $xp (i32.sub (get_local $x) (i32.load (i32.add (get_local $w) (i32.const 4)))))
@@ -280,7 +283,7 @@
                 (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $val)))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 40)))
                 (call $printf (global.get $@stack) (i32.const 6))))
-            (i32.store8 (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.add (i32.add (i32.mul (i32.const 25) (get_local $plane)) (i32.mul (i32.const 5) (get_local $yp))) (get_local $xp))) (get_local $val))
+            (i32.store8 (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.add (i32.add (i32.mul (i32.const 25) (get_local $plane)) (i32.mul (i32.const 5) (get_local $yp))) (get_local $xp))) (get_local $val))
             (br $@block_4_break))
           (else
             (set_local $box (i32.div_s (i32.load (i32.add (get_local $w) (i32.const 12))) (i32.const 5)))
@@ -297,22 +300,22 @@
                 (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $yp)))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 24)))
                 (call $printf (global.get $@stack) (i32.const 4))))
-            (if (i32.eqz (i32.load (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (i32.add (i32.mul (get_local $yp) (i32.const 5)) (get_local $xp)) (i32.const 4)))))
+            (if (i32.eqz (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (i32.add (i32.mul (get_local $yp) (i32.const 5)) (get_local $xp)) (i32.const 4)))))
               (then
                 (if (i32.eqz (get_local $val))
                   (then
                     (global.set $@stack (get_local $@stack_entry))
                     (return)))
-                (i32.store (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (i32.add (i32.mul (get_local $yp) (i32.const 5)) (get_local $xp)) (i32.const 4))) (call $alloc_new_box (i32.sub (i32.load (get_local $w)) (i32.const 1)) (i32.add (i32.load (i32.add (get_local $w) (i32.const 4))) (i32.mul (get_local $xp) (get_local $box))) (i32.add (i32.load (i32.add (get_local $w) (i32.const 8))) (i32.mul (get_local $yp) (get_local $box)))))))
+                (i32.store (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (i32.add (i32.mul (get_local $yp) (i32.const 5)) (get_local $xp)) (i32.const 4))) (call $alloc_new_box (i32.sub (i32.load (get_local $w)) (i32.const 1)) (i32.add (i32.load (i32.add (get_local $w) (i32.const 4))) (i32.mul (get_local $xp) (get_local $box))) (i32.add (i32.load (i32.add (get_local $w) (i32.const 8))) (i32.mul (get_local $yp) (get_local $box)))))))
             (set_local $xmin (i32.sub (i32.load (get_local $w)) (i32.const 1)))
             (set_local $ymin (i32.add (i32.load (i32.add (get_local $w) (i32.const 4))) (i32.mul (get_local $xp) (get_local $box))))
             (set_local $xmax (i32.add (i32.load (i32.add (get_local $w) (i32.const 8))) (i32.mul (get_local $yp) (get_local $box))))
-            (set_local $w (i32.load (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (i32.add (i32.mul (get_local $yp) (i32.const 5)) (get_local $xp)) (i32.const 4)))))
+            (set_local $w (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (i32.add (i32.mul (get_local $yp) (i32.const 5)) (get_local $xp)) (i32.const 4)))))
             (if (i32.ne (get_local $xmin) (i32.load (get_local $w)))
               (then
                 (i64.store (global.get $@stack) (i64.const 1845))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-                (i64.store (global.get $@stack) (i64.const 238))
+                (i64.store (global.get $@stack) (i64.const 239))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
                 (call $printf (global.get $@stack) (i32.const 2))
                 (unreachable)))
@@ -320,7 +323,7 @@
               (then
                 (i64.store (global.get $@stack) (i64.const 1891))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-                (i64.store (global.get $@stack) (i64.const 239))
+                (i64.store (global.get $@stack) (i64.const 240))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
                 (call $printf (global.get $@stack) (i32.const 2))
                 (unreachable)))
@@ -328,7 +331,7 @@
               (then
                 (i64.store (global.get $@stack) (i64.const 1934))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-                (i64.store (global.get $@stack) (i64.const 240))
+                (i64.store (global.get $@stack) (i64.const 241))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
                 (call $printf (global.get $@stack) (i32.const 2))
                 (unreachable)))
@@ -336,7 +339,7 @@
               (then
                 (i64.store (global.get $@stack) (i64.const 1977))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-                (i64.store (global.get $@stack) (i64.const 241))
+                (i64.store (global.get $@stack) (i64.const 242))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
                 (call $printf (global.get $@stack) (i32.const 2))
                 (unreachable)))))
@@ -386,7 +389,7 @@
         (then
           (i64.store (global.get $@stack) (i64.const 1671))
           (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-          (i64.store (global.get $@stack) (i64.const 267))
+          (i64.store (global.get $@stack) (i64.const 268))
           (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
           (call $printf (global.get $@stack) (i32.const 2))
           (unreachable)))
@@ -408,7 +411,7 @@
               (global.set $@stack (i32.sub (global.get $@stack) (i32.const 32)))
               (call $printf (global.get $@stack) (i32.const 5))))
           (global.set $@stack (get_local $@stack_entry))
-          (return (i32.load8_s (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.add (i32.add (i32.mul (i32.const 25) (get_local $plane)) (i32.mul (i32.const 5) (get_local $yp))) (get_local $xp))))))
+          (return (i32.load8_s (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.add (i32.add (i32.mul (i32.const 25) (get_local $plane)) (i32.mul (i32.const 5) (get_local $yp))) (get_local $xp))))))
         (else
           (set_local $size (i32.div_s (i32.load (i32.add (get_local $w) (i32.const 12))) (i32.const 5)))
           (set_local $xp (i32.div_s (i32.sub (get_local $x) (i32.load (i32.add (get_local $w) (i32.const 4)))) (get_local $size)))
@@ -424,7 +427,7 @@
               (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $yp)))
               (global.set $@stack (i32.sub (global.get $@stack) (i32.const 24)))
               (call $printf (global.get $@stack) (i32.const 4))))
-          (set_local $w (i32.load (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (i32.add (i32.mul (get_local $yp) (i32.const 5)) (get_local $xp)) (i32.const 4)))))))
+          (set_local $w (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (i32.add (i32.mul (get_local $yp) (i32.const 5)) (get_local $xp)) (i32.const 4)))))))
       (br_if $@block_2_continue (get_local $w)))
     (global.set $@stack (get_local $@stack_entry))
     (i32.const 0))
@@ -628,9 +631,9 @@
           (set_local $idx (i32.const 0))
           (loop $@block_1_1_continue
             (br_if $@block_1_1_break (i32.ge_s (get_local $idx) (i32.const 25)))
-            (if (i32.load (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (get_local $idx) (i32.const 4))))
+            (if (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (get_local $idx) (i32.const 4))))
               (then
-                (call $life_prepare_box (i32.load (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (get_local $idx) (i32.const 4)))) (get_local $stat))))
+                (call $life_prepare_box (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (get_local $idx) (i32.const 4)))) (get_local $stat))))
             (set_local $idx (i32.add (get_local $idx) (i32.const 1)))
             (br $@block_1_1_continue))))
       (else
@@ -638,7 +641,7 @@
         (block $@block_2_1_break
           (loop $@block_2_1_continue
             (br_if $@block_2_1_break (i32.ge_s (get_local $idx@block_2_1) (i32.const 25)))
-            (if (i32.eq (i32.load8_s (i32.add (i32.add (get_local $w) (i32.const 16)) (get_local $idx@block_2_1))) (i32.const 1))
+            (if (i32.eq (i32.load8_s (i32.add (i32.add (get_local $w) (i32.const 20)) (get_local $idx@block_2_1))) (i32.const 1))
               (then
                 (set_local $y (i32.div_s (get_local $idx@block_2_1) (i32.const 5)))
                 (set_local $x (i32.rem_s (get_local $idx@block_2_1) (i32.const 5)))
@@ -657,20 +660,20 @@
                     (if (block $@block_2_1_1_1_1_break (result i32) (drop (br_if $@block_2_1_1_1_1_break (i32.const 0) (i32.gt_s (i32.const 0) (get_local $vx)))) (drop (br_if $@block_2_1_1_1_1_break (i32.const 0) (i32.ge_s (get_local $vx) (i32.const 5)))) (drop (br_if $@block_2_1_1_1_1_break (i32.const 0) (i32.gt_s (i32.const 0) (get_local $vy)))) (drop (br_if $@block_2_1_1_1_1_break (i32.const 0) (i32.ge_s (get_local $vy) (i32.const 5)))) (i32.const 1))
                       (then
                         (set_local $ind (i32.add (i32.mul (get_local $vy) (i32.const 5)) (get_local $vx)))
-                        (if (i32.eqz (i32.load8_s (i32.add (i32.add (get_local $w) (i32.const 16)) (get_local $ind))))
+                        (if (i32.eqz (i32.load8_s (i32.add (i32.add (get_local $w) (i32.const 20)) (get_local $ind))))
                           (then
-                            (i32.store8 (i32.add (i32.add (get_local $w) (i32.const 16)) (get_local $ind)) (i32.const 2)))))
+                            (i32.store8 (i32.add (i32.add (get_local $w) (i32.const 20)) (get_local $ind)) (i32.const 2)))))
                       (else
                         (if (i32.eqz (call $get_cell (i32.add (get_local $vx) (i32.load (i32.add (get_local $w) (i32.const 4)))) (i32.add (get_local $vy) (i32.load (i32.add (get_local $w) (i32.const 8)))) (i32.const 0)))
                           (then
-                            (call $set_cell (i32.add (get_local $vx) (i32.load (i32.add (get_local $w) (i32.const 4)))) (i32.add (get_local $vy) (i32.load (i32.add (get_local $w) (i32.const 8)))) (i32.const 2) (i32.const 0))))))
+                            (call $set_cell (i32.add (get_local $vx) (i32.load (i32.add (get_local $w) (i32.const 4)))) (i32.add (get_local $vy) (i32.load (i32.add (get_local $w) (i32.const 8)))) (i32.const 2) (i32.const 0) (i32.const 0))))))
                     (set_local $j (i32.add (get_local $j) (i32.const 1)))
                     (br $@block_2_1_1_1_continue)))))
             (set_local $idx@block_2_1 (i32.add (get_local $idx@block_2_1) (i32.const 1)))
             (br $@block_2_1_continue)))
         (i32.store (get_local $stat) (i32.xor (i32.load (get_local $stat)) (get_local $idx)))
         (i32.store (i32.add (get_local $stat) (i32.const 4)) (i32.add (i32.load (i32.add (get_local $stat) (i32.const 4))) (get_local $cnt))))))
-  (func $life_step_box (param $w i32) (param $dst i32) (param $stat i32)
+  (func $life_step_box (param $w i32) (param $dst i32) (param $age i32) (param $stat i32)
     (local $@stack_entry i32)
     (local $idx i32)
     (local $cnt i32)
@@ -691,7 +694,7 @@
       (then
         (i64.store (global.get $@stack) (i64.const 2116))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.const 457))
+        (i64.store (global.get $@stack) (i64.const 458))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (global.get $@stack) (i32.const 2))
         (unreachable)))
@@ -701,15 +704,25 @@
           (set_local $idx (i32.const 0))
           (loop $@block_2_1_continue
             (br_if $@block_2_1_break (i32.ge_s (get_local $idx) (i32.const 25)))
-            (if (i32.load (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (get_local $idx) (i32.const 4))))
+            (if (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (get_local $idx) (i32.const 4))))
               (then
-                (call $life_step_box (i32.load (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (get_local $idx) (i32.const 4)))) (get_local $dst) (get_local $stat))))
+                (if (i32.ge_s (i32.load (i32.add (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (get_local $idx) (i32.const 4)))) (i32.const 16))) (i32.sub (get_local $age) (i32.const 1)))
+                  (then
+                    (call $life_step_box (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (get_local $idx) (i32.const 4)))) (get_local $dst) (get_local $age) (get_local $stat))
+                    (if (i32.eq (i32.load (i32.add (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (get_local $idx) (i32.const 4)))) (i32.const 16))) (get_local $age))
+                      (then
+                        (i32.store (i32.add (get_local $w) (i32.const 16)) (get_local $age)))))
+                  (else
+                    (if (i32.lt_s (i32.load (i32.add (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (get_local $idx) (i32.const 4)))) (i32.const 16))) (i32.sub (get_local $age) (i32.const 3)))
+                      (then
+                        (call $free (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (get_local $idx) (i32.const 4)))))
+                        (i32.store (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (get_local $idx) (i32.const 4))) (i32.const 0))))))))
             (set_local $idx (i32.add (get_local $idx) (i32.const 1)))
             (br $@block_2_1_continue))))
       (else
         (set_local $idx (i32.const 0))
-        (set_local $start (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (i32.const 25) (i32.sub (i32.const 1) (get_local $dst)))))
-        (set_local $end (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (i32.const 25) (i32.sub (i32.const 2) (get_local $dst)))))
+        (set_local $start (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (i32.const 25) (i32.sub (i32.const 1) (get_local $dst)))))
+        (set_local $end (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (i32.const 25) (i32.sub (i32.const 2) (get_local $dst)))))
         (block $@block_3_1_break
           (set_local $p (get_local $start))
           (loop $@block_3_1_continue
@@ -738,8 +751,11 @@
             (if (i32.or (i32.eq (get_local $n) (i32.const 3)) (i32.and (i32.eq (get_local $n) (i32.const 2)) (i32.eq (i32.load8_s (get_local $p)) (i32.const 1))))
               (then
                 (set_local $cnt (i32.add (get_local $cnt) (i32.const 1)))
+                (if (i32.eq (get_local $cnt) (i32.const 1))
+                  (then
+                    (i32.store (i32.add (get_local $w) (i32.const 16)) (get_local $age))))
                 (set_local $idx (i32.xor (get_local $idx) (i32.add (i32.mul (i32.add (get_local $x) (i32.load (i32.add (get_local $w) (i32.const 4)))) (global.get $rand_x)) (i32.mul (i32.add (get_local $y) (i32.load (i32.add (get_local $w) (i32.const 8)))) (global.get $rand_y)))))
-                (set_local $j (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (i32.const 25) (get_local $dst))))
+                (set_local $j (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (i32.const 25) (get_local $dst))))
                 (i32.store8 (i32.add (get_local $j) (get_local $idx@block_3_1)) (i32.const 1))
                 (block $@block_3_1_2_1_break
                   (set_local $vx (i32.const 0))
@@ -760,7 +776,7 @@
                       (else
                         (if (i32.ne (i32.const 1) (call $get_cell (i32.add (get_local $vy) (i32.load (i32.add (get_local $w) (i32.const 4)))) (i32.add (get_local $vy@block_3_1_2_1) (i32.load (i32.add (get_local $w) (i32.const 8)))) (get_local $dst)))
                           (then
-                            (call $set_cell (i32.add (get_local $vy) (i32.load (i32.add (get_local $w) (i32.const 4)))) (i32.add (get_local $vy@block_3_1_2_1) (i32.load (i32.add (get_local $w) (i32.const 8)))) (i32.const 2) (get_local $dst))))))
+                            (call $set_cell (i32.add (get_local $vy) (i32.load (i32.add (get_local $w) (i32.const 4)))) (i32.add (get_local $vy@block_3_1_2_1) (i32.load (i32.add (get_local $w) (i32.const 8)))) (i32.const 2) (get_local $dst) (get_local $age))))))
                     (set_local $vx (i32.add (get_local $vx) (i32.const 1)))
                     (br $@block_3_1_2_1_continue)))))
             (set_local $p (i32.add (get_local $p) (i32.const 1)))
@@ -776,7 +792,7 @@
       (then
         (i64.store (global.get $@stack) (i64.const 2116))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.const 510))
+        (i64.store (global.get $@stack) (i64.const 523))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (global.get $@stack) (i32.const 2))
         (unreachable)))
@@ -785,13 +801,13 @@
         (block $@block_2_1_break
           (loop $@block_2_1_continue
             (br_if $@block_2_1_break (i32.ge_s (get_local $idx) (i32.const 25)))
-            (if (i32.load (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (get_local $idx) (i32.const 4))))
+            (if (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (get_local $idx) (i32.const 4))))
               (then
-                (call $life_clean_plane (i32.load (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (get_local $idx) (i32.const 4)))) (get_local $dst))))
+                (call $life_clean_plane (i32.load (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (get_local $idx) (i32.const 4)))) (get_local $dst))))
             (set_local $idx (i32.add (get_local $idx) (i32.const 1)))
             (br $@block_2_1_continue))))
       (else
-        (memory.fill (i32.add (i32.add (get_local $w) (i32.const 16)) (i32.mul (i32.const 25) (get_local $dst))) (i32.const 0) (i32.const 25))))
+        (memory.fill (i32.add (i32.add (get_local $w) (i32.const 20)) (i32.mul (i32.const 25) (get_local $dst))) (i32.const 0) (i32.const 25))))
     (global.set $@stack (get_local $@stack_entry)))
   (func $life_prepare (param $stat i32)
     (if (global.get $world)
@@ -799,13 +815,13 @@
         (i32.store (i32.add (get_local $stat) (i32.const 4)) (i32.const 0))
         (i32.store (get_local $stat) (i32.const 0))
         (call $life_prepare_box (global.get $world) (get_local $stat)))))
-  (func $life_step (param $dst i32) (param $stat i32)
+  (func $life_step (param $dst i32) (param $age i32) (param $stat i32)
     (if (global.get $world)
       (then
         (i32.store (i32.add (get_local $stat) (i32.const 4)) (i32.const 0))
         (i32.store (get_local $stat) (i32.const 0))
         (call $life_clean_plane (global.get $world) (get_local $dst))
-        (call $life_step_box (global.get $world) (get_local $dst) (get_local $stat)))))
+        (call $life_step_box (global.get $world) (get_local $dst) (get_local $age) (get_local $stat)))))
   (func $life_infin_read (param $X i32) (param $Y i32) (param $x0 i32) (param $y0 i32) (param $src i32) (param $sX i32) (param $sY i32)
     (local $y i32)
     (local $x i32)
@@ -816,7 +832,7 @@
           (set_local $x (i32.const 0))
           (loop $@block_1_1_continue
             (br_if $@block_1_1_break (i32.ge_s (get_local $x) (get_local $sX)))
-            (call $set_cell (i32.add (get_local $x) (get_local $x0)) (i32.add (get_local $y) (get_local $y0)) (i32.eq (i32.load8_s (i32.add (get_local $src) (i32.add (i32.mul (get_local $y) (get_local $sX)) (get_local $x)))) (i32.const 120)) (i32.const 0))
+            (call $set_cell (i32.add (get_local $x) (get_local $x0)) (i32.add (get_local $y) (get_local $y0)) (i32.eq (i32.load8_s (i32.add (get_local $src) (i32.add (i32.mul (get_local $y) (get_local $sX)) (get_local $x)))) (i32.const 120)) (i32.const 0) (i32.const 0))
             (set_local $x (i32.add (get_local $x) (i32.const 1)))
             (br $@block_1_1_continue)))
         (set_local $y (i32.add (get_local $y) (i32.const 1)))
@@ -875,9 +891,9 @@
     (set_local $@stack_entry (global.get $@stack))
     (set_local $X (i32.const 500))
     (set_local $Y (i32.const 500))
-    (set_local $pos_0 (i32.const 2643))
-    (set_local $pos_1 (i32.add (i32.const 2643) (i32.add (i32.mul (get_local $X) (get_local $Y)) (i32.const 1))))
-    (call $mm_init (i32.mul (i32.const 2) (i32.add (i32.mul (get_local $X) (get_local $Y)) (i32.const 1))) (call $@max_32s (i32.const 66) (i32.const 116)))
+    (set_local $pos_0 (i32.const 2672))
+    (set_local $pos_1 (i32.add (i32.const 2672) (i32.add (i32.mul (get_local $X) (get_local $Y)) (i32.const 1))))
+    (call $mm_init (i32.mul (i32.const 2) (i32.add (i32.mul (get_local $X) (get_local $Y)) (i32.const 1))) (call $@max_32s (i32.const 70) (i32.const 120)))
     (set_local $initial_pos (i32.const 2149))
     (set_local $sX (i32.const 9))
     (set_local $sY (i32.const 5))
@@ -885,7 +901,7 @@
       (then
         (i64.store (global.get $@stack) (i64.const 2195))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.const 592))
+        (i64.store (global.get $@stack) (i64.const 605))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (global.get $@stack) (i32.const 2))
         (unreachable)))
@@ -907,7 +923,7 @@
               (then
                 (i64.store (global.get $@stack) (i64.const 2257))
                 (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-                (i64.store (global.get $@stack) (i64.const 606))
+                (i64.store (global.get $@stack) (i64.const 619))
                 (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
                 (call $printf (global.get $@stack) (i32.const 2))
                 (unreachable)))
@@ -925,7 +941,7 @@
       (then
         (i64.store (global.get $@stack) (i64.const 2322))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.const 611))
+        (i64.store (global.get $@stack) (i64.const 624))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (global.get $@stack) (i32.const 2))
         (unreachable)))
@@ -933,7 +949,7 @@
       (then
         (i64.store (global.get $@stack) (i64.const 2382))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.const 612))
+        (i64.store (global.get $@stack) (i64.const 625))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (global.get $@stack) (i32.const 2))
         (unreachable)))
@@ -947,7 +963,7 @@
         (br_if $@block_5_break (i32.eqz (if (result i32) (i32.ge_s (get_local $iter) (i32.const 10000)) (then (i32.const 0)) (else (i32.ne (get_local $ok) (i32.const 0))))))
         (set_local $i (i32.rem_s (get_local $iter) (i32.const 2)))
         (call $life_fin_step (select (get_local $pos_1) (get_local $pos_0) (get_local $i)) (select (get_local $pos_0) (get_local $pos_1) (get_local $i)) (get_local $X) (get_local $Y) (get_local $x))
-        (call $life_step (i32.sub (i32.const 1) (get_local $i)) (get_local $y))
+        (call $life_step (i32.sub (i32.const 1) (get_local $i)) (i32.add (get_local $iter) (i32.const 1)) (get_local $y))
         (block $@block_5_1_break
           (set_local $j (i32.const 0))
           (loop $@block_5_1_continue
@@ -1044,7 +1060,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 2322))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 668))
+            (i64.store (global.get $@stack) (i64.const 681))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -1052,7 +1068,7 @@
           (then
             (i64.store (global.get $@stack) (i64.const 2382))
             (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-            (i64.store (global.get $@stack) (i64.const 669))
+            (i64.store (global.get $@stack) (i64.const 682))
             (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
             (call $printf (global.get $@stack) (i32.const 2))
             (unreachable)))
@@ -1065,6 +1081,30 @@
         (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $iter)))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (global.get $@stack) (i32.const 2))))
+    (set_local $i (global.get $@stack))
+    (global.set $@stack (i32.add (global.get $@stack) (i32.const 4)))
+    (set_local $j (global.get $@stack))
+    (global.set $@stack (i32.add (global.get $@stack) (i32.const 4)))
+    (set_local $x@block_5_4 (global.get $@stack))
+    (global.set $@stack (i32.add (global.get $@stack) (i32.const 4)))
+    (set_local $y@block_5_4_1 (global.get $@stack))
+    (global.set $@stack (i32.add (global.get $@stack) (i32.const 4)))
+    (set_local $i@block_5_4_1_1 (global.get $@stack))
+    (global.set $@stack (i32.add (global.get $@stack) (i32.const 4)))
+    (call $mm_stat (get_local $i) (get_local $j) (get_local $x@block_5_4) (get_local $y@block_5_4_1) (get_local $i@block_5_4_1_1))
+    (i64.store (global.get $@stack) (i64.const 2643))
+    (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
+    (i64.store (global.get $@stack) (i64.extend_i32_s (i32.load (get_local $i))))
+    (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
+    (i64.store (global.get $@stack) (i64.extend_i32_s (i32.load (get_local $j))))
+    (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
+    (i64.store (global.get $@stack) (i64.extend_i32_s (i32.load (get_local $x@block_5_4))))
+    (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
+    (i64.store (global.get $@stack) (i64.extend_i32_s (i32.load (get_local $y@block_5_4_1))))
+    (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
+    (i64.store (global.get $@stack) (i64.extend_i32_s (i32.load (get_local $i@block_5_4_1_1))))
+    (global.set $@stack (i32.sub (global.get $@stack) (i32.const 40)))
+    (call $printf (global.get $@stack) (i32.const 6))
     (global.set $@stack (get_local $@stack_entry))
     (i32.const 0))
   (func $mm_init (param $extra_offset i32) (param $size i32)
@@ -1073,7 +1113,7 @@
         (unreachable)))
     (global.set $__mm_extra_offset (get_local $extra_offset))
     (global.set $__mm_size (get_local $size))
-    (global.set $__mm_start (i32.add (i32.const 2643) (global.get $__mm_extra_offset))))
+    (global.set $__mm_start (i32.add (i32.const 2672) (global.get $__mm_extra_offset))))
   (func $malloc (param $size i32) (result i32)
     (local $unit_size i32)
     (local $required i32)
@@ -1089,7 +1129,7 @@
     (set_local $unit_size (i32.add (i32.const 1) (i32.mul (i32.const 8) (global.get $__mm_size))))
     (if (if (result i32) (i32.ge_s (global.get $__mm_first) (i32.const 0)) (then (i32.const 0)) (else (i32.ne (i32.eq (global.get $__mm_inuse) (global.get $__mm_capacity)) (i32.const 0))))
       (then
-        (set_local $required (i32.add (i32.div_s (i32.add (i32.add (i32.const 2643) (global.get $__mm_extra_offset)) (i32.mul (i32.mul (i32.add (global.get $__mm_capacity) (global.get $__mm_expand_by)) (i32.const 8)) (get_local $unit_size))) (i32.const 64000)) (i32.const 1)))
+        (set_local $required (i32.add (i32.div_s (i32.add (i32.add (i32.const 2672) (global.get $__mm_extra_offset)) (i32.mul (i32.mul (i32.add (global.get $__mm_capacity) (global.get $__mm_expand_by)) (i32.const 8)) (get_local $unit_size))) (i32.const 64000)) (i32.const 1)))
         (if (i32.gt_s (get_local $required) (memory.size))
           (then
             (drop (memory.grow (i32.sub (get_local $required) (memory.size))))))
@@ -1121,6 +1161,52 @@
           (then
             (global.set $__mm_first (i32.const -1))))))
     (get_local $result))
+  (func $free (param $box i32)
+    (local $unit_size i32)
+    (local $offset i32)
+    (local $idx i32)
+    (local $cur i32)
+    (local $j i32)
+    (global.set $__mm_stat_freed (i32.add (global.get $__mm_stat_freed) (i32.const 1)))
+    (set_local $unit_size (i32.add (i32.const 1) (i32.mul (i32.const 8) (global.get $__mm_size))))
+    (set_local $offset (i32.sub (get_local $box) (global.get $__mm_start)))
+    (set_local $idx (i32.div_s (i32.div_s (get_local $offset) (get_local $unit_size)) (i32.const 8)))
+    (set_local $cur (i32.add (global.get $__mm_start) (i32.mul (i32.mul (get_local $idx) (get_local $unit_size)) (i32.const 8))))
+    (set_local $j (i32.div_s (i32.sub (i32.sub (get_local $box) (get_local $cur)) (i32.const 8)) (global.get $__mm_size)))
+    (if (i32.lt_s (get_local $j) (i32.const 0))
+      (then
+        (unreachable)))
+    (if (i32.ge_s (get_local $j) (i32.const 64))
+      (then
+        (unreachable)))
+    (if (i32.ne (get_local $box) (i32.add (i32.add (get_local $cur) (i32.const 8)) (i32.mul (get_local $j) (global.get $__mm_size))))
+      (then
+        (unreachable)))
+    (if (i32.wrap_i64 (i64.and (i64.load (get_local $cur)) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $j)))))
+      (then
+        (unreachable)))
+    (i64.store (get_local $cur) (i64.xor (i64.load (get_local $cur)) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $j)))))
+    (if (i32.lt_s (get_local $idx) (global.get $__mm_first))
+      (then
+        (global.set $__mm_first (get_local $idx)))))
+  (func $__mm_count_boxes (result i32)
+    (local $unit_size i32)
+    (local $res i32)
+    (local $i i32)
+    (set_local $unit_size (i32.add (i32.const 1) (i32.mul (i32.const 8) (global.get $__mm_size))))
+    (block $@block_1_break
+      (loop $@block_1_continue
+        (br_if $@block_1_break (i32.ge_s (get_local $i) (global.get $__mm_inuse)))
+        (set_local $res (i32.add (get_local $res) (i32.sub (i32.const 64) (i32.wrap_i64 (i64.popcnt (i64.load (i32.add (global.get $__mm_start) (i32.mul (i32.mul (get_local $i) (get_local $unit_size)) (i32.const 8)))))))))
+        (set_local $i (i32.add (get_local $i) (i32.const 1)))
+        (br $@block_1_continue)))
+    (get_local $res))
+  (func $mm_stat (param $allocated i32) (param $freed i32) (param $current i32) (param $in_use i32) (param $capacity i32)
+    (i32.store (get_local $allocated) (global.get $__mm_stat_allocated))
+    (i32.store (get_local $freed) (global.get $__mm_stat_freed))
+    (i32.store (get_local $current) (call $__mm_count_boxes))
+    (i32.store (get_local $in_use) (global.get $__mm_inuse))
+    (i32.store (get_local $capacity) (global.get $__mm_capacity)))
   (func $strlen (param $str i32) (result i32)
     (local $n i32)
     (loop $@block_1_continue

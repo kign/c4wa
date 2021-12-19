@@ -30,13 +30,13 @@ extern int strlen(char *);
 
 struct Box0 {
     int level;
-    int x0, y0, size;
+    int x0, y0, size, age;
     char cells0[2 * N0 * N0];
 };
 
 struct Box {
     int level;
-    int x0, y0, size;
+    int x0, y0, size, age;
     struct Box * cells[N * N];
 };
 
@@ -113,7 +113,7 @@ void verify(struct Box * w) {
         }
 }
 
-void set_cell(int x, int y, int val, int plane) {
+void set_cell(int x, int y, int val, int plane, int age) {
     struct Box * w;
     int t, xp, yp;
     const int verbose = 0;
@@ -213,6 +213,7 @@ void set_cell(int x, int y, int val, int plane) {
         if (verbose)
             printf("Entering (%d,%d) into <%d,%d,%d,%d>\n", x, y, w->level, w->x0, w->y0, w->size);
         assert (w->x0 <= x && x < w->x0 + w->size && w->y0 <= y && y < w->y0 + w->size);
+        if (val) w->age = age;
         if (w->level == 0) {
             xp = x - w->x0;
             yp = y - w->y0;
@@ -445,7 +446,7 @@ void life_prepare_box(struct Box * w, struct Stat * stat) {
                     }
                     else
                         if (0 == get_cell(vx + w->x0, vy + w->y0, 0))
-                            set_cell(vx + w->x0, vy + w->y0, 2, 0);
+                            set_cell(vx + w->x0, vy + w->y0, 2, 0, 0);
                 }
             }
         stat->hash ^= hash;
@@ -453,12 +454,22 @@ void life_prepare_box(struct Box * w, struct Stat * stat) {
     }
 }
 
-void life_step_box(struct Box * w, int dst, struct Stat * stat) {
+void life_step_box(struct Box * w, int dst, int age, struct Stat * stat) {
     assert(w);
     if (w->level > 0) {
         for(int idx = 0; idx < N*N; idx ++)
-            if (w->cells[idx])
-                life_step_box(w->cells[idx], dst, stat);
+            if (w->cells[idx]) {
+                if (w->cells[idx]->age >= age - 1) {
+                    life_step_box(w->cells[idx], dst, age, stat);
+                    if (w->cells[idx]->age == age)
+                        w->age = age;
+                }
+                else if (w->cells[idx]->age < age - 3) {
+                    free((char *) w->cells[idx]);
+                    w->cells[idx] = (struct Box*) 0;
+                }
+
+            }
     }
     else {
 #define w0 ((struct Box0 *)w)
@@ -482,6 +493,8 @@ void life_step_box(struct Box * w, int dst, struct Stat * stat) {
             }
             if ((n == 3) | ((n == 2) & (*p == 1))) {
                 cnt ++;
+                if (cnt == 1) w->age = age;
+
                 hash ^= (unsigned int)(x + w->x0) * rand_x + (unsigned int)(y + w->y0) * rand_y;
 
                 char * dst_st = w0->cells0 + N0*N0*dst;
@@ -496,7 +509,7 @@ void life_step_box(struct Box * w, int dst, struct Stat * stat) {
                         if (*xd != 1) *xd = (char)2;
                     }
                     else if (1 != get_cell(vx + w->x0, vy + w->y0, dst))
-                        set_cell(vx + w->x0, vy + w->y0, 2, dst);
+                        set_cell(vx + w->x0, vy + w->y0, 2, dst, age);
                 }
             }
         }
@@ -525,19 +538,19 @@ void life_prepare (struct Stat * stat) {
     }
 }
 
-void life_step (int dst, struct Stat * stat) {
+void life_step (int dst, int age, struct Stat * stat) {
     if (world) {
         stat->count = 0;
         stat->hash = 0;
         life_clean_plane(world, dst);
-        life_step_box(world, dst, stat);
+        life_step_box(world, dst, age, stat);
     }
 }
 
 void life_infin_read(int X, int Y, int x0, int y0, char * src, int sX, int sY) {
     for(int y = 0; y < sY; y ++)
         for (int x = 0; x < sX; x ++)
-            set_cell(x + x0, y + y0, src[y * sX + x] == 'x', 0);
+            set_cell(x + x0, y + y0, src[y * sX + x] == 'x', 0, 0);
 }
 
 void life_infin_print(int x0, int x1, int y0, int y1, int plane, int dbg) {
@@ -618,7 +631,7 @@ extern int main () {
     for (iter = 0; iter < 10000 && ok; iter ++) {
         int i = iter % 2;
         life_fin_step(i?pos_1:pos_0, i?pos_0:pos_1, X, Y, &stat_f);
-        life_step(1 - i, &stat_i);
+        life_step(1 - i, iter + 1, &stat_i);
 
         int j;
         for(j = 0; j < 4 && hash[j] != stat_i.hash; j ++);
@@ -672,6 +685,15 @@ extern int main () {
     if (ok)
         printf("Successfully completed %d iterations\n", iter);
 
+#ifdef C4WA
+    int allocated, freed, current, in_use, capacity;
+
+    mm_stat(&allocated, &freed, &current, &in_use, &capacity);
+    printf("A/R/C: %d/%d/%d; CAP: %d/%d\n", allocated, freed, current, in_use, capacity);
+#else
+    printf("A/R/C: 1712/1434/278; CAP: 5/10\n");
+#endif
+
     return 0;
 }
 // (499,51): ⑩=2, ∞=0
@@ -699,3 +721,4 @@ extern int main () {
 // .....................
 // .....................
 // .....................
+// A/R/C: 1712/1434/278; CAP: 5/10
