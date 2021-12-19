@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 const int start = 25;
 const int end = 40;
 const int base = 3;

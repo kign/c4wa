@@ -8,7 +8,7 @@
 #define EMULATE_LINEAR_MEMORY 100
 
 #ifdef C4WA
-void printf();
+void printf(char *, ...);
 #else
 #define max(a,b) ((a) < (b))?(b):(a)
 #include <stdio.h>

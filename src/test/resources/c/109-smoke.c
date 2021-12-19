@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 
 static void test3_int(int, int, int);
 static void test3_long(long, long, long);

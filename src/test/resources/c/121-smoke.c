@@ -4,7 +4,7 @@
 #define clzl(x) __builtin_clzl(x)
 #define ctzl(x) __builtin_ctzl(x)
 
-void printf();
+void printf(char *, ...);
 #else
 #include <stdio.h>
 #define min(a,b) ((a) < (b))?(a):(b)

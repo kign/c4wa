@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 
 void foo(int * p_a, int * p_b, double * p_s) {
     *p_a = 11;

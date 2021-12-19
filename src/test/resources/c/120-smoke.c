@@ -1,4 +1,4 @@
-void printf ();
+void printf(char *, ...);
 
 static int __get_index_cnt = 0;
 

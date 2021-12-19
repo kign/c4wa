@@ -44,21 +44,21 @@ const read_str = function (mem, offset) {
 }
 
 const wasm_printf = function (wasm_mem) {
-    return function(offset, argc) {
-        wasm_mem_fprintf(wasm_mem, process.stdout, offset, argc);
+    return function(fmt, offset) {
+        wasm_mem_fprintf(fmt, offset, wasm_mem, process.stdout);
     }
 }
 
 const wasm_fprintf = function (wasm_mem, target) {
-    return function(offset, argc) {
-        wasm_mem_fprintf(wasm_mem, target, offset, argc);
+    return function(fmt, offset) {
+        wasm_mem_fprintf(fmt, offset, wasm_mem, target);
     }
 }
 
-const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
+const wasm_mem_fprintf = function (p_fmt, offset, wasm_mem, target) {
+    // console.log(_fmt, offset, wasm_mem, target);
     const mem = wasm_mem ();
 
-    const p_fmt = read_i32(mem, offset);
     const fmt = read_str(mem, p_fmt).split('');
 
     const args = [];
@@ -79,7 +79,6 @@ const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
                 fmt[i] = null;
                 i++;
             }
-            offset += 8;
             if ('cdxu'.includes(fmt[i])) {
                 const r = read_i64(mem, offset);
                 if (fmt[i] === 'c')
@@ -105,14 +104,11 @@ const wasm_mem_fprintf = function (wasm_mem, target, offset, argc) {
                 console.error("Format '" + fmt[i] + "' not known at this time");
                 return;
             }
+
+            offset += 8;
         }
     }
 
-    if (args.length + 1 !== argc) {
-        console.error("", "Format string '" + fmt + "' expected", args.length,
-            "substitutions, passed", argc - 1, "arguments");
-        return;
-    }
     const res = printf(fmt.filter(x => x !== null).join(''), ...args);
 
     if (!target)

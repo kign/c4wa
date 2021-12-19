@@ -9,6 +9,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
     final CType returnType;
     final private List<String> params;
     final boolean is_exported;
+    final boolean vararg;
     final Map<NumType, String> tempVars;
     final Deque<Integer> blocks;
     final static String STACK_ENTRY_VAR = "@stack_entry";
@@ -22,11 +23,12 @@ public class FunctionEnv implements Partial, PostprocessContext {
     final private List<Variable> variables;
     private boolean is_closed;
 
-    public FunctionEnv (String name, CType returnType, ModuleEnv moduleEnv, boolean export) {
+    public FunctionEnv (String name, CType returnType, ModuleEnv moduleEnv, boolean vararg, boolean export) {
         this.name = name;
         this.moduleEnv = moduleEnv;
         this.returnType = returnType;
         this.params = new ArrayList<>();
+        this.vararg = vararg;
         this.is_exported = export;
         variables = new ArrayList<>();
         blocks = new ArrayDeque<>();
@@ -42,11 +44,11 @@ public class FunctionEnv implements Partial, PostprocessContext {
         uses_stack = true;
     }
 
-    public String registerVar(String name, String block_id, CType type, boolean is_param, boolean is_mutable) {
+    public String registerVar(String name, String block_id, CType type, boolean is_param, boolean is_mutable, boolean is_hidden) {
         if (variables.stream().anyMatch(x -> Objects.equals(x.block_id, block_id) && x.name.equals(name)))
             return null;
 
-        Variable v = new Variable(name, block_id, new VariableDecl(type, name, is_mutable), is_param);
+        Variable v = new Variable(name, block_id, new VariableDecl(type, name, is_mutable), is_param, is_hidden);
         variables.add(v);
         if (is_param)
             params.add(v.var_id);
@@ -74,13 +76,21 @@ public class FunctionEnv implements Partial, PostprocessContext {
         return res.map(variable -> variable.decl).orElse(null);
     }
 
+    private boolean isParamHidden(String variableId) {
+        var res = variables.stream().filter(x -> x.var_id.equals(variableId)).findFirst();
+        return res.map(variable -> variable.is_hidden).orElse(false);
+    }
+
     public String temporaryVar(NumType numType) {
         return tempVars.computeIfAbsent(numType, t -> "@temp_" + t);
     }
 
     public FunctionDecl makeDeclaration() {
         return new FunctionDecl(name, returnType,
-                params.stream().map(p -> getVariableDecl(p).type).toArray(CType[]::new), false,
+                params.stream()
+                        .filter(p -> !isParamHidden(p))
+                        .map(p -> getVariableDecl(p).type)
+                        .toArray(CType[]::new), vararg,
                 is_exported? FunctionDecl.SType.EXPORTED : FunctionDecl.SType.INTERNAL);
     }
 
@@ -212,14 +222,16 @@ public class FunctionEnv implements Partial, PostprocessContext {
         final String var_id;
         final VariableDecl decl;
         final boolean is_param;
+        final boolean is_hidden;
 
         String watName;
 
-        Variable(String name, String block_id, VariableDecl decl, boolean is_param) {
+        Variable(String name, String block_id, VariableDecl decl, boolean is_param, boolean is_hidden) {
             this.name = name;
             this.block_id = block_id;
             this.decl = decl;
             this.is_param = is_param;
+            this.is_hidden = is_hidden;
 
             this.var_id = name + (block_id == null? "" : block_id);
             watName = null;

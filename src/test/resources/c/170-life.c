@@ -1,5 +1,5 @@
 #ifdef C4WA
-void printf();
+void printf(char *, ...);
 #else
 #include <stdio.h>
 #include <stdlib.h>

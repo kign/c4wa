@@ -1,4 +1,4 @@
-void printf ();
+void printf(char *, ...);
 
 int set_value_of_a_to_57(long * a) {
     *a = 57;

@@ -1,6 +1,7 @@
 package net.inet_lab.c4wa.transpile;
 
 import net.inet_lab.c4wa.wat.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +10,7 @@ public class FunctionDecl implements Partial {
     final String name;
     final CType returnType;
     final CType[] params;
-    final boolean anytype;
+    final boolean vararg;
     final SType storage;
 
     boolean used;
@@ -22,20 +23,20 @@ public class FunctionDecl implements Partial {
         BUILTIN   // built-in functions
     }
 
-    FunctionDecl(String name, CType returnType, CType[] params, boolean anytype, SType storage) {
+    FunctionDecl(String name, CType returnType, @NotNull CType[] params, boolean vararg, SType storage) {
         this.name = name;
         this.returnType = returnType;
-        this.anytype = anytype;
+        this.vararg = vararg;
         this.storage = storage;
-        this.params = anytype? null : params;
+        this.params = params;
+
+        if (params.length == 0 && vararg)
+            throw new RuntimeException("Function '" + name + "': must have at least ine argument before '...'");
 
         used = false;
     }
 
     public String signature () {
-        if (anytype)
-            return "anytype";
-
         StringBuilder b = new StringBuilder();
 
         b.append(returnType).append(" ").append(name).append('(');
@@ -44,6 +45,8 @@ public class FunctionDecl implements Partial {
                 b.append(", ");
             b.append(params[i]);
         }
+        if (vararg)
+            b.append(", ...");
         b.append(')');
         return b.toString();
     }
@@ -70,16 +73,15 @@ public class FunctionDecl implements Partial {
     }
 
     public Func wat() {
+        // called for imported functions only
         List<Instruction> attributes = new ArrayList<>();
         attributes.add(new Special(name));
 
-        if (anytype) {
-            attributes.add(new Param(NumType.I32));
-            attributes.add(new Param(NumType.I32));
-        }
-        else if (params != null) {
+        if (params != null) {
             for (CType c : params)
                 attributes.add(new Param(c.asNumType()));
+            if (vararg)
+                attributes.add(new Param(NumType.I32));
         }
 
         if (returnType != null)

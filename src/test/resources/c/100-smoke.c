@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 extern int add (int a, int b) {
     printf("↳add(%d, %d)\n", a, b);
     return a + b;

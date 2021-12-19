@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 const int N = 100;
 extern int main() {
     int sum = 0;

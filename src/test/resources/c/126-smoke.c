@@ -1,4 +1,4 @@
-void printf ();
+void printf(char *, ...);
 
 void force_stack_var(long * x) {
     printf("force_stack_var(%ld)\n", *x);

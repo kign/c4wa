@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 extern char * malloc(int);
 
 struct Node { struct Node * next; int val; };

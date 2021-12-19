@@ -3,7 +3,7 @@
 \* -------------------------------------------------- */
 
 #ifdef C4WA
-void printf();
+void printf(char *, ...);
 extern char * malloc (int);
 extern void free(char *);
 extern void mm_stat(int*, int*, int*, int*, int*);
@@ -469,7 +469,6 @@ void life_step_box(struct Box * w, int dst, int age, struct Stat * stat) {
                     release_box(w->cells[idx]);
                     w->cells[idx] = (struct Box*) 0;
                 }
-
             }
     }
     else {

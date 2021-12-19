@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 extern int main() {
     int a, b, c;
     a = 29; b = 11;

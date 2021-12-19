@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 
 int strlen(char * str) {
     int n = 0;

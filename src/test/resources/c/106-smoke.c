@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 
 void do_nothing (int ignore_me) {
 }

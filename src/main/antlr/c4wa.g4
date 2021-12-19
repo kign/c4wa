@@ -12,11 +12,13 @@ module
     ;
 
 global_decl
-    : (STATIC|EXTERN)? CONST? variable_decl ('=' expression)? ';'                   # global_decl_variable
-    | (STATIC|EXTERN)? variable_decl '(' (variable_type (',' variable_type)* )? ')' ';'    # global_decl_function
-    | EXTERN? variable_decl '(' param_list? ')' composite_block                   # function_definition
-    | STRUCT ID '{' (struct_mult_members_decl ';')+ '}'  ';'                                 # struct_definition
+    : (STATIC|EXTERN)? CONST? variable_decl ('=' expression)? ';'                                    # global_decl_variable
+    | (STATIC|EXTERN)? variable_decl '(' (variable_type (',' variable_type)* (',' '...')? )? ')' ';' # global_decl_function
+    | EXTERN? variable_decl '(' param_list? ')' composite_block                                      # function_definition
+    | STRUCT ID '{' (struct_mult_members_decl ';')+ '}'  ';'                                         # struct_definition
     ;
+
+param_list : variable_decl (',' variable_decl)* (',' '...')?;
 
 variable_decl : primitive variable_with_modifiers;
 
@@ -42,8 +44,6 @@ primitive
     | STRUCT ID                                 # struct_primitive
     ;
 
-param_list : variable_decl (',' variable_decl)*;
-
 composite_block: '{' element* '}';
 
 block : composite_block | element;
@@ -51,7 +51,7 @@ block : composite_block | element;
 element
     : ';'                                   # element_empty
     | statement ';'                         # element_statement
-    | ASM                                   # element_asm
+//    | ASM                                   # element_asm
     | DO block WHILE '(' expression ')' ';' # element_do_while
     | FOR '(' pre=statement? ';' expression? ';' post=statement? ')' block  # element_for
     | IF '(' expression ')' (BREAK|CONTINUE) ';' # element_break_continue_if
@@ -127,6 +127,13 @@ expression
     | STRING+                                               # expression_string
     | CHARACTER                                             # expression_character
     | function_call                                         # expression_function_call
+    | left_side_of_comma ',' expression  # expression_comma
+    ;
+
+left_side_of_comma
+    : simple_assignment
+    | simple_increment
+    | function_call
     ;
 
 
@@ -174,6 +181,7 @@ CBRACE : '}';
 OBRAKET : '[';
 CBRACKET : ']';
 DOT: '.';
+ELLIPSIS : '...';
 
 TRUE : 'true';
 FALSE : 'false';
@@ -204,7 +212,7 @@ VOID   :  'void';
 SIZEOF :  'sizeof';
 
 ID     :  [a-zA-Z_][a-zA-Z0-9_]*;
-ASM    :  'asm' [ \t\n\r]* '{' .*? '}';
+//ASM    :  'asm' [ \t\n\r]* '{' .*? '}';
 
 //CONSTANT : Constant;
 

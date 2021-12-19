@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 static int test(int);
 
 const int N = 100;

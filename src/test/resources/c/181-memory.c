@@ -1,12 +1,6 @@
 #ifdef C4WA
 
-void printf();
-/*
-extern char * malloc (int);
-extern void free(char *);
-extern void mm_stat(int*, int*, int*, int*, int*);
-extern void mm_init(int, int);
-*/
+void printf(char *, ...);
 #define NULL 0
 
 #else

@@ -10,13 +10,11 @@
     (block $@block_1_break
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $i) (i32.const 64)))
-        (i64.store (global.get $@stack) (i64.const 1024))
-        (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
         (i64.store (global.get $@stack) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $i))))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
         (i64.store (global.get $@stack) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $i))))
-        (global.set $@stack (i32.sub (global.get $@stack) (i32.const 16)))
-        (call $printf (global.get $@stack) (i32.const 3))
+        (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
+        (call $printf (i32.const 1024) (global.get $@stack))
         (set_local $i (i32.add (get_local $i) (i32.const 1)))
         (br $@block_1_continue)))
     (global.set $@stack (get_local $@stack_entry))

@@ -1,6 +1,6 @@
 #ifdef C4WA
 
-void printf();
+void printf(char *, ...);
 
 extern char * malloc (int);
 extern void free(char *);

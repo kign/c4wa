@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 
 int foo(int ret) {
     printf("called foo(%d)\n", ret);

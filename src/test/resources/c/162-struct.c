@@ -1,4 +1,4 @@
-void printf ();
+void printf(char *, ...);
 
 struct Point { char color[10]; float x, y; float z; };
 

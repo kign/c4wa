@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 
 const double precision = 1.0e-9;
 

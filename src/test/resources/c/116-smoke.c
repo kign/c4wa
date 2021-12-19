@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 
 extern int main () {
     int increase_by = 57;

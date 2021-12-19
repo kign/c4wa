@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 
 int do_i_return_a_value_or_not (int x) {
     if (x > 0)

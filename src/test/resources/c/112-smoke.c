@@ -1,4 +1,4 @@
-void printf ();
+void printf(char *, ...);
 
 int add(int a, int b) {
     return a + b;

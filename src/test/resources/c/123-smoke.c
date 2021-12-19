@@ -1,4 +1,4 @@
-void printf ();
+void printf(char *, ...);
 
 extern int main () {
     for (int i = 0; i < 64; i ++)

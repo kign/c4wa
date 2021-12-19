@@ -20,7 +20,10 @@ public class BlockExp extends Expression {
     public String toString() {
         StringBuilder b = new StringBuilder();
 
-        b.append('(').append(name.getName()).append(" $").append(ref).append(" (result ").append(numType.name).append(')');
+        b.append('(').append(name.getName());
+        if (ref != null)
+            b.append(" $").append(ref);
+        b.append(" (result ").append(numType.name).append(')');
         for (var i: body)
             b.append(' ').append(i);
         b.append(' ').append(returnExp).append(')');

@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 
 static int d = 3;
 

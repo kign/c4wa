@@ -1,4 +1,4 @@
-void printf();
+void printf(char *, ...);
 
 const int N = 50;
 const char * sep = ", ";
