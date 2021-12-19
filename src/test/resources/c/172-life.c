@@ -464,8 +464,9 @@ void life_step_box(struct Box * w, int dst, int age, struct Stat * stat) {
                     if (w->cells[idx]->age == age)
                         w->age = age;
                 }
+                // we can adjust here how aggressively release empty boxes
                 else if (w->cells[idx]->age < age - 3) {
-                    free((char *) w->cells[idx]);
+                    release_box(w->cells[idx]);
                     w->cells[idx] = (struct Box*) 0;
                 }
 
@@ -691,7 +692,7 @@ extern int main () {
     mm_stat(&allocated, &freed, &current, &in_use, &capacity);
     printf("A/R/C: %d/%d/%d; CAP: %d/%d\n", allocated, freed, current, in_use, capacity);
 #else
-    printf("A/R/C: 1712/1434/278; CAP: 5/10\n");
+    printf("A/R/C: 1712/1600/112; CAP: 3/10\n");
 #endif
 
     return 0;
@@ -721,4 +722,4 @@ extern int main () {
 // .....................
 // .....................
 // .....................
-// A/R/C: 1712/1434/278; CAP: 5/10
+// A/R/C: 1712/1600/112; CAP: 3/10
