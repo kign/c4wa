@@ -131,12 +131,12 @@ python3 collatz.py 626331
 ```
 
 We also provide a customized `node`-based runtime for testing, which allows you to use inside your code
-function `printf` very similar to how you would in C; it automatically calls function `main` (with no arguments).
+function `printf` similarly to how you would in C; it also automatically calls function `main` (with no arguments).
 You can use it with any of the tests in [this directory](https://github.com/kign/c4wa/tree/master/src/test/resources/c). 
 For example
 
 ```bash
-c4wa-compile -P 170-life.c
+c4wa-compile 170-life.c
 wat2wasm --enable-bulk-memory  170-life.wat
 etc/run-wasm 170-life.wasm
 ```
@@ -204,7 +204,7 @@ After running `./gradlew test` you should look at updated WAT files in
 `tests/wat` [directory](https://github.com/kign/c4wa/tree/master/tests/wat) whether anything changed unexpectedly.
 If not (and wasn't expected to, case 1 above), there isn't anything else to test.
 
-If there are changes, you should first compare new versions of updated WAT files to approve the changes.
+If there _are_ changes, you should first compare new versions of updated WAT files to approve the changes.
 If changed are as expected, _then_ you could run `etc/run-tests all`. It'll do two things for you:
 
   * Run all WAT files through `wat2wam` to create WASM files in 

@@ -1,1 +1,1 @@
-void printf(char *, ...);
+void printf(char * fmt, ...);

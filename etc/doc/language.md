@@ -25,7 +25,8 @@ unavoidable inconsistencies with the standard C compiler, and differences betwee
 Web Assembly environment.
 
   * Your code might successfully pass through `c4wa` but still fail `wat2wasm` compilation. 
-    As of version 0.3 of the compiler, there are no known cases of this happening, but it can't be ruled out yet.
+    As of version 0.3 of the compiler, there are no known cases of this happening, but it can't be completely 
+    ruled out yet.
   * Your code might successfully compile with both regular compiler and `c4wa`, generate correctly working
     native executable, but still work incorrectly in Web Assembly. This could be due to a limited number of known
     inconsistencies you should be aware of when writing code for `c4wa`.
@@ -37,10 +38,13 @@ Web Assembly environment.
     are defined later in the code).
   * While `c4wa` is designed to properly report most common syntax error in a way which is broadly consistent with 
     standard C compiler, there is no guarantee it won't successfully compile some obviously invalid C code.
+    Most of the testing done on `c4wa`, for obvious reasons, is done on the code which is already known to pass
+    throw a C compiler.
   * There is no expectation that any existing C code, other than completely trivial, would pass through `c4wa`
     compilation unchanged. Moreover, we are not making too much effort to make adaptation to `c4wa` easier,
     since it would be mostly pointless. However, for any normal C code, which doesn't rely on external functions
-    or libraries, doesn't use any compiler- or OS-specific features, and doesn't make too much use of the more obscure 
+    or libraries (excluding `malloc` and everything you can import from your runtime), 
+    doesn't use any compiler- or OS-specific features, and doesn't make too much use of the more obscure 
     C language features (`union`s, `goto`s, etc.), making it `c4wa`-compatible shouldn't take too much effort. 
 
 ## TL;DR
@@ -122,8 +126,6 @@ could be assigned to.
 If you reach the end of a non-void function without returning a value, this will trigger 
 "unreachable" run time error in WASM even if return value is never actually used.
 
-Function declarations (unlike definitions) can't have parameter names, only types.
-
 ## Compiling multiple source files
 
 If you specify more than one source files, compiler will yield one "bundle" WAT file.
@@ -137,8 +139,8 @@ so better not try.
 `c4wa` relies on external preprocessor installed on your system; by default it is invoked as 
 "gcc -E -C", this could be changed with command line option `-Xpreprocessor.command`. 
 Preprocessor is not required though, `c4wa` first checks all incoming files for any preprocessor
-directives and only runs them through preprocessor when necessary, _or_ if there is `-D<name>` command
-line option.
+directives and only runs them through preprocessor when necessary, _or_ if there is any
+`-D<name>[=<value>]` command line option.
 
 When preprocessor is used by `c4wa`, symbol `C4WA` is always defined. You can use it to create separate branches
 for `c4wa` and standard C compiler.
@@ -160,10 +162,11 @@ they are _inline_ functions). There is a full list further down in the documenta
 **Built-in libraries**, on the other hand, are separate pieces of functionality that could be optionally
 added to the generated WAT. They don't become available unless explicitly "linked" with `-l<library name>`
 command line option. Technically, "linking" with such library is functionally equivalent to adding 
-additional source files to compile, except these source files are embedded into JAR.
+additional source files to compile, except these source files are part of the compiler installation.
 
 Note that functions provided by libraries _still need to be declared_ as `extern` before usage; 
-built-in functions, on the other hand, do not need to be declared.
+built-in functions, on the other hand, do not need to be declared. Some libraries might have dedicated
+header files (with a name matching a standard C header file, e.g. `stdarg.h` or `stdlib.h`)
 
 To note, by default with one very small exception (built-in functions `min` and `max` when applied to
 integers), `c4wa` does not embed any "library" functionality to generated WAT; you would only get 
@@ -490,12 +493,12 @@ The best example of this approach is function `printf` as it is used in the test
 For the purposes of `c4wa`, it is defined as follows:
 
 ```c
-void printf(char *, ...);
+void printf(char * format, ...);
 ```
 
 (You can also include file `stdio.h`, which as of current version doesn't have anything except this one line).
 
-Since there are no attributes, this is imported function; since there is exactly one required argument,
+Since there are no attributes, this is an imported function; since there is exactly one required argument,
 actual runtime implementation would have _two_ arguments, `format` and `offset`.
 
 Let's consider this call of `printf` :
@@ -510,7 +513,8 @@ printf("A = %d, B = %lx, C = %.6f\n", A, B, C);
 
 In this case, there are 4 _actual_ arguments, but imported function will still be called with two arguments:
 
-1-st argument `format`: memory address to read format string from;<br>
+1-st argument `format`: memory address to read format string from 
+(just like in C, any array, including string, is passed as memory address of its first element);<br>
 2-nd argument `offset`: memory address to read the read of arguments from.
 
 To acquire actual values `A`, `B`, and `C`, implementation will then need to gain access to liner memory

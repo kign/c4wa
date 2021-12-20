@@ -1,4 +1,4 @@
-void printf(char *, ...);
+void printf(char * fmt, ...);
 
 extern int add (int a, int b) {
     printf("a = %d, b = %d\n", a, b);

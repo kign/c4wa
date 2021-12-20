@@ -41,11 +41,15 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     static class VariableWrapper implements Partial {
         final String name;
         final int ref_level;
-        VariableWrapper(String name) {
+        VariableWrapper() {
+            this.name = null;
+            this.ref_level = 1;
+        }
+        VariableWrapper(@NotNull String name) {
             this.name = name;
             this.ref_level = 0;
         }
-        VariableWrapper(VariableWrapper w) {
+        VariableWrapper(@NotNull VariableWrapper w) {
             this.name = w.name;
             this.ref_level = w.ref_level + 1;
         }
@@ -485,7 +489,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public FunctionDecl visitGlobal_decl_function(c4waParser.Global_decl_functionContext ctx) {
         VariableDecl variableDecl = (VariableDecl) visit(ctx.variable_decl());
-        CType[] params = ctx.variable_type().stream().map(this::visit).toArray(CType[]::new);
+        CType[] params = ctx.type_decl().stream().map(this::visit).toArray(CType[]::new);
 
         FunctionDecl.SType storage = ctx.EXTERN() != null? FunctionDecl.SType.EXTERNAL :
                                      ctx.STATIC() != null? FunctionDecl.SType.STATIC :
@@ -524,8 +528,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     @Override
     public VariableDecl visitVariable_decl(c4waParser.Variable_declContext ctx) {
-        VariableWrapper variableWrapper = (VariableWrapper) visit(ctx.variable_with_modifiers());
         CType type = (CType) visit(ctx.primitive());
+        VariableWrapper variableWrapper = (VariableWrapper) visit(ctx.variable_with_modifiers());
 
         if (type == null && variableWrapper.ref_level > 0)
             throw fail(ctx.primitive(), "variable_decl", "void type isn't allowed here");
@@ -533,6 +537,29 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         for (int i = 0; i < variableWrapper.ref_level; i ++)
             type = type.make_pointer_to();
         return new VariableDecl(type, variableWrapper.name, true);
+    }
+
+    @Override
+    public CType visitType_decl(c4waParser.Type_declContext ctx) {
+        CType type = (CType) visit(ctx.primitive());
+
+        VariableWrapper variableWrapper = (VariableWrapper) (
+                ctx.empty_with_modifiers() != null ?
+                        visit(ctx.empty_with_modifiers()) :
+                ctx.variable_with_modifiers() != null ?
+                        visit(ctx.variable_with_modifiers()) :
+                null);
+
+        if (variableWrapper == null)
+            return type;
+
+        if (type == null && variableWrapper.ref_level > 0)
+            throw fail(ctx.primitive(), "variable_decl", "void type isn't allowed here");
+
+        for (int i = 0; i < variableWrapper.ref_level; i++)
+            type = type.make_pointer_to();
+
+        return type;
     }
 
     @Override
@@ -551,10 +578,26 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     }
 
     @Override
+    public VariableWrapper visitEmpty_with_modifiers_array(c4waParser.Empty_with_modifiers_arrayContext ctx) {
+        return new VariableWrapper((VariableWrapper) visit(ctx.empty_with_modifiers()));
+    }
+
+    @Override
+    public VariableWrapper visitEmpty_with_modifiers_pointer(c4waParser.Empty_with_modifiers_pointerContext ctx) {
+        if (ctx.empty_with_modifiers() != null)
+            return new VariableWrapper((VariableWrapper) visit(ctx.empty_with_modifiers()));
+        return new VariableWrapper();
+    }
+
+    @Override
     public CType visitVariable_type(c4waParser.Variable_typeContext ctx) {
         CType type = (CType) visit(ctx.primitive());
+        if (ctx.empty_with_modifiers() == null)
+            return type;
 
-        for (int i = 0; i < ctx.MULT().size(); i++)
+        VariableWrapper varWrapper = (VariableWrapper) visit(ctx.empty_with_modifiers());
+
+        for (int i = 0; i < varWrapper.ref_level; i++)
             type = type.make_pointer_to();
 
         return type;

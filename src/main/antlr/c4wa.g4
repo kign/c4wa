@@ -13,7 +13,7 @@ module
 
 global_decl
     : (STATIC|EXTERN)? CONST? variable_decl ('=' expression)? ';'                                    # global_decl_variable
-    | (STATIC|EXTERN)? variable_decl '(' (variable_type (',' variable_type)* (',' '...')? )? ')' ';' # global_decl_function
+    | (STATIC|EXTERN)? variable_decl '(' (type_decl (',' type_decl)* (',' '...')? )? ')' ';' # global_decl_function
     | EXTERN? variable_decl '(' param_list? ')' composite_block                                      # function_definition
     | STRUCT ID '{' (struct_mult_members_decl ';')+ '}'  ';'                                         # struct_definition
     ;
@@ -22,11 +22,21 @@ param_list : variable_decl (',' variable_decl)* (',' '...')?;
 
 variable_decl : primitive variable_with_modifiers;
 
+type_decl: primitive (variable_with_modifiers | empty_with_modifiers)? ;
+
+variable_type : primitive empty_with_modifiers?;
+
 variable_with_modifiers
-    : ID                                 # variable_with_modifiers_name
-    | '(' variable_with_modifiers ')'    # variable_with_modifiers_paren
-    | variable_with_modifiers '[' CONSTANT? ']'  # variable_with_modifiers_array
-    | '*' variable_with_modifiers        # variable_with_modifiers_pointer
+    : ID                                          # variable_with_modifiers_name
+    | '(' variable_with_modifiers ')'             # variable_with_modifiers_paren
+    | variable_with_modifiers '[' CONSTANT? ']'   # variable_with_modifiers_array
+    | '*' variable_with_modifiers                 # variable_with_modifiers_pointer
+    ;
+
+empty_with_modifiers
+    : '(' empty_with_modifiers ')'             # empty_with_modifiers_paren
+    | empty_with_modifiers '[' CONSTANT? ']'   # empty_with_modifiers_array
+    | '*' empty_with_modifiers?                # empty_with_modifiers_pointer
     ;
 
 local_variable:  '*'* ID ('[' expression ']')?;
@@ -35,7 +45,6 @@ struct_member_decl:  '*'* ID ('[' expression ']')?;
 
 struct_mult_members_decl : primitive struct_member_decl (',' struct_member_decl)* ;
 
-variable_type : primitive '*'* ;
 
 primitive
     : UNSIGNED? (LONG | INT | SHORT | CHAR)     # integer_primitive

@@ -1,21 +1,11 @@
-/* -------------------------------------------------- *\
-|*             COMMON COMPATIBILITY LAYER             *|
-\* -------------------------------------------------- */
-
-#ifdef C4WA
-void printf(char *, ...);
-extern char * malloc (int);
-extern void free(char *);
-extern void mm_stat(int*, int*, int*, int*, int*);
-extern void mm_init(int, int);
-extern int strlen(char *);
-#else
+#ifndef C4WA
 #define max(a,b) ((a) < (b))?(b):(a)
+#endif
+
+#define C4WA_MM_FIXED
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#endif
-
 
 /* -------------------------------------------------- *\
 |*               COMMON DEFINITIONS                   *|
