@@ -59,11 +59,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         final String name;
         final int ref_level;
         final Expression size;
+        final SyntaxError.Position where_defined;
 
-        LocalVariable(String name, int ref_level, Expression size) {
+        LocalVariable(String name, int ref_level, Expression size, final SyntaxError.Position where_defined) {
             this.name = name;
             this.ref_level = ref_level;
             this.size = size;
+            this.where_defined = where_defined;
         }
     }
 
@@ -513,9 +515,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                             paramList.vararg, ctx.EXTERN() != null);
 
         Arrays.stream(paramList.paramList).forEach(x -> functionEnv.registerVar(x.name,
-                null, x.type, true, true, false));
+                null, x.type, true, true, false, x.where_defined));
         if (paramList.vararg)
-            functionEnv.registerVar("__offset", null, CType.CHAR.make_pointer_to(), true, false, true);
+            functionEnv.registerVar("__offset", null, CType.CHAR.make_pointer_to(),
+                    true, false, true, new SyntaxError.Position());
 
         return new OneFunction(functionEnv, ctx.composite_block());
     }
@@ -536,7 +539,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         for (int i = 0; i < variableWrapper.ref_level; i ++)
             type = type.make_pointer_to();
-        return new VariableDecl(type, variableWrapper.name, true);
+        return new VariableDecl(type, variableWrapper.name, true, currentPosition(ctx));
     }
 
     @Override
@@ -1020,7 +1023,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         rhs = constantAssignment(ctx, variableDecl.type, rhs);
 
         String varId = functionEnv.registerVar(variableDecl.name, blockEnv == null? null : blockEnv.block_id,
-                variableDecl.type, false, ctx.CONST() == null, false);
+                variableDecl.type, false, ctx.CONST() == null, false,
+                variableDecl.where_defined);
         if (varId == null)
             throw fail(ctx, "init", "variable '" + variableDecl.name + "' already defined");
 
@@ -1198,7 +1202,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 type = type.make_pointer_to();
 
             String varId = functionEnv.registerVar(localVar.name, blockEnv == null? null : blockEnv.block_id,
-                    localVar.size == null? type: type.make_pointer_to(), false, true, false);
+                    localVar.size == null? type: type.make_pointer_to(),
+                    false, true, false,
+                    localVar.where_defined);
 
             if (varId == null)
                 throw fail(ctx, "init", "variable '" + localVar.name + "' already defined");
@@ -1249,7 +1255,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             if (!size.type.is_i32())
                 throw fail(ctx, "local variable", "Array size must be INT, not '" + size.type + "'");
         }
-        return new LocalVariable(ctx.ID().getText(), ctx.MULT().size(), size == null? null: size.expression);
+        return new LocalVariable(ctx.ID().getText(), ctx.MULT().size(), size == null? null: size.expression,
+                currentPosition(ctx));
     }
 
     @Override
@@ -1306,8 +1313,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "address of variable", "'" + name + "' is array, cannot take address of an array");
 
         decl.inStack = true;
+        decl.markUsed();
 
-//        return new OneExpression(new GetLocal(NumType.I32, name), decl.type.make_pointer_to());
         return new OneExpression(new DelayedLocalAccess(varId, true), decl.type.make_pointer_to());
     }
 
@@ -1758,13 +1765,18 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         VariableDecl decl = variableDeclByName(name);
         String varId = variableIdByName(name);
 
-        if (decl != null)
+        if (decl != null) {
+            decl.markUsed();
             return new OneExpression(new DelayedLocalAccess(varId, false), decl.type);
+        }
 
         decl = moduleEnv.varDecl.get(name);
 
-        if (decl != null)
+        if (decl != null) {
+            decl.markUsed();
+            functionEnv.globals.add(name);
             return new OneExpression(new GetGlobal(decl.type.asNumType(), name), decl.type);
+        }
 
         throw fail(ctx, "variable", "'" + name + "' not defined");
     }
@@ -1844,6 +1856,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 return varId;
         }
         return name;
+    }
+
+    private static SyntaxError.Position currentPosition(ParserRuleContext ctx) {
+        return new SyntaxError.Position(ctx.getStart().getLine(), ctx.getStop().getLine(),
+                ctx.getStart().getCharPositionInLine(), ctx.getStop().getCharPositionInLine());
     }
 
     private OneExpression parseConstant(ParserRuleContext ctx, String textOfConstant) {
@@ -2010,8 +2027,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return new RuntimeException("[" + ctx.start.getLine() + ":" +
                     ctx.start.getCharPositionInLine() + "] " + desc + " " + ctx.getText() + " : " + error);
         else
-            return new SyntaxError(ctx.start.getLine(), ctx.stop.getLine(), ctx.start.getCharPositionInLine(), ctx.stop.getCharPositionInLine(),
-                    error + " (" + desc + ")");
+            return new SyntaxError(currentPosition(ctx), error + " (" + desc + ")");
     }
 
 }

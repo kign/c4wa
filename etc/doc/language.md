@@ -488,7 +488,7 @@ will occupy exactly 8 bytes in linear memory.
 
 ## `printf`
 
-The best example of this approach is function `printf` as it is used in the test suite.
+The best example of this approach is function `printf` from the test suite.
 
 For the purposes of `c4wa`, it is defined as follows:
 
@@ -498,7 +498,7 @@ void printf(char * format, ...);
 
 (You can also include file `stdio.h`, which as of current version doesn't have anything except this one line).
 
-Since there are no attributes, this is an imported function; since there is exactly one required argument,
+Since there are no attributes, this is an _imported_ function; since there is exactly one required argument,
 actual runtime implementation would have _two_ arguments, `format` and `offset`.
 
 Let's consider this call of `printf` :
@@ -507,22 +507,24 @@ Let's consider this call of `printf` :
 int A;
 unsigned long B;
 double C;
+char * D = "some string";
 ........................
-printf("A = %d, B = %lx, C = %.6f\n", A, B, C);
+printf("A = %d, B = %lx, C = %.6f, D = %s\n", A, B, C, D);
 ```
 
-In this case, there are 4 _actual_ arguments, but imported function will still be called with two arguments:
+In this case, there are 5 _actual_ arguments, but imported function will still be called with two arguments:
 
 1-st argument `format`: memory address to read format string from 
 (just like in C, any array, including string, is passed as memory address of its first element);<br>
 2-nd argument `offset`: memory address to read the read of arguments from.
 
-To acquire actual values `A`, `B`, and `C`, implementation will then need to gain access to liner memory
+To acquire actual values `A`, `B`,`C` and `D`, implementation will then need to gain access to liner memory
 and read arguments at following locations:
 
-Variable `A` at address `offset`;<br>
+Variable `A` at address `offset` (actual 32-bit value of `A` is converted to 64–bit);<br>
 Variable `B` at address `offset + 8`;<br>
 Variable `C` at address `offset + 16`;
+String `D` is a string to be read from a location which value (32-bit converted to 64) stored at address `offset + 24`.
 
 When passing arguments, all integer values are converted to `long`, and all float values to `double`.
 
@@ -572,7 +574,7 @@ int intNumber = -57.4; // not even a warning, unlike standard C compiler!
 
 int * ptr = 0; // still OK
 
-ptr = 1;   // Nope, this is explicitly not allowed. Only constant `0` could be assigned to a pointer.
+long * lptr = 1;   // Nope, this is explicitly not allowed. Only constant `0` could be assigned to a pointer.
 ```
 
 ## `NULL`
@@ -686,13 +688,12 @@ not known to a C compiler. Nevertheless, you may need a few adjustments:
   * Some built-in functions might not be available in C library or require an explicit declaration;
   * `cw4a` is tolerant to functions calling each other in any order within the same file.
 
+In addition to including proper header files for C library functions (such as `malloc`, `free` or `printf`), 
+you would need to somehow emulate WASM-specific functions which do not exist in standard C library. 
 This is an example of the header you can include into your program:
 
 ```c
 #ifndef C4WA
-void * memset(); 
-void * memcpy(); 
-double sqrt(double);
 static int __memory_size = 1;
 #define memgrow(size) __memory_size += (size)
 #define memsize() __memory_size

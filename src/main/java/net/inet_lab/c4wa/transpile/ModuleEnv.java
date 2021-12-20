@@ -25,6 +25,8 @@ public class ModuleEnv implements Partial, PostprocessContext {
     // otherwise, (select B C A) is used (which will evaluate all arguments regardless)
     final static int IF_THEN_ELSE_SHORT_CIRCUIT_THRESHOLD = 6;
 
+    SyntaxError.WarningInterface warningHandler;
+
     public ModuleEnv (Properties prop) {
         funcDecl = new HashMap<>();
         varDecl = new HashMap<>();
@@ -68,6 +70,10 @@ public class ModuleEnv implements Partial, PostprocessContext {
         // `memory.grow` void.
         addDeclaration(new FunctionDecl("memgrow", null, new CType[]{CType.INT}, false, FunctionDecl.SType.BUILTIN));
         addDeclaration(new FunctionDecl("memsize", CType.INT, new CType[0], false, FunctionDecl.SType.BUILTIN));
+    }
+
+    public void setWarningHandler(SyntaxError.WarningInterface warningHandler) {
+        this.warningHandler = warningHandler;
     }
 
     public String library(String name) {
@@ -193,7 +199,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
 
         boolean need_stack = functions.stream().filter(f -> included.contains(f.name)).anyMatch(f -> f.uses_stack);
         if (need_stack) {
-            VariableDecl stackDecl = new VariableDecl(CType.INT, STACK_VAR_NAME, true);
+            VariableDecl stackDecl = new VariableDecl(CType.INT, STACK_VAR_NAME, true, new SyntaxError.Position());
             stackDecl.imported = false;
             stackDecl.exported = false;
             stackDecl.initialValue = new Const(0);

@@ -5,40 +5,63 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class SyntaxError extends RuntimeException {
-    final public int line_st;
-    final public int line_en;
-    final public int pos_st;
-    final public int pos_en;
+    public final Position pos;
     final public String msg;
+
+    public static class Location {
+        final public String fileName;
+        final public int lineno;
+
+        public Location(String fileName, int lineno) {
+            this.fileName = fileName;
+            this.lineno = lineno;
+        }
+    }
+
+    public static class Position {
+        final public int line_st, line_en, pos_st, pos_en;
+        public Position(int line_st, int line_en, int pos_st, int pos_en) {
+            this.line_st = line_st;
+            this.line_en = line_en;
+            this.pos_st = pos_st;
+            this.pos_en = pos_en;
+        }
+
+        public Position(int line_st, int pos_st) {
+            this.line_st = line_st;
+            this.line_en = line_st;
+            this.pos_st = pos_st;
+            this.pos_en = pos_st;
+        }
+
+        public Position() {
+            this.line_st = this.line_en = this.pos_st = this.pos_en = -1;
+        }
+    }
+
+    public interface WarningInterface {
+        void report(SyntaxError warn);
+    }
 
     public SyntaxError(String msg) {
         this.msg = msg;
-        this.line_st = this.line_en = this.pos_st = this.pos_en = -1;
+        this.pos = new Position();
     }
 
-    public SyntaxError(int line_st, int line_en, int pos_st, int pos_en, String msg) {
-        this.line_st = line_st;
-        this.line_en = line_en;
-        this.pos_st = pos_st;
-        this.pos_en = pos_en;
+    public SyntaxError(Position pos, String msg) {
+        this.pos = pos;
         this.msg = msg;
     }
 
-    public String fileName;
-    public int lineno;
-    public void locate(List<String> lines) {
+    public Location locate(List<String> lines) {
         Pattern lineDirective = Pattern.compile("^#\\s+(\\d+)\\s+\"(.+)\"", Pattern.CASE_INSENSITIVE);
 
-        for (int i = line_st - 2; i >= 0; i --) {
+        for (int i = pos.line_st - 2; i >= 0; i --) {
             Matcher m = lineDirective.matcher(lines.get(i));
-            if (m.find()) {
-                fileName = m.group(2);
-                lineno = Integer.parseInt(m.group(1)) + (line_st - i - 2);
-                return;
-            }
+            if (m.find())
+                return new Location(m.group(2), Integer.parseInt(m.group(1)) + (pos.line_st - i - 2));
         }
 
-        fileName = "<unknown>";
-        lineno = line_st;
+        return new Location("<unknown>", pos.line_st);
     }
 }

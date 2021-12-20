@@ -15,6 +15,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
     final static String STACK_ENTRY_VAR = "@stack_entry";
     final ModuleEnv moduleEnv;
     final Set<String> calls;
+    final Set<String> globals;
 
     Instruction[] instructions;
     boolean uses_stack;
@@ -34,6 +35,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
         blocks = new ArrayDeque<>();
         tempVars = new HashMap<>();
         calls = new HashSet<>();
+        globals = new HashSet<>();
 
         blocks.push(0);
         uses_stack = false;
@@ -44,11 +46,13 @@ public class FunctionEnv implements Partial, PostprocessContext {
         uses_stack = true;
     }
 
-    public String registerVar(String name, String block_id, CType type, boolean is_param, boolean is_mutable, boolean is_hidden) {
+    public String registerVar(String name, String block_id, CType type,
+                              boolean is_param, boolean is_mutable, boolean is_hidden,
+                              SyntaxError.Position where_defined) {
         if (variables.stream().anyMatch(x -> Objects.equals(x.block_id, block_id) && x.name.equals(name)))
             return null;
 
-        Variable v = new Variable(name, block_id, new VariableDecl(type, name, is_mutable), is_param, is_hidden);
+        Variable v = new Variable(name, block_id, new VariableDecl(type, name, is_mutable, where_defined), is_param, is_hidden);
         variables.add(v);
         if (is_param)
             params.add(v.var_id);
@@ -153,11 +157,20 @@ public class FunctionEnv implements Partial, PostprocessContext {
             throw new RuntimeException("Function " + name + " cannot be closed: blocks.size() = " + blocks.size());
 
         is_closed = true;
+        warnUnusedVariables ();
         postprocessWat (assignWATNames());
     }
 
     public Instruction wat() {
         return watCode;
+    }
+
+    private void warnUnusedVariables() {
+        for(Variable v: variables) {
+            if (!v.decl.is_used && moduleEnv.warningHandler != null)
+                moduleEnv.warningHandler.report(new SyntaxError(v.decl.where_defined,
+                        "WARNING: Variable '" + v.name + "' in function '" + name + "' is not used"));
+        }
     }
 
     private void postprocessWat(List<LocalVar> localVars) {

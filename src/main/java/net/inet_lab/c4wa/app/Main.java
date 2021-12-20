@@ -44,6 +44,11 @@ public class Main {
         }
     }
 
+    private enum WarningTreatment {
+        IGNORE,
+        TREAS_AS_ERRORS
+    }
+
     public static void main(String[] args) throws IOException {
         Properties prop = defaultProperties();
         String appName = prop.getProperty("appName");
@@ -53,11 +58,12 @@ public class Main {
         Map<String, String> parsedArgs = new HashMap<>();
         List<String> fileArgs = new ArrayList<>();
         List<String> builtin_libs = new ArrayList<>();
+        WarningTreatment[] warningTreatment = {null};
 
         String error = parseCommandLineArgs(args,
                 List.of(new Option('o', "output", true),
                         new Option('h', "help")),
-                parsedArgs, fileArgs, prop, ppOptions, builtin_libs);
+                parsedArgs, fileArgs, prop, ppOptions, builtin_libs, warningTreatment);
 
         final boolean forcePP = !ppOptions.isEmpty();
 
@@ -97,7 +103,7 @@ public class Main {
         final int n_units = fileArgs.size() + builtin_libs.size();
 
         for (int iarg = 0; iarg < n_units; iarg ++) {
-            List<String> programLines;
+            List<String> _programLines;
             String fileName;
             if (iarg < fileArgs.size()) {
                 fileName = fileArgs.get(iarg);
@@ -108,14 +114,14 @@ public class Main {
                 }
 
                 if (forcePP)
-                    programLines = runFileThroughCPreprocessor(ppCmd, fileName, ppOptions);
+                    _programLines = runFileThroughCPreprocessor(ppCmd, fileName, ppOptions);
                 else {
-                    programLines = Files.lines(Paths.get(fileName), StandardCharsets.UTF_8).collect(Collectors.toUnmodifiableList());
-                    if (programLines.stream().anyMatch(line -> ppp.matcher(line).find()))
-                        programLines = runFileThroughCPreprocessor(ppCmd, fileName, ppOptions);
+                    _programLines = Files.lines(Paths.get(fileName), StandardCharsets.UTF_8).collect(Collectors.toUnmodifiableList());
+                    if (_programLines.stream().anyMatch(line -> ppp.matcher(line).find()))
+                        _programLines = runFileThroughCPreprocessor(ppCmd, fileName, ppOptions);
                 }
 
-                if (programLines.isEmpty()) {
+                if (_programLines.isEmpty()) {
                     System.err.println("file '" + fileName + "': no text, could be preprocessor error");
                     System.exit(1);
                 }
@@ -124,42 +130,32 @@ public class Main {
                 String libName = builtin_libs.get(iarg - fileArgs.size());
                 fileName = "<builtin>:" + libName + ".c";
 
-                programLines = new BufferedReader(
+                _programLines = new BufferedReader(
                         new InputStreamReader(
                                 Objects.requireNonNull(
                                         loader.getResourceAsStream("lib/" + libName + ".c"))))
                         .lines().collect(Collectors.toUnmodifiableList());
             }
 
-            String programText = String.join("\n", programLines);
+            final List<String> programLines = _programLines;
+            final String programText = String.join("\n", programLines);
 
             try {
+                if (warningTreatment[0] != WarningTreatment.IGNORE)
+                    moduleEnv.setWarningHandler(err -> {
+                        reportError(fileName, programLines, err);
+                        if (warningTreatment[0] == WarningTreatment.TREAS_AS_ERRORS)
+                            System.exit(1);
+                    });
+                if (iarg >= fileArgs.size())
+                    moduleEnv.setWarningHandler(null);
                 ParseTree tree = buildParseTree(programText);
                 ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
                 v.visit(tree);
                 if (iarg == n_units - 1)
                     wat = moduleEnv.wat().toStringPretty(2);
             } catch (SyntaxError err) {
-                int lineno = err.line_st;
-                if (lineno < 0)
-                    System.err.println(err.msg);
-                else {
-                    String realName = fileName;
-                    if (programLines.get(0).charAt(0) == '#') {
-                        err.locate(programLines);
-                        realName = err.fileName;
-                        lineno = err.lineno;
-                    }
-
-                    String errLine = programLines.get(err.line_st - 1);
-                    System.out.println(errLine);
-                    int pos_en = err.line_st == err.line_en? err.pos_en : (errLine.length() - 1);
-                    System.out.println(" ".repeat(err.pos_st) + "^".repeat(1 + pos_en - err.pos_st));
-                    System.err.println("[" + realName + ":" + lineno + "] " + err.msg);
-
-                    if (err.line_st != err.line_en)
-                        System.out.println("(Actual reported error location is " + (err.line_en - err.line_st + 1) + " lines long)");
-                }
+                reportError(fileName, programLines, err);
                 System.exit(1);
             }
         }
@@ -170,8 +166,31 @@ public class Main {
             (new PrintStream(output)).println(wat);
     }
 
+    private static void reportError(String fileName, List<String> programLines, SyntaxError err) {
+        int lineno = err.pos.line_st;
+        if (lineno < 0)
+            System.err.println(err.msg);
+        else {
+            String realName = fileName;
+            if (programLines.get(0).charAt(0) == '#') {
+                var location = err.locate(programLines);
+                realName = location.fileName;
+                lineno = location.lineno;
+            }
+
+            String errLine = programLines.get(err.pos.line_st - 1);
+            System.out.println(errLine);
+            int pos_en = err.pos.line_st == err.pos.line_en ? err.pos.pos_en : (errLine.length() - 1);
+            System.out.println(" ".repeat(err.pos.pos_st) + "^".repeat(1 + pos_en - err.pos.pos_st));
+            System.err.println("[" + realName + ":" + lineno + "] " + err.msg);
+
+            if (err.pos.line_st != err.pos.line_en)
+                System.out.println("(Actual reported error location is " + (err.pos.line_en - err.pos.line_st + 1) + " lines long)");
+        }
+    }
+
     // to be used from tests
-    public static void runAndSave(String programText, boolean usePreprocessor, List<String> libs, Path watFileName) throws IOException {
+    public static void runAndSave(String programText, boolean usePreprocessor, List<String> libs, Path watFileName, SyntaxError.WarningInterface warnHandler) throws IOException {
         Properties prop = defaultProperties();
 
         List<String> ppOptions = new ArrayList<>();
@@ -182,12 +201,14 @@ public class Main {
             programText = String.join("\n", runTextThroughCPreprocessor(programText, ppOptions));
 
         ModuleEnv moduleEnv = new ModuleEnv(prop);
+        moduleEnv.setWarningHandler(warnHandler);
 
         ParseTree tree = buildParseTree(programText);
         ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
         v.visit(tree);
 
         for (String libName: libs) {
+            moduleEnv.setWarningHandler(null);
             var programLines = new BufferedReader(
                     new InputStreamReader(
                             Objects.requireNonNull(
@@ -230,6 +251,8 @@ public class Main {
                 " -D<name>=value  pass definition to C preprocessor\n" +
                 " -X<name>=value  override compiler property (see below)\n" +
                 " -l<name>        include built-in library <name> (use -lh to list available libraries)\n" +
+                " -w              Inhibit all warning messages\n" +
+                " -Werror         Make all warnings into errors\n" +
                 " -o, --output <FILE>  specify output WAT file (or - for stdout)\n" +
 //                " -k, --keep      when compiling to WASM, keep intermediate WAT file\n" +
                 " -h, --help      this help screen\n" +
@@ -252,7 +275,8 @@ public class Main {
 
     private static String parseCommandLineArgs(String[] args, List<Option> options, Map<String, String> parsedArgs,
                                                List<String> fileArgs, Properties prop,
-                                               List<String> ppOptions, List<String> builtin_libs) throws IOException {
+                                               List<String> ppOptions, List<String> builtin_libs,
+                                               WarningTreatment[] warningTreatment) throws IOException {
         for (int i = 0; i < args.length; i++) {
             String o = args[i];
             if (o.startsWith("-D"))
@@ -283,6 +307,18 @@ public class Main {
                     System.exit(1);
                 }
                 System.exit(0);
+            }
+            else if (o.toLowerCase().startsWith("-w")) {
+                if (o.equals("-w"))
+                    warningTreatment[0] = WarningTreatment.IGNORE;
+                else if (o.equals("-Werror"))
+                    warningTreatment[0] = WarningTreatment.TREAS_AS_ERRORS;
+                else if (o.equals("-Wall"))
+                    ;
+                else {
+                    System.err.println("Invalid warning option '" + o + "'");
+                    System.exit(1);
+                }
             }
             else if (o.startsWith("-l") && o.length() > 2)
                 builtin_libs.add(o.substring(2));
@@ -373,7 +409,7 @@ public class Main {
         public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e)
                 throws ParseCancellationException {
             //throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
-            throw new SyntaxError(line, line, charPositionInLine, charPositionInLine, msg);
+            throw new SyntaxError(new SyntaxError.Position(line, charPositionInLine), msg);
         }
     }
 

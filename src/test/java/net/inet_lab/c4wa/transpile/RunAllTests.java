@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class RunAllTests {
@@ -58,9 +59,19 @@ public class RunAllTests {
                 else if (f)
                     libs.add(x);
             }
+            final int n_warnings = List.of("106-smoke.c", "126-smoke.c", "140-string.c", "181-memory.c").contains(fname) ? 1
+                    : List.of("172-life.c", "182-memory.c").contains(fname) ? 2
+                    : 0;
+
             tests.add(DynamicTest.dynamicTest(fileName, () -> {
+                final int[] warnCount = {0};
                 String programText = Files.readString(Path.of(Objects.requireNonNull(loader.getResource(ctests + "/" + fname)).getPath()));
-                Main.runAndSave(programText, needs_pp.contains(fname), libs, Paths.get("tests", "wat", fname.replace(".c", ".wat")));
+                Main.runAndSave(programText,
+                        needs_pp.contains(fname),
+                        libs,
+                        Paths.get("tests", "wat", fname.replace(".c", ".wat")),
+                        err -> warnCount[0] ++);
+                assertEquals(n_warnings, warnCount[0]);
             }));
         }
 

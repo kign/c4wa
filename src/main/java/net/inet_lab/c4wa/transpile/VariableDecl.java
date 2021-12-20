@@ -12,13 +12,23 @@ class VariableDecl implements Partial {
     boolean inStack;
     boolean isArray;
     Expression initialValue;
+    boolean is_used;
 
-    VariableDecl(CType type, String name, boolean is_mutable) {
+    SyntaxError.Position where_defined;
+
+    VariableDecl(CType type, String name, boolean is_mutable, SyntaxError.Position where_defined) {
         this.type = type;
         this.name = name;
+        this.where_defined = where_defined;
+
         imported = exported = inStack = isArray = false;
         mutable = is_mutable;
         initialValue = null;
+        is_used = false;
+    }
+
+    public void markUsed() {
+        is_used = true;
     }
 
     public Global wat (String gobalImportName) {
