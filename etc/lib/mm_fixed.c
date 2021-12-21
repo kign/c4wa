@@ -49,7 +49,7 @@ void mm_init(int extra_offset, int size) {
     __mm_start = (unsigned long *)(__builtin_memory + __builtin_offset + __mm_extra_offset);
 }
 
-char * mm_malloc (int size) {
+void * mm_malloc (int size) {
 #ifdef USE_PRINTF
     const int verbose = 0;
 #endif
@@ -97,7 +97,7 @@ char * mm_malloc (int size) {
     int j = __builtin_ctzl(*cur);
 
     *cur ^= (unsigned long)1 << (unsigned long)j;
-    char * result = (char*) cur + 8 + j * __mm_size;
+    void * result = (void*) cur + 8 + j * __mm_size;
 
     if (*cur == 0) {
         do {
@@ -111,18 +111,18 @@ char * mm_malloc (int size) {
     return result;
 }
 
-void mm_free(char * box) {
+void mm_free(void * box) {
     __mm_stat_freed ++;
 
     const int unit_size = 1 + 8 * __mm_size; // # of "long" in one memory unit
 
-    int offset = box - (char *)__mm_start;
+    int offset = box - (void *)__mm_start;
     int idx = offset / unit_size / 8;
     unsigned long * cur = __mm_start + idx * unit_size;
-    int j = (box - (char *) cur - 8)/__mm_size;
+    int j = (box - (void *) cur - 8)/__mm_size;
     assert(j >= 0);
     assert(j < 64);
-    assert(box == (char *)cur + 8 + j*__mm_size);
+    assert(box == (void *)cur + 8 + j*__mm_size);
     assert((*cur & (unsigned long)1 << (unsigned long)j) == 0);
     *cur ^= (unsigned long)1 << (unsigned long)j;
 

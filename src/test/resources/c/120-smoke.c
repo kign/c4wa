@@ -19,7 +19,7 @@ extern int main() {
 
     b[0] = 3;
 
-    memset((char *)a, '\0', N * sizeof(int)); // make sure it updates `a`, but not `b`
+    memset(a, '\0', N * sizeof(int)); // make sure it updates `a`, but not `b`
 
     a[get_index()] ++; // how many time will we call get_index?
     b[0] |= 1 << 10;

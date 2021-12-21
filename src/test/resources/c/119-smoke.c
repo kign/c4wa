@@ -1,5 +1,5 @@
 void printf(char *, ...);
-extern char * malloc(int);
+extern void * malloc(int);
 
 static unsigned int seed = 57;
 

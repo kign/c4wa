@@ -30,6 +30,11 @@ public class StructDecl extends CType {
     }
 
     @Override
+    public boolean same(CType rhs) {
+        return rhs.is_struct(name);
+    }
+
+    @Override
     public boolean is_struct() {
         return true;
     }

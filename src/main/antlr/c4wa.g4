@@ -12,10 +12,10 @@ module
     ;
 
 global_decl
-    : (STATIC|EXTERN)? CONST? variable_decl ('=' expression)? ';'                                    # global_decl_variable
-    | (STATIC|EXTERN)? variable_decl '(' (type_decl (',' type_decl)* (',' '...')? )? ')' ';' # global_decl_function
-    | EXTERN? variable_decl '(' param_list? ')' composite_block                                      # function_definition
-    | STRUCT ID '{' (struct_mult_members_decl ';')+ '}'  ';'                                         # struct_definition
+    : (STATIC|EXTERN)? CONST? variable_decl ('=' expression)? ';'                             # global_decl_variable
+    | (STATIC|EXTERN)? variable_decl '(' (type_decl (',' type_decl)* (',' '...')? )? ')' ';'  # global_decl_function
+    | EXTERN? variable_decl '(' param_list? ')' composite_block                               # function_definition
+    | STRUCT ID '{' (struct_mult_members_decl ';')+ '}'  ';'                                  # struct_definition
     ;
 
 param_list : variable_decl (',' variable_decl)* (',' '...')?;

@@ -154,18 +154,18 @@ char * mm_malloc (int size) {
     return result;
 }
 
-void mm_free(char * box) {
+void mm_free(void * box) {
     __mm_stat_freed ++;
 
     const int unit_size = 1 + 8 * __mm_size; // # of "long" in one memory unit
 
-    int offset = box - (char *)__mm_start;
+    int offset = box - (void *)__mm_start;
     int idx = offset / unit_size / 8;
     unsigned long * cur = __mm_start + idx * unit_size;
-    int j = (box - (char *) cur - 8)/__mm_size;
+    int j = (box - (void *) cur - 8)/__mm_size;
     assert(j >= 0);
     assert(j < 64);
-    assert(box == (char *)cur + 8 + j*__mm_size);
+    assert(box == (void *)cur + 8 + j*__mm_size);
     assert((*cur & (unsigned long)1 << (unsigned long)j) == 0);
     *cur ^= (unsigned long)1 << (unsigned long)j;
 
@@ -205,7 +205,7 @@ static int mm_freed = 0;
 struct Box * alloc_new_box (int level, int x0, int y0) {
     mm_allocated ++;
     struct Box * box = (struct Box *) mm_malloc(level == 0? sizeof(struct Box0): sizeof(struct Box));
-    memset((char *)box, '\0', level == 0? sizeof(struct Box0): sizeof(struct Box));
+    memset(box, '\0', level == 0? sizeof(struct Box0): sizeof(struct Box));
 
     int size = N0;
     for (int k = 0; k < level; k ++)
@@ -231,7 +231,7 @@ void release_box(struct Box * box) {
                     release_box(box->cells[y * N + x]);
     }
 
-    mm_free((char *) box);
+    mm_free(box);
 }
 
 void memory_stat() {

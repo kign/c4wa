@@ -1,8 +1,8 @@
 #ifdef C4WA
 
 void printf(char *, ...);
-extern char * malloc (int);
-extern void free(char *);
+extern void * malloc (int);
+extern void free(void *);
 extern void mm_stat(int*, int*, int*, int*, int*);
 extern void mm_init(int, int);
 #define NULL 0
@@ -37,7 +37,7 @@ double mulberry32() {
 
 struct Unit * allocate(int id) {
     struct Unit * unit = (struct Unit *) malloc(sizeof(struct Unit));
-    memset((char *) unit, '\0', sizeof(struct Unit));
+    memset(unit, '\0', sizeof(struct Unit));
     unit->id = id;
     unit->integrity = id ^ 816191;
 
@@ -56,7 +56,7 @@ extern int main () {
     storage = malloc(N_UNITS * sizeof(struct Unit *));
 #endif
 
-    memset((char *) storage, '\0', N_UNITS * sizeof(struct Unit *));
+    memset(storage, '\0', N_UNITS * sizeof(struct Unit *));
 
     const int n_iter = 100000;
 
@@ -68,8 +68,8 @@ extern int main () {
         if (storage[idx]) {
             verify(storage[idx]);
 //            printf("Releasing index %d, id %d\n", idx, storage[idx]->id);
-            free((char *)storage[idx]);
-            storage[idx] = (struct Unit *) NULL;
+            free(storage[idx]);
+            storage[idx] = NULL;
         }
         else {
             storage[idx] = allocate(1 + iter);

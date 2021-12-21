@@ -35,7 +35,7 @@ public class GenericCast extends Expression_1 {
         if (dstType == srcType)
             return arg;
         else if (arg instanceof Const)
-            return new Const(dstType, (Const)arg);
+            return new Const(dstType, (Const)arg, signed);
         else
             return new GenericCast(srcType, dstType, signed, arg);
     }

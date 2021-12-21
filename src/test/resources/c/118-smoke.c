@@ -1,6 +1,6 @@
 void printf(char *, ...);
 
-extern char * malloc(int);
+extern void * malloc(int);
 
 char * alloc_storage(int n) {
     int s = (n + 8*sizeof(long) - 1)/8/sizeof(long);

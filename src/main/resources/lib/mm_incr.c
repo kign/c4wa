@@ -2,7 +2,7 @@
 static int __last_offset = __builtin_offset;
 static int __available_size = -1;
 
-char * malloc(int size) {
+void * malloc(int size) {
     if (__available_size < 0)
         __available_size = 64000 * memsize();
 
@@ -19,5 +19,5 @@ char * malloc(int size) {
     return res;
 }
 
-void free(char * ptr) {
+void free(void * ptr) {
 }

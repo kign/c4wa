@@ -39,7 +39,7 @@ void memgrow(int upgrade) {
 }
 #endif // !defined(C4WA)
 
-static char * __mm_memory = 0;
+static void * __mm_memory = 0;
 
 
 // __mm_avail[i] = first available block of type MEM_MIN * 2^i, 0 <= i <= 6
@@ -94,7 +94,7 @@ void mm_init(int mm_min) {
         __mm_report_histogram[i] = 0;
 }
 
-char * mm_malloc (int size) {
+void * mm_malloc (int size) {
 #ifdef USE_PRINTF
     const int verbose = 0;
 #endif
@@ -256,11 +256,11 @@ char * mm_malloc (int size) {
 #endif
             __mm_avail[n] = -1;
         }
-        return (char *)cur + 8 + j * a_size;
+        return (void *)cur + 8 + j * a_size;
     }
 }
 
-void mm_free(char * address) {
+void mm_free(void * address) {
 #ifdef USE_PRINTF
     const int verbose = 0;
 #endif
@@ -291,14 +291,14 @@ void mm_free(char * address) {
         for (i = 0; i < n; i ++)
             a_size *= 2;
         int bits = 1 << (6-n);
-        int j = (address - (char*)cur - 8)/a_size;
+        int j = (address - (void*)cur - 8)/a_size;
 
 #ifdef USE_PRINTF
         if (verbose)
             printf("free::small[%d](<size %d (n = %d), j = %d>\n", idx, a_size, n, j);
 #endif
         assert (j >= 0 && j < bits);
-        assert (address == (char *)cur + 8 + j * a_size);
+        assert (address == (void *)cur + 8 + j * a_size);
         assert((*cur & (unsigned long)1 << (unsigned long)j) == 0);
         *cur ^= (unsigned long)1 << (unsigned long)j;
         if (__mm_avail[n] < 0) {
@@ -438,7 +438,7 @@ void verify_data(char * data) {
 
 void test_uniform(int n_units, int n_iter, int size) {
     char ** storage = (char **) mm_malloc(n_units * 8);
-    memset((char *) storage, '\0', n_units * 8);
+    memset(storage, '\0', n_units * 8);
 
     printf("Starting memory test with %d empty \"unit\" pointers and %d iterations\n", n_units, n_iter);
 
@@ -449,7 +449,7 @@ void test_uniform(int n_units, int n_iter, int size) {
             verify_data(storage[idx]);
 //            printf("⬅️ Releasing index %d, id %d\n", idx, *(int*)storage[idx]);
             mm_free(storage[idx]);
-            storage[idx] = (char *) NULL;
+            storage[idx] = NULL;
         }
         else {
 //            printf("➡️ Allocating index %d, id %d\n", idx, 1 + iter);
@@ -460,13 +460,13 @@ void test_uniform(int n_units, int n_iter, int size) {
     char * units = mm_print_units();
     printf("%s\n", units);
     mm_free(units);
-    mm_free((char *)storage);
+    mm_free(storage);
     printf("Finished fixed memory test\n");
 }
 
 void test_nonuniform(int n_units, int n_iter, int size) {
     char ** storage = (char **) mm_malloc(n_units * 8);
-    memset((char *) storage, '\0', n_units * 8);
+    memset(storage, '\0', n_units * 8);
 
     printf("Starting memory test with %d empty \"unit\" pointers and %d iterations\n", n_units, n_iter);
 
@@ -477,7 +477,7 @@ void test_nonuniform(int n_units, int n_iter, int size) {
             verify_data(storage[idx]);
 //            printf("Releasing index %d, id %d\n", idx, *(int*)storage[idx]);
             mm_free(storage[idx]);
-            storage[idx] = (char *) NULL;
+            storage[idx] = NULL;
         }
         else {
             double r = mulberry32();
@@ -489,7 +489,7 @@ void test_nonuniform(int n_units, int n_iter, int size) {
     char * units = mm_print_units();
     printf("%s\n", units);
     mm_free(units);
-    mm_free((char *)storage);
+    mm_free(storage);
     printf("Finished variable memory test\n");
 }
 

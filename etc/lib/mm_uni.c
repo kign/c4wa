@@ -11,7 +11,7 @@
 #endif
 
 #ifndef C4WA
-static char * __builtin_memory;
+static void * __builtin_memory;
 static int __builtin_offset = 0;
 
 static int __memsize = 1;
@@ -25,7 +25,7 @@ void memgrow(int upgrade) {
 }
 #endif // !defined(C4WA)
 
-static char * __mm_memory = 0;
+static void * __mm_memory = 0;
 
 
 // __mm_avail[i] = first available block of type MEM_MIN * 2^i, 0 <= i <= 6
@@ -80,7 +80,7 @@ void mm_init(int mm_min) {
         __mm_report_histogram[i] = 0;
 }
 
-char * mm_malloc (int size) {
+void * mm_malloc (int size) {
 #ifdef USE_PRINTF
     const int verbose = 0;
 #endif
@@ -243,11 +243,11 @@ char * mm_malloc (int size) {
 #endif
             __mm_avail[n] = -1;
         }
-        return (char *)cur + 8 + j * a_size;
+        return (void *)cur + 8 + j * a_size;
     }
 }
 
-void mm_free(char * address) {
+void mm_free(void * address) {
 #ifdef USE_PRINTF
     const int verbose = 0;
 #endif
@@ -278,14 +278,14 @@ void mm_free(char * address) {
         for (i = 0; i < n; i ++)
             a_size *= 2;
         int bits = 1 << (6-n);
-        int j = (address - (char*)cur - 8)/a_size;
+        int j = (address - (void *)cur - 8)/a_size;
 
 #ifdef USE_PRINTF
         if (verbose)
             printf("free::small[%d](<size %d (n = %d), j = %d>\n", idx, a_size, n, j);
 #endif
         assert (j >= 0 && j < bits);
-        assert (address == (char *)cur + 8 + j * a_size);
+        assert (address == (void *)cur + 8 + j * a_size);
         assert((*cur & (unsigned long)1 << (unsigned long)j) == 0);
         *cur ^= (unsigned long)1 << (unsigned long)j;
         if (__mm_avail[n] < 0) {

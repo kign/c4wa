@@ -44,12 +44,12 @@ public class Const extends Expression {
             throw new RuntimeException("You can't do it");
     }
 
-    public Const(NumType numType, Const orig) {
+    public Const(NumType numType, Const orig, boolean signed) {
         super(InstructionName.CONST, numType);
         boolean s_int = orig.numType == NumType.I32 || orig.numType == NumType.I64;
         boolean d_int = numType == NumType.I32 || numType == NumType.I64;
         longValue =  d_int? (s_int? orig.longValue : (long) orig.doubleValue) : 0;
-        doubleValue = d_int? 0 : (s_int? (double)orig.longValue : orig.doubleValue);
+        doubleValue = d_int? 0 : (s_int? (signed||orig.longValue>=0? (double)orig.longValue : (double) orig.longValue + Math.pow(2,64)) : orig.doubleValue);
     }
 
     public boolean isTrue() {

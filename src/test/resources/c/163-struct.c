@@ -1,5 +1,5 @@
 void printf(char *, ...);
-extern char * malloc(int);
+extern void * malloc(int);
 
 struct Node { struct Node * next; int val; };
 struct LinkedList { struct Node * head, * tail; };

@@ -60,15 +60,15 @@ public class ModuleEnv implements Partial, PostprocessContext {
 
         data = new ArrayList<>();
 
-        addDeclaration(new FunctionDecl("memset", null,
-                new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR, CType.INT}, false, FunctionDecl.SType.BUILTIN));
-        addDeclaration(new FunctionDecl("memcpy", null,
-                new CType[]{CType.CHAR.make_pointer_to(), CType.CHAR.make_pointer_to(), CType.INT}, false, FunctionDecl.SType.BUILTIN));
+        addDeclaration(new FunctionDecl("memset", CType.VOID,
+                new CType[]{CType.VOID.make_pointer_to(), CType.CHAR, CType.INT}, false, FunctionDecl.SType.BUILTIN));
+        addDeclaration(new FunctionDecl("memcpy", CType.VOID,
+                new CType[]{CType.VOID.make_pointer_to(), CType.VOID.make_pointer_to(), CType.INT}, false, FunctionDecl.SType.BUILTIN));
         // Note that `memory.grow` actually return value (old memory size), but you are free to ignore it
         // without invoking `drop`.
         // I don't think this is a common design patter though, so it's easier all around to simply make
         // `memory.grow` void.
-        addDeclaration(new FunctionDecl("memgrow", null, new CType[]{CType.INT}, false, FunctionDecl.SType.BUILTIN));
+        addDeclaration(new FunctionDecl("memgrow", CType.VOID, new CType[]{CType.INT}, false, FunctionDecl.SType.BUILTIN));
         addDeclaration(new FunctionDecl("memsize", CType.INT, new CType[0], false, FunctionDecl.SType.BUILTIN));
     }
 

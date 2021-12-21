@@ -7,7 +7,7 @@
 # 1 "etc/lib/mm_uni.c" 2
 // universal memory manager
 # 28 "etc/lib/mm_uni.c"
-static char * __mm_memory = 0;
+static void * __mm_memory = 0;
 
 
 // __mm_avail[i] = first available block of type MEM_MIN * 2^i, 0 <= i <= 6
@@ -62,7 +62,7 @@ void mm_init(int mm_min) {
         __mm_report_histogram[i] = 0;
 }
 
-char * malloc (int size) {
+void * malloc (int size) {
 
 
 
@@ -225,11 +225,11 @@ char * malloc (int size) {
 
             __mm_avail[n] = -1;
         }
-        return (char *)cur + 8 + j * a_size;
+        return (void *)cur + 8 + j * a_size;
     }
 }
 
-void free(char * address) {
+void free(void * address) {
 
 
 
@@ -260,14 +260,14 @@ void free(char * address) {
         for (i = 0; i < n; i ++)
             a_size *= 2;
         int bits = 1 << (6-n);
-        int j = (address - (char*)cur - 8)/a_size;
+        int j = (address - (void *)cur - 8)/a_size;
 
 
 
 
 
         if(!(j >= 0 && j < bits)) abort ();
-        if(!(address == (char *)cur + 8 + j * a_size)) abort ();
+        if(!(address == (void *)cur + 8 + j * a_size)) abort ();
         if(!((*cur & (unsigned long)1 << (unsigned long)j) == 0)) abort ();
         *cur ^= (unsigned long)1 << (unsigned long)j;
         if (__mm_avail[n] < 0) {

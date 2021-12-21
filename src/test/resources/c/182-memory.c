@@ -2,8 +2,8 @@
 
 void printf(char *, ...);
 
-extern char * malloc (int);
-extern void free(char *);
+extern void * malloc (int size);
+extern void free(void * address);
 extern int * mm_histogram(int *);
 extern char * mm_print_units();
 #define NULL 0
@@ -76,7 +76,7 @@ void verify_data(char * data) {
 
 void test_uniform(int id, int n_units, int n_iter, int size) {
     char ** storage = (char **) malloc(n_units * 8);
-    memset((char *) storage, '\0', n_units * 8);
+    memset(storage, '\0', n_units * 8);
 
     printf("Starting memory test with %d empty \"unit\" pointers and %d iterations\n", n_units, n_iter);
 
@@ -86,7 +86,7 @@ void test_uniform(int id, int n_units, int n_iter, int size) {
         if (storage[idx]) {
             verify_data(storage[idx]);
             free(storage[idx]);
-            storage[idx] = (char *) NULL;
+            storage[idx] = NULL;
         }
         else {
             storage[idx] = allocate_data(1 + iter, size);
@@ -101,13 +101,13 @@ void test_uniform(int id, int n_units, int n_iter, int size) {
     printf("%s\n", id == 1? "S<6|free=0>S<0|free=5>S<0|free=2>S<0|free=4>S<0|free=14>S<0|free=23>S<0|free=19>S<0|free=8>S<0|free=5>S<0|free=4>S<3|free=7>"
                           : "S<6|free=1>S<0|free=5>S<0|free=2>S<0|free=4>S<0|free=14>S<0|free=23>S<0|free=19>S<0|free=7>S<0|free=5>S<0|free=4>S<3|free=7>B<2>B<2>B<2>B<2>B<2>..B<2>....");
 #endif
-    free((char *)storage);
+    free(storage);
     printf("Finished fixed memory test\n");
 }
 
 void test_nonuniform(int id, int n_units, int n_iter, int size) {
     char ** storage = (char **) malloc(n_units * 8);
-    memset((char *) storage, '\0', n_units * 8);
+    memset(storage, '\0', n_units * 8);
 
     printf("Starting memory test with %d empty \"unit\" pointers and %d iterations\n", n_units, n_iter);
 
@@ -117,7 +117,7 @@ void test_nonuniform(int id, int n_units, int n_iter, int size) {
         if (storage[idx]) {
             verify_data(storage[idx]);
             free(storage[idx]);
-            storage[idx] = (char *) NULL;
+            storage[idx] = NULL;
         }
         else {
             double r = mulberry32();
@@ -132,7 +132,7 @@ void test_nonuniform(int id, int n_units, int n_iter, int size) {
 #else
     printf("%s\n", "S<0|free=53>S<0|free=5>S<0|free=2>S<0|free=4>S<0|free=14>S<0|free=23>S<0|free=19>S<0|free=8>S<0|free=5>S<0|free=4>S<3|free=3>B<2>B<2>B<2>B<2>B<2>B<2>B<2>S<5|free=1>S<6|free=0>S<4|free=2>S<6|free=1>S<5|free=0>S<6|free=0>B<2>B<2>.B<4>.S<1|free=32>B<2>B<3>B<7>B<4>B<5>.B<3>..B<2>B<5>B<5>...B<4>B<12>....B<6>...........B<7>B<3>B<7>...S<2|free=15>B<10>B<9>.................B<10>.............................B<11>B<10>............................................................");
 #endif
-    free((char *)storage);
+    free(storage);
     printf("Finished variable memory test\n");
 }
 

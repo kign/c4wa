@@ -8,7 +8,7 @@ import java.util.List;
 
 public class FunctionDecl implements Partial {
     final String name;
-    final CType returnType;
+    final @NotNull CType returnType;
     final CType[] params;
     final boolean vararg;
     final SType storage;
@@ -23,7 +23,7 @@ public class FunctionDecl implements Partial {
         BUILTIN   // built-in functions
     }
 
-    FunctionDecl(String name, CType returnType, @NotNull CType[] params, boolean vararg, SType storage) {
+    FunctionDecl(String name, @NotNull CType returnType, @NotNull CType[] params, boolean vararg, SType storage) {
         this.name = name;
         this.returnType = returnType;
         this.vararg = vararg;
@@ -77,14 +77,12 @@ public class FunctionDecl implements Partial {
         List<Instruction> attributes = new ArrayList<>();
         attributes.add(new Special(name));
 
-        if (params != null) {
-            for (CType c : params)
-                attributes.add(new Param(c.asNumType()));
-            if (vararg)
-                attributes.add(new Param(NumType.I32));
-        }
+        for (CType c : params)
+            attributes.add(new Param(c.asNumType()));
+        if (vararg)
+            attributes.add(new Param(NumType.I32));
 
-        if (returnType != null)
+        if (!returnType.is_void())
             attributes.add(new Result(returnType.asNumType()));
 
         return new Func(attributes);

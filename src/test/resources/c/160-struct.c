@@ -1,5 +1,5 @@
 void printf(char *, ...);
-extern char * malloc(int);
+extern void * malloc(int);
 
 struct Point { float x; float y; char color; float z; };
 

@@ -1,6 +1,6 @@
 #ifdef C4WA
-extern char * malloc(int size);
-extern void free(char * ptr);
+extern void * malloc(int size);
+extern void free(void * ptr);
 
 #if defined(C4WA_MM_INCR)
 // no additional API here

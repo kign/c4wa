@@ -42,7 +42,7 @@ static int mm_freed = 0;
 struct Box * alloc_new_box (int level, int x0, int y0) {
     mm_allocated ++;
     struct Box * box = (struct Box *) malloc(level == 0? sizeof(struct Box0): sizeof(struct Box));
-    memset((char *)box, '\0', level == 0? sizeof(struct Box0): sizeof(struct Box));
+    memset(box, '\0', level == 0? sizeof(struct Box0): sizeof(struct Box));
 
     int size = N0;
     for (int k = 0; k < level; k ++)
@@ -68,7 +68,7 @@ void release_box(struct Box * box) {
                     release_box(box->cells[y * N + x]);
     }
 
-    free((char *) box);
+    free(box);
 }
 
 void memory_stat() {
@@ -517,7 +517,7 @@ void life_clean_plane(struct Box * w, int dst) {
                 life_clean_plane(w->cells[idx], dst);
     }
     else
-        memset((char *)(((struct Box0 *)w)->cells0 + N0*N0*dst), '\0', N0*N0);
+        memset((((struct Box0 *)w)->cells0 + N0*N0*dst), '\0', N0*N0);
 }
 
 void life_prepare (struct Stat * stat) {

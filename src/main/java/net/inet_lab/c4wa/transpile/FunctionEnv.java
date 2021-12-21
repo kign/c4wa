@@ -1,12 +1,13 @@
 package net.inet_lab.c4wa.transpile;
 
 import net.inet_lab.c4wa.wat.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
 public class FunctionEnv implements Partial, PostprocessContext {
     final String name;
-    final CType returnType;
+    final @NotNull CType returnType;
     final private List<String> params;
     final boolean is_exported;
     final boolean vararg;
@@ -186,7 +187,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
             if (localVar.is_param)
                 attributes.add(new Param(localVar.watName, localVar.numType));
 
-        if (returnType != null)
+        if (!returnType.is_void())
             attributes.add(new Result(returnType.asNumType()));
 
         if (uses_stack)
@@ -205,7 +206,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
         elements.addAll(Arrays.asList(instructions));
 
         if (!(elements.size() > 0 && elements.get(elements.size() - 1) instanceof ParseTreeVisitor.DelayedReturn)) {
-            if (returnType == null) {
+            if (returnType.is_void()) {
                 if (uses_stack)
                     elements.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new GetLocal(NumType.I32, FunctionEnv.STACK_ENTRY_VAR)));
             }

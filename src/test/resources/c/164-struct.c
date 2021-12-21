@@ -1,5 +1,5 @@
 void printf(char *, ...);
-extern char * malloc(int);
+extern void * malloc(int);
 
 struct Complex { float x, y; };
 struct Triangle { struct Complex A, B, C; };

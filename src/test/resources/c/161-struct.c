@@ -1,5 +1,5 @@
 void printf(char *, ...);
-extern char * malloc(int);
+extern void * malloc(int);
 
 struct Student { int access; char * name; };
 

@@ -1,6 +1,6 @@
 void printf(char *, ...);
 
-extern char * malloc(int);
+extern void * malloc(int);
 
 extern int main () {
     int *a = (int *) malloc(3 * sizeof(int));
