@@ -1,6 +1,6 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (memory (export "memory") 1)
   (data (i32.const 1024) "called foo(%d); \00\E2\9E\BE %d && %d = %d\0A\00\E2\9E\BE %d || %d = %d\0A\00\E2\9E\BE [64] %d && %d = %d\0A\00\E2\9E\BE [64] %d || %d = %d\0A\00\E2\9E\BE %d && %d && %d = %d\0A\00\E2\9E\BE %d || %d || %d = %d\0A\00\E2\9E\BE [64] %d && %d && %d = %d\0A\00\E2\9E\BE [64] %d || %d || %d = %d\0A\00=> Double argument testing\0A\00=> Triple argument testing\0A\00")
   (func $foo32 (param $ret i32) (result i32)

@@ -1,7 +1,7 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $start i32 (i32.const 25))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (global $end i32 (i32.const 40))
   (global $base i32 (i32.const 3))
   (memory (export "memory") 1)

@@ -4,7 +4,7 @@
   (global $__mm_inuse (mut i32) (i32.const 0))
   (global $__mm_expand_by (mut i32) (i32.const 10))
   (global $__mm_extra_offset (mut i32) (i32.const -1))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (global $__mm_first (mut i32) (i32.const -1))
   (global $rand_x i32 (i32.const 179424673))
   (global $__mm_size (mut i32) (i32.const -1))

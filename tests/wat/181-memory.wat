@@ -7,7 +7,7 @@
   (global $__mm_avail (mut i32) (i32.const 0))
   (global $__mm_stat_allocated (mut i32) (i32.const 0))
   (global $__mm_extra_offset (mut i32) (i32.const -1))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (global $__mm_report_histogram (mut i32) (i32.const 0))
   (global $__mm_min (mut i32) (i32.const 0))
   (memory (export "memory") 1)

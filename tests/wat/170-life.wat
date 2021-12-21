@@ -1,7 +1,7 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $hash_rand i32 (i32.const 179424673))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (global $M i32 (i32.const 1))
   (global $N i32 (i32.const 100))
   (memory (export "memory") 1)

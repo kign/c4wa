@@ -1,6 +1,6 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (memory (export "memory") 1)
   (data (i32.const 1024) "%ld | %lx\0A\00")
   (func $main (export "main") (result i32)

@@ -2,7 +2,7 @@
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $__last_offset (mut i32) (i32.const 1111))
   (global $__available_size (mut i32) (i32.const -1))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (memory (export "memory") 1)
   (data (i32.const 1024) "Requested %d bits of storage, using %d long's\0A\00%d\00\0A\00%d >> 2 = %d, %d << 2 = %d\0A\00=>\00 %d\00")
   (func $alloc_storage (param $n i32) (result i32)

@@ -8,7 +8,7 @@
   (global $__mm_start (mut i32) (i32.const 0))
   (global $__mm_extra_offset (mut i32) (i32.const -1))
   (global $__mm_stat_allocated (mut i32) (i32.const 0))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (global $__mm_first (mut i32) (i32.const -1))
   (global $storage (mut i32) (i32.const 0))
   (global $__mm_size (mut i32) (i32.const -1))

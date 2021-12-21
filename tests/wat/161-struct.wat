@@ -2,7 +2,7 @@
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $__last_offset (mut i32) (i32.const 1086))
   (global $__available_size (mut i32) (i32.const -1))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (memory (export "memory") 1)
   (data (i32.const 1024) "Calling makeStudent()\0A\00Student name is %s, access = %d\0A\00Vasya\00")
   (func $makeStudent (param $name i32) (param $p_res i32) (result i32)

@@ -3,7 +3,7 @@
   (global $seed (mut i32) (i32.const 57))
   (global $__last_offset (mut i32) (i32.const 1061))
   (global $__available_size (mut i32) (i32.const -1))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (memory (export "memory") 1)
   (data (i32.const 1024) "%s%.6f\00\00\0A\00, \00min(%d) * \E2\88\9A%d = %.6f\0A\00")
   (func $mulberry32 (result f64)

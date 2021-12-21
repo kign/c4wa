@@ -1,7 +1,7 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $precision f64 (f64.const 1.0E-9))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (memory (export "memory") 1)
   (data (i32.const 1024) "\E2\88\9A%d = %.8f\0A\00")
   (func $my_sqrt (param $x f64) (result f64)

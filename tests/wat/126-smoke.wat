@@ -1,6 +1,6 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (memory (export "memory") 1)
   (data (i32.const 1024) "force_stack_var(%ld)\0A\00a = %lx\0A\00k = %d\0A\00now k = %.2f\0A\00g = %.2f\0A\00[block] i = %d\0A\00[block] j = %d\0A\00i = %d, j = %d\0A\00")
   (func $force_stack_var (param $x i32)

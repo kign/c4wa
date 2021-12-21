@@ -2,7 +2,7 @@
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $__last_offset (mut i32) (i32.const 1053))
   (global $__available_size (mut i32) (i32.const -1))
-  (global $@stack (mut i32) (i32.const 0))
+  (global $@stack (mut i32) (i32.const 1))
   (memory (export "memory") 1)
   (data (i32.const 1024) "2^%d = %ld, as string: '%s'\0A\00")
   (func $long_to_string (param $a i64) (result i32)
