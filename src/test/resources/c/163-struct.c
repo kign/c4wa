@@ -15,8 +15,8 @@ struct Node * new_node() {
 }
 
 void init_linked_list(struct LinkedList * list) {
-    list->head = (struct Node *) 0;
-    list->tail = (struct Node *) 0;
+    list->head = 0;
+    list->tail = 0;
 }
 
 void pushTail(struct LinkedList * list, int val) {

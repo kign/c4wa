@@ -8,7 +8,7 @@ double mulberry32() {
     unsigned int t = seed;
     t = (t ^ t >> (unsigned int)15) * (t | (unsigned int)1);
     t ^= t + (t ^ t >> (unsigned int)7) * (t | (unsigned int)61);
-    return (double)(t ^ t >> (unsigned int)14) / 4294967296.0;
+    return (t ^ t >> (unsigned int)14) / 4294967296.0;
 }
 
 double array_min_(double arr[], int a, int b) {

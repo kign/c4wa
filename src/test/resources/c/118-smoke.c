@@ -2,10 +2,10 @@ void printf(char *, ...);
 
 extern void * malloc(int);
 
-char * alloc_storage(int n) {
+void * alloc_storage(int n) {
     int s = (n + 8*sizeof(long) - 1)/8/sizeof(long);
     printf("Requested %d bits of storage, using %d long's\n", n, s);
-    unsigned long * sto = (unsigned long *) malloc(s * sizeof(long));
+    unsigned long * sto = malloc(s * sizeof(long));
 
     for (int i = 0; i < s; i ++)
         sto[i] = (long) 0;
@@ -13,10 +13,10 @@ char * alloc_storage(int n) {
     return (char *) sto;
 }
 
-void save(char * S, int n, int val) {
-    unsigned long * sto = (unsigned long *) S;
+void save(void * S, int n, int val) {
+    unsigned long * sto = S;
 
-    int a = n/sizeof(long);
+    int a = n / sizeof(long);
     int b = n % sizeof(long);
     unsigned long two_power_b = 1 << (unsigned long) b;
 
@@ -24,8 +24,8 @@ void save(char * S, int n, int val) {
                 : sto[a] & ~two_power_b;
 }
 
-int read(char * S, int n) {
-    unsigned long * sto = (unsigned long *) S;
+int read(void * S, int n) {
+    unsigned long * sto = S;
 
     int a = n/sizeof(long);
     int b = n % sizeof(long);
@@ -45,7 +45,7 @@ extern int main () {
     printf("%d >> 2 = %d, %d << 2 = %d\n", a, a >> 2, a, a << 2);
 
     int N = 8;
-    char * S = alloc_storage(N);
+    void * S = alloc_storage(N);
     save(S, 0, 1);
     save(S, 5, 1);
     print_storage(S, N);

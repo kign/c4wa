@@ -3,10 +3,10 @@ void printf(char *, ...);
 const double precision = 1.0e-9;
 
 double my_sqrt(double x) {
-    double a = 0.;
+    double a = 0;
     double b = x;
     do {
-        double c = (a + b)/2.;
+        double c = (a + b)/2;
 
         if (c * c > x)
             b = c;
@@ -15,13 +15,13 @@ double my_sqrt(double x) {
     }
     while(b - a > precision);
 
-    return (a + b)/2.0;
+    return (a + b)/2;
 }
 
 extern int main() {
     int i = 2;
     do {
-        printf("√%d = %.8f\n", i, my_sqrt((double)i));
+        printf("√%d = %.8f\n", i, my_sqrt(i));
         i ++;
     }
     while(i <= 10);

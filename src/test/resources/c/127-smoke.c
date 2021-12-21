@@ -18,7 +18,7 @@ double average ( int num, ... ) {
     }
     va_end ( arguments );                  // Cleans up the list
 
-    return sum / (double)num;
+    return sum / num;
 }
 
 extern int main() {

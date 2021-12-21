@@ -12,16 +12,16 @@ void solve_square_equation(double a, double b, double c, double roots[2], int * 
         return;
     }
     if(d == 0.) {
-        roots[0] = -b/2./a;
-        roots[1] = -b/2./a;
+        roots[0] = -b/2/a;
+        roots[1] = -b/2/a;
         *p_status = 1;
         return;
     }
 
     double sqrt_d = sqrt(d);
 
-    roots[0] = (-b - sqrt_d)/2./a;
-    roots[1] = (-b + sqrt_d)/2./a;
+    roots[0] = (-b - sqrt_d)/2/a;
+    roots[1] = (-b + sqrt_d)/2/a;
     *p_status = 2;
 }
 

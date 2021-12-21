@@ -6,7 +6,7 @@ double factorial(int n) {
     printf("factorial(%d)\n", n);
 
     if (n == 1)
-        return 1.0;
+        return 1;
 
     return (double)n * factorial(n-1);
 }

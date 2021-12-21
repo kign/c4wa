@@ -16,7 +16,7 @@ long pow2(int n) {
 long pow(int base, int n) {
     long res = 1;
     do {
-        res = res * (long)base;
+        res = res * base;
         n = n - 1;
     }
     while(n > 0);

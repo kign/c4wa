@@ -3,7 +3,7 @@ void printf(char *, ...);
 extern void * malloc(int);
 
 extern int main () {
-    int *a = (int *) malloc(3 * sizeof(int));
+    int *a = malloc(3 * sizeof(int));
     a[0] = 15;
     int* b = a + 1;
     *b = 13;

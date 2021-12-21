@@ -3,7 +3,7 @@ void printf(char *, ...);
 void foo(int * p_a, int * p_b, double * p_s) {
     *p_a = 11;
     *p_b = -13;
-    *p_s += (double)*p_a / (double)*p_b;
+    *p_s += (double)*p_a / *p_b;
 }
 
 void test_1 () {
@@ -11,7 +11,7 @@ void test_1 () {
     double stat;
 
     a[1] = -4;
-    stat = 11.;
+    stat = 11;
     foo(&(a[0]), &(a[1]), &stat);
     a[0] ++;
     printf("a = [%d, %d], stat = %.6f\n", a[0], a[1], stat);

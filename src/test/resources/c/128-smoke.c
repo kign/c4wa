@@ -30,6 +30,8 @@ extern int main() {
 
     printf("Result is %.6f\n", dblVal + longVal + add_11(-4) + add_11(3.2) + fltVal/2 + add_19(fltVal));
 
+    printf("fltVal > 1 = %d\n", fltVal > 1.0);
+
     printf("[Testing compile-time <<]\n");
     fltVal = (unsigned long)1 << 63;
     printf("2^63 = %.15e [unsigned]\n", fltVal);
@@ -51,6 +53,7 @@ extern int main() {
     return 0;
 }
 // Result is -70.979993
+// fltVal > 1 = 0
 // [Testing compile-time <<]
 // 2^63 = 9.223372036854776e+18 [unsigned]
 // 2^31 = -2147483648.00 [signed]

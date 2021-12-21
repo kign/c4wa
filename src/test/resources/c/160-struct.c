@@ -3,7 +3,7 @@ extern void * malloc(int);
 
 struct Point { float x; float y; char color; float z; };
 
-const    int M = sizeof(struct Point);
+const int M = sizeof(struct Point);
 
 double dot(struct Point * A, struct Point * B) {
     return (double)(A->x * B->x + A->y * B->y + A->z * B->z);
