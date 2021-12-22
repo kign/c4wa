@@ -170,7 +170,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
         for(Variable v: variables) {
             if (!v.decl.is_used && moduleEnv.warningHandler != null)
                 moduleEnv.warningHandler.report(new SyntaxError(v.decl.where_defined,
-                        "WARNING: Variable '" + v.name + "' in function '" + name + "' is not used"));
+                        "WARNING: Variable '" + v.name + "' in function '" + name + "' is not used", false));
         }
     }
 

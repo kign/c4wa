@@ -6,7 +6,8 @@ import java.util.regex.Pattern;
 
 public class SyntaxError extends RuntimeException {
     public final Position pos;
-    final public String msg;
+    public final String msg;
+    public final boolean is_error;
 
     public static class Location {
         final public String fileName;
@@ -43,14 +44,14 @@ public class SyntaxError extends RuntimeException {
         void report(SyntaxError warn);
     }
 
-    public SyntaxError(String msg) {
-        this.msg = msg;
-        this.pos = new Position();
+    public SyntaxError(String msg, boolean is_error) {
+        this(new Position(), msg, is_error);
     }
 
-    public SyntaxError(Position pos, String msg) {
+    public SyntaxError(Position pos, String msg, boolean is_error) {
         this.pos = pos;
         this.msg = msg;
+        this.is_error = is_error;
     }
 
     public Location locate(List<String> lines) {

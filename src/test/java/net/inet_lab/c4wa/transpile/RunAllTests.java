@@ -13,9 +13,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class RunAllTests {
 
@@ -71,6 +72,48 @@ public class RunAllTests {
                         libs,
                         Paths.get("tests", "wat", fname.replace(".c", ".wat")),
                         err -> warnCount[0] ++);
+                assertEquals(n_warnings, warnCount[0]);
+            }));
+        }
+
+        return tests;
+    }
+
+    @TestFactory
+    List<DynamicTest> verifyErrors() throws IOException {
+        List<DynamicTest> tests = new ArrayList<>();
+        final String ctests = "errors";
+        final var loader = Thread.currentThread().getContextClassLoader();
+        assertNotNull(loader);
+
+        BufferedReader br = new BufferedReader(new InputStreamReader(Objects.requireNonNull(loader.getResourceAsStream(ctests))));
+        String fileName;
+        while ((fileName = br.readLine()) != null) {
+            final String fname = fileName;
+            if (!fname.endsWith(".c"))
+                continue;
+            String expected = "01-error.c: 2,1; "  +
+                              "02-error.c: 1,0; "  +
+                              "03-error.c: 1,0; "  +
+                              "04-error.c: 2,2; "  +
+                              "05-error.c: 2,0; "  ;
+
+            Pattern pattern = Pattern.compile("(^|\\s)" + fname + ":\\s(\\d+),(\\d+);");
+            Matcher m = pattern.matcher(expected);
+            assertTrue(m.find());
+            int n_errors = Integer.parseInt(m.group(2));
+            int n_warnings = Integer.parseInt(m.group(3));
+
+            tests.add(DynamicTest.dynamicTest(fileName, () -> {
+                final int[] warnCount = {0};
+                final int[] errCount = {0};
+                String programText = Files.readString(Path.of(Objects.requireNonNull(loader.getResource(ctests + "/" + fname)).getPath()));
+                Main.runAndSave(programText,
+                        false,
+                        List.of(),
+                        null,
+                        err -> {if (err.is_error) errCount[0] ++; else warnCount[0] ++; });
+                assertEquals(n_errors, errCount[0]);
                 assertEquals(n_warnings, warnCount[0]);
             }));
         }

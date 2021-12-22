@@ -23,6 +23,7 @@ import net.inet_lab.c4wa.autogen.cparser.c4waLexer;
 import net.inet_lab.c4wa.autogen.cparser.c4waParser;
 import net.inet_lab.c4wa.transpile.ParseTreeVisitor;
 import net.inet_lab.c4wa.transpile.ModuleEnv;
+import org.jetbrains.annotations.Nullable;
 
 public class Main {
     static final ClassLoader loader = Main.class.getClassLoader();
@@ -101,6 +102,7 @@ public class Main {
         String wat = null;
         Pattern ppp = Pattern.compile("^#\\s*(define|if|undef|include)");
         final int n_units = fileArgs.size() + builtin_libs.size();
+        final int errors[] = {0};
 
         for (int iarg = 0; iarg < n_units; iarg ++) {
             List<String> _programLines;
@@ -144,8 +146,8 @@ public class Main {
                 if (warningTreatment[0] != WarningTreatment.IGNORE)
                     moduleEnv.setWarningHandler(err -> {
                         reportError(fileName, programLines, err);
-                        if (warningTreatment[0] == WarningTreatment.TREAS_AS_ERRORS)
-                            System.exit(1);
+                        if (err.is_error || warningTreatment[0] == WarningTreatment.TREAS_AS_ERRORS)
+                            errors[0] ++;
                     });
                 if (iarg >= fileArgs.size())
                     moduleEnv.setWarningHandler(null);
@@ -160,7 +162,11 @@ public class Main {
             }
         }
 
-        if ("-".equals(output))
+        if (errors[0] > 0) {
+            System.err.println("There were errors");
+            System.exit(1);
+        }
+        else if ("-".equals(output))
             System.out.println(wat);
         else
             (new PrintStream(output)).println(wat);
@@ -190,7 +196,8 @@ public class Main {
     }
 
     // to be used from tests
-    public static void runAndSave(String programText, boolean usePreprocessor, List<String> libs, Path watFileName, SyntaxError.WarningInterface warnHandler) throws IOException {
+    public static void runAndSave(String programText, boolean usePreprocessor, List<String> libs,
+                                  @Nullable Path watFileName, SyntaxError.WarningInterface warnHandler) throws IOException {
         Properties prop = defaultProperties();
 
         List<String> ppOptions = new ArrayList<>();
@@ -221,8 +228,10 @@ public class Main {
             v.visit(tree);
         }
 
-        PrintStream out = new PrintStream(watFileName.toFile());
-        out.println(moduleEnv.wat().toStringPretty(2));
+        if (watFileName != null) {
+            PrintStream out = new PrintStream(watFileName.toFile());
+            out.println(moduleEnv.wat().toStringPretty(2));
+        }
     }
 
     private static Properties defaultProperties () throws IOException {
@@ -409,7 +418,7 @@ public class Main {
         public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e)
                 throws ParseCancellationException {
             //throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
-            throw new SyntaxError(new SyntaxError.Position(line, charPositionInLine), msg);
+            throw new SyntaxError(new SyntaxError.Position(line, charPositionInLine), msg, true);
         }
     }
 

@@ -14,10 +14,7 @@ Obviously, details might change as work on the compiler continues.
   * **Cross compilation.**<br> It should be easy to write code which could be compiled and tested 
      with both `c4wa` _and_ an ordinary C compiler. All features which are in some way WASM-specific
     are introduced in a way to make them understood by C compiler as good as possible.
-  * **Minor Incompatibilities**<br> On the other hand, since there is no goal to provide full implementation
-    of C standard, we are not worried about minor or inconsequential incompatibilities which have little impact
-    on everyday programming. All known incompatibilities are documented below.
-
+  
 ## What this compiler is NOT
 
 Just to set expectations correctly, a few things **can't** be guaranteed due to limited scope of this project, 
@@ -41,9 +38,8 @@ Web Assembly environment.
     Most of the testing done on `c4wa`, for obvious reasons, is done on the code which is already known to pass
     throw a C compiler.
   * There is no expectation that any existing C code, other than completely trivial, would pass through `c4wa`
-    compilation unchanged. Moreover, we are not making too much effort to make adaptation to `c4wa` easier,
-    since it would be mostly pointless. However, for any normal C code, which doesn't rely on external functions
-    or libraries (excluding `malloc` and everything you can import from your runtime), 
+    compilation unchanged. However, for a typical C code, which doesn't rely on external functions
+    or libraries (excluding `malloc` and everything you can easily implement or import from your runtime), 
     doesn't use any compiler- or OS-specific features, and doesn't make too much use of the more obscure 
     C language features (`union`s, `goto`s, etc.), making it `c4wa`-compatible shouldn't take too much effort. 
 
@@ -60,7 +56,6 @@ here are some of the most commonly used features of C language **NOT** supported
   * `static` variables or functions
   * `while() ...` loop
   * wide char
-  * `void *` pointers
   * Pragmas
   * Array initializers
   * Assignment operators `=`, `+=`, `++` etc. in expressions
@@ -83,17 +78,15 @@ dynamic memory allocation, and `c4wa` does provide certain memory management uti
 `cw4a` supports Web Assembly primitive types (`i32`, `i64`, `f32` and `f64` which translate to C as 
 `int`, `long`, `float` and `double` correspondingly), also `char` and `short` 
 (which are internally `i32`, except for `struct` members, also some operations work for them differently), 
-pointers, structures and arrays. Not all possible combinations are supported though, like you can't have
+pointers (including `void *` pointers), structures and arrays. 
+Not all possible combinations are supported though, like you can't have
 pointer to an array, etc.
 
 Any integer type could be `unsigned`. `sizeof` is supported (but may return results different from native C
 compiler due to different pointer size and no alignment in WASM).
 
-`void` keyword is recognized, but it isn't really a type, but more like indicator of "no type". 
-For now, `void` could only be used in function
-definition or declaration to indicate "no return value". You can't have `void *`, etc.
-
 `typedef` isn't supported. You must use syntax `struct NAME` when declaring variables of type `struct`.
+A `stuct` can have other `struct` as its member ot itself as a pointer. 
 Recursive declarations are allowed. There are no `union`s.
 
 `c4wa` supports all C operators, but assignment isn't treated as an operator, so you can't have syntax like
@@ -103,16 +96,8 @@ Recursive declarations are allowed. There are no `union`s.
 Usual pointer arithmetic is supported; `&` operator can be used with some limitations. 
 Note that pointers in `c4wa` are 32 bit.
 
-There are no `void *` pointers. 
-If you are using a "generic" pointer, you must explicitly cast it.
-Built-in functions like `memcpy` use `char *`.  
-
-Technically `0` could be a valid value for a pointer,
-
-Almost all arithmetic operations, function calls and assignment require explicit type cast if types are different.
-
 The ony "native" loop type in Web Assembly is `do ... while()`; you are encouraged to use it whenever practical 
-since this creates cleaner and simpler WAT/WASM code. Since it is so common C, we do 
+since this creates cleaner and simpler WAT/WASM code. Since it is so common in C, we do 
 nevertheless support a regular `for` loop, but not `while() {   }` loop. Use `for(; ... ;)` syntax if you must.
 You _can_ use comma `,` to have multiple initializations or increments, though semantic isn't entirely consistent
 with C standard.
@@ -255,17 +240,21 @@ Generated WAT will have two special blocks of linear memory with configurable si
   * **Stack**, size `module.stackSize` (default 1024), for stack variables;
   * **Data**, for string literals; size is flexible depending on actual space used.
 
+Note that very first byte of memory (address 0) isn't used by the stack; this is done so no pointer 
+could have value 0.
+
 The rest of memory, from byte number  `module.stackSize` + (actual data size) onwards,
 can only be accessed by using `__builtin_memory` variable or one of provided memory managers.
 
 ### Low-level memory access
 
 You can access linear memory directly from your C program by utilizing built-in global variable `__builtin_memory`.
-(It has type `char *` and actual numeric value `0`).
+(It has type `void *` and actual numeric value `0`).
 This has to be done very carefully, obviously, because you must make sure you assign memory
 correctly, and because you may override stack section or data section.
 
-There is also a built-in global variable `__builtin_offset` which is set to the value where data segment ends. Its
+For that reason, `__builtin_memory` should always be used together with another 
+built-in global variable `__builtin_offset` which is set to the offset where data segment ends. Its
 type is `int`.
 
 ### Memory managers
@@ -324,9 +313,9 @@ For example, if you need to allocate integer array of size `N` and fill it in wi
 either of these two alternatives will work:
 
 ```c
-extern char * malloc(int);
+extern void * malloc(int);
 
-int * arr = (int *) malloc(N * sizeof(int)); // make sure to link with a suppored memory manager!
+int * arr = malloc(N * sizeof(int)); // make sure to link with a suppored memory manager!
 for (int i = 0; i < N; i ++
     arr[i] = i; 
 ```
@@ -348,13 +337,12 @@ Arrays are permitted in `struct`s, but must have fixed (= known at compile time)
 ### Memory functions
 
 These functions behave as normal C function in C code with given signatures 
-(which are a bit different from C standard, effectively using `char *` as a generic pointer), 
 but `c4wa` internally replaces them with Web Assembly memory operators:
 
 | Name    | Arguments                               | Return Value | Description                                                      | 
 |---------|-----------------------------------------|--------------|------------------------------------------------------------------|
-| memset  | `char * addr`, `char value`, `int size` | _none_       | Same as in C                                                     |
-| memcpy  | `char * dest`, `char * src`, `int size` | _none_       | Same as in C                                                     |
+| memset  | `void * addr`, `char value`, `int size` | _none_       | Same as in C                                                     |
+| memcpy  | `void * dest`, `void * src`, `int size` | _none_       | Same as in C                                                     |
 | memgrow | `int n_pages`                           | _none_       | Increase memory size by specified number of pages (1 page = 64K) |
 | memsize | _none_                                  | `int`        | Get current memory size in pages                                 |
 
@@ -396,7 +384,8 @@ there are a few other built-in functions:
 ## Strings and chars
 
 Web Assembly has special DATA section and `data` instruction to store strings in memory. 
-Memory for DATA is allocated at compile time based on actual usage.  
+Memory for DATA is allocated at compile time based on actual total lengths of all string literals (plus 
+terminating zero byte).  
 
 All string literals in C code are placed in DATA section with terminating `\0`; 
 identical strings are assigned same memory address.
@@ -456,7 +445,8 @@ allocation and freeing up memory, and you do need a decent memory manager for th
 ### Functions with variable number of arguments
 
 `c4wa` fully supports standard C syntax to define or declare functions with variable argument list.
-The following example (borrowed from [here](https://www.cprogramming.com/tutorial/c/lesson17.html)) 
+The following example (borrowed from [here](https://www.cprogramming.com/tutorial/c/lesson17.html);
+note that on this occasion, original C code compiles in `c4wa` without a single change) 
 will compile and produce same output in both `c4wa` and standard C:
 
 ```c
@@ -470,7 +460,7 @@ double average (int num, ...) {
     for ( int x = 0; x < num; x++ )
         sum += va_arg ( arguments, double );
     va_end ( arguments );
-    return sum / (double)num;
+    return sum / num;
 }
 
 extern int main() {
@@ -484,7 +474,7 @@ You can also have imported functions with variable arguments; when adding them t
 actual implementation will have one additional argument after required ones, which is a memory
 address where all subsequent arguments shall be read (it'll be passed even there are no
 additional arguments in the function call). Each optional argument, regardless of type,
-will occupy exactly 8 bytes in linear memory.
+will occupy exactly 8 bytes (64 bits) in linear memory.
 
 ## `printf`
 
@@ -512,19 +502,19 @@ char * D = "some string";
 printf("A = %d, B = %lx, C = %.6f, D = %s\n", A, B, C, D);
 ```
 
-In this case, there are 5 _actual_ arguments, but imported function will still be called with two arguments:
+In this case, there are 5 _actual_ arguments, but imported function will still be called with _two_ arguments:
 
 1-st argument `format`: memory address to read format string from 
 (just like in C, any array, including string, is passed as memory address of its first element);<br>
 2-nd argument `offset`: memory address to read the read of arguments from.
 
 To acquire actual values `A`, `B`,`C` and `D`, implementation will then need to gain access to liner memory
-and read arguments at following locations:
+and read arguments at the following memory locations:
 
 Variable `A` at address `offset` (actual 32-bit value of `A` is converted to 64–bit);<br>
 Variable `B` at address `offset + 8`;<br>
 Variable `C` at address `offset + 16`;
-String `D` is a string to be read from a location which value (32-bit converted to 64) stored at address `offset + 24`.
+String `D` is a string to be read from a location which value (32-bit converted to 64) is stored at address `offset + 24`.
 
 When passing arguments, all integer values are converted to `long`, and all float values to `double`.
 
@@ -550,7 +540,7 @@ Known inconsistencies and bugs are:
 
 ### Boolean operators and values
 
-Booleans should be reasonably consistent with C: `0` is _false_, `1` is _true_, etc. We don't have any built-in
+Booleans should be reasonably consistent with C: `0` is _false_, `1` is _true_, etc. There isn't any built-in
 support for `true` or `false` constants, feel free to add your own via preprocessor or globals.
 
 One thing to note, `c4wa` _does_ support proper semantics for boolean `&&` and `||` (so when evaluating
@@ -560,26 +550,69 @@ but at a price of generating more complex WAT code
 using bitwise `&` and `|` instead in some situations, which directly translate to WASM instructions
 resulting in simpler and faster code.
 
-## Casts
+## Casts and constants
 
-As mentioned above, almost all casts must be explicit; however when assigning a constant value to a variable,
-it'll be converted to variable type at compile time, thus making cast unnecessary. That means that
-though `long` and `float` literals aren't supported, you can freely assign constant to these variables. 
-For example,
+The rules of automatic casting in `c4wa` are broadly consistent with a standard C compiler, 
+but perhaps somewhat simplified. 
+
+If an assignment, function call, `return` expression or binary operation is used with inconsistent
+types, `c4wa` will automatically and silently apply a cast to bring lower-width value to higher-width,
+and will also convert any integer type to any float type regardless of width (so assigning `long` to `float` is OK), 
+but _not_ the other way around without an explicit cast.
+
+```c
+int a;
+long b;
+float f;
+double g;
+
+b = a; // OK
+a = b; // Syntax error
+g = f; // OK
+f = (float) g; // woudn't work without a cast 
+```
+
+(additionally, when integer types involved are only different by only one of them being `unsigned`, 
+this will trigger compilation error without an explicit cast).
+
+Now, all integer constants in `c4wa` have type `int` and all float constant have type `double`. This may
+create a problem when initializing a `float`, for example
+
+```c
+float x = 1.14;
+```
+
+Is this legal? `1.14` is a `double` which can't be assigned to a `float` without a cast. `c4wa` solves this
+problem by applying a special rule to constants: they automatically adopt the type of the non-constant operand.
+So, when you assign `1.14` to a `float`, it automatically becomes `float`, as if you wrote 
+
+```c
+float x = (float) 1.14;
+```
+
+A few other examples or permissible and not permissible assignments:
 
 ```c
 long longNumber = -18;
 float floatNumber = 1.234e2;
-int intNumber = -57.4; // not even a warning, unlike standard C compiler!
+int intNumber = -57.4; // not even a warning, unlike standard C compiler
 
 int * ptr = 0; // still OK
 
 long * lptr = 1;   // Nope, this is explicitly not allowed. Only constant `0` could be assigned to a pointer.
 ```
 
+Sometimes these two rules could be in conflict. For example, how shall we interpret comparison `x > 1.0`, 
+where `x` is a `float` value? We could either interpret `1.0` as float and perform 32-bit float comparison,
+or convert `x` to `double` to do 64-bit float comparison.
+
+Current implementation tends to prefer the latter, but this is still work in progress and subject to change.
+
+To assign one pointer to another, they must have the same type, unless one of them is `void *`.
+
 ## `NULL`
 
-While there is no built-in `NULL` constant, you can define `NULL` as `0` and all customary C operators would
+While there is no built-in `NULL` constant, you can define `NULL` as `0` and all customary C syntax would
 work as expected:
 
 ```c
@@ -596,23 +629,26 @@ if (p_x && *p_x > 0) { ....
 
 ```
 
-The only caveat is that technically `0` could be a valid pointer value
-(this will be the address of your first local variable allocated on the top of the stack, which starts from memory
-address 0), so be careful. If you absolutely want to protect yourself against this possibility, simply declare
-an unused array of size 1 as the first declaration in each of your endpoints:
+The only caveat is that 0 pointer value _could_ be dereferenced. The following code won't trigger any run-time errors
+but will silently overwrite some of your stack space:
 
 ```c
-extern int main () {
-    char __ignored__[1];
-}
+int * p_int = 0;
+* p_int = 57;
 ```
+
+(In theory, we might have used `-1` instead of `0` as an illegal pointer value, so an attempt to dereference it would
+have failed; this however would lead to quite a lot of complications, like properly interpreting pointers as booleans,
+`if (ptr) {...}`, etc; it is way easier to keep NULL=0. While `NULL` checks by themselves are mostly OK as a 
+design patter, a programmer shouldn't rely too much on runtime errors as validation. Also, in the future
+we may add a special "debug" mode with some additional run-time checks, including stack overflow and dereferencing 0).
 
 ## Local variables mapping
 
 Since WAT format supports local variables, it is tempting to simply map local variables in C directly to WAT
 names, so that if for example you have variable `long acnt_id` in C code, it'd be mapped to `(local $acnt_id i64)`
 in WAT, as that's exactly what `c4wa` does, most of the time. However, since release 0.4, `c4wa` supports
-block scope for local variables, and it makes things more complicated.
+block scope for local variables, and it makes things tad more complicated.
 
 Consider this fragment of C code:
 
@@ -647,7 +683,7 @@ the most optimal solution, since we already had to add a `double`=`f64` variable
 thus `c4wa` always attempts to re-use no longer needed (out of scope) variables, if type matches.
 
 At the end, mapping to WAT names could get complicated; the end result however is WAT code which fully
-respect block scope for variables and uses only minimal necessary number of `local`'s. 
+respects block scoping for variables and uses only minimal necessary number of `local`'s. 
 
 ## Globals
 
@@ -679,7 +715,7 @@ void main(const char * []);  // invalid
 
 Cross-compiling the code with standard C compiler is listed above as one of the design goals, 
 and it should indeed be simple and straightforward; `c4wa` does not use any special syntax or markers 
-not known to a C compiler. Nevertheless, you may need a few adjustments:
+not known to a C compiler. Nevertheless, a few adjustments might be necessary:
 
   * Due to incompatible dynamic memory semantics, 
     you need to either emulate customary C functions `malloc` and `free` in `c4wa` 

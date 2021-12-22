@@ -418,28 +418,29 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         List<OneFunction> functions = new ArrayList<>();
 
         for (var g : ctx.global_decl()) {
-            Partial parseGlobalDecl = visit(g);
+            try {
+                Partial parseGlobalDecl = visit(g);
 
-            if (parseGlobalDecl instanceof FunctionDecl) {
-                String err = moduleEnv.addDeclaration((FunctionDecl) parseGlobalDecl);
-                if (err != null)
-                    throw fail(g, "module", err);
+                if (parseGlobalDecl instanceof FunctionDecl) {
+                    String err = moduleEnv.addDeclaration((FunctionDecl) parseGlobalDecl);
+                    if (err != null)
+                        throw fail(g, "module", err);
+                } else if (parseGlobalDecl instanceof OneFunction) {
+                    String err = moduleEnv.addDeclaration(((OneFunction) parseGlobalDecl).func.makeDeclaration());
+                    if (err != null)
+                        throw fail(g, "module", err);
+                    functions.add((OneFunction) parseGlobalDecl);
+                } else if (parseGlobalDecl instanceof VariableDecl) {
+                    moduleEnv.addDeclaration((VariableDecl) parseGlobalDecl);
+                } else if (parseGlobalDecl instanceof StructDefinition) {
+                    StructDefinition def = (StructDefinition) parseGlobalDecl;
+                    moduleEnv.addStruct(def.name, new Struct(def.name, def.members));
+                } else
+                    throw fail(g, "global item", "Unknown class " + parseGlobalDecl.getClass());
             }
-            else if (parseGlobalDecl instanceof OneFunction) {
-                String err = moduleEnv.addDeclaration(((OneFunction) parseGlobalDecl).func.makeDeclaration());
-                if (err != null)
-                    throw fail(g, "module", err);
-                functions.add((OneFunction) parseGlobalDecl);
+            catch(SyntaxError err) {
+                moduleEnv.warningHandler.report(err);
             }
-            else if (parseGlobalDecl instanceof VariableDecl) {
-                moduleEnv.addDeclaration((VariableDecl) parseGlobalDecl);
-            }
-            else if (parseGlobalDecl instanceof StructDefinition) {
-                StructDefinition def = (StructDefinition) parseGlobalDecl;
-                moduleEnv.addStruct(def.name, new Struct(def.name, def.members));
-            }
-            else
-                throw fail(g, "global item", "Unknown class " + parseGlobalDecl.getClass());
         }
 
         for (var oneFunc : functions) {
@@ -500,6 +501,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (params.length == 1 && params[0].is_void()) // no_arg_func(void)
             params = new CType[0];
 
+        for (CType param: params) {
+            if (param.is_void())
+                throw fail(ctx, "decl_function", "Function declaration cannot have 'void' argument (unless it's the only one)");
+            if (param.is_struct())
+                throw fail(ctx, "decl_function", "Function declaration cannot have 'struct' argument");
+        }
+
         return new FunctionDecl(variableDecl.name, variableDecl.type, params,
                             ctx.ELLIPSIS() != null, storage);
     }
@@ -508,6 +516,13 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public OneFunction visitFunction_definition(c4waParser.Function_definitionContext ctx) {
         VariableDecl funcDecl = (VariableDecl) visit(ctx.variable_decl());
         ParamList paramList = (ctx.param_list() == null)?new ParamList(): (ParamList) visit(ctx.param_list());
+
+        for (VariableDecl decl : paramList.paramList) {
+            if (decl.type.is_void())
+                throw fail(ctx, "function_definition", "Function definition cannot have 'void' argument");
+            if (decl.type.is_struct())
+                throw fail(ctx, "function_definition", "Function definition cannot have 'struct' argument");
+        }
 
         functionEnv = new FunctionEnv(funcDecl.name, funcDecl.type, moduleEnv,
                             paramList.vararg, ctx.EXTERN() != null);
@@ -532,11 +547,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         CType type = (CType) visit(ctx.primitive());
         VariableWrapper variableWrapper = (VariableWrapper) visit(ctx.variable_with_modifiers());
 
-/*
-        if (type == null && variableWrapper.ref_level > 0)
-            throw fail(ctx.primitive(), "variable_decl", "void type isn't allowed here");
-*/
-
         for (int i = 0; i < variableWrapper.ref_level; i ++)
             type = type.make_pointer_to();
         return new VariableDecl(type, variableWrapper.name, true, currentPosition(ctx));
@@ -555,11 +565,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         if (variableWrapper == null)
             return type;
-
-/*
-        if (type == null && variableWrapper.ref_level > 0)
-            throw fail(ctx.primitive(), "variable_decl", "void type isn't allowed here");
-*/
 
         for (int i = 0; i < variableWrapper.ref_level; i++)
             type = type.make_pointer_to();
@@ -641,26 +646,25 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (blockEnv != null)
             blockStack.push(blockEnv);
 
-        int idx = 0;
         for (var blockElem : ctx.element()) {
-            idx ++;
-            Partial parsedElem = visit(blockElem);
-            if (parsedElem == null)
-                throw fail(ctx, "block", "Instruction number " + idx + " was not parsed" +
-                        ((idx == 1)?"":" (last parsed was '" + ctx.element(idx - 2).getText() + "')"));
-            if (parsedElem instanceof OneInstruction)
-                res.add(((OneInstruction) parsedElem).instruction);
-            else if (parsedElem instanceof OneExpression) {
-                OneExpression exp = (OneExpression) parsedElem;
-                if (exp.expression instanceof CallExp || exp.expression instanceof BlockExp)
-                    res.add(new Drop(exp.expression));
-                else
-                    throw fail(blockElem, "block", "the only way to include expression as a statement is function call");
+            try {
+                Partial parsedElem = visit(blockElem);
+                if (parsedElem instanceof OneInstruction)
+                    res.add(((OneInstruction) parsedElem).instruction);
+                else if (parsedElem instanceof OneExpression) {
+                    OneExpression exp = (OneExpression) parsedElem;
+                    if (exp.expression instanceof CallExp || exp.expression instanceof BlockExp)
+                        res.add(new Drop(exp.expression));
+                    else
+                        throw fail(blockElem, "block", "the only way to include expression as a statement is function call");
+                } else if (parsedElem instanceof InstructionList)
+                    res.addAll(Arrays.asList(((InstructionList) parsedElem).instructions));
+                else if (!(parsedElem instanceof NoOp))
+                    throw new RuntimeException("Wrong type of parsedElem = " + parsedElem);
             }
-            else if (parsedElem instanceof InstructionList)
-                res.addAll(Arrays.asList(((InstructionList) parsedElem).instructions));
-            else if (!(parsedElem instanceof NoOp))
-                throw new RuntimeException("Wrong type of parsedElem = " + parsedElem);
+            catch(SyntaxError err) {
+                moduleEnv.warningHandler.report(err);
+            }
         }
         if (blockEnv != null) {
             blockStack.pop();
@@ -908,11 +912,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "function call", "Function '" + fname + "' not defined or declared");
         decl.used = true;
 
-/*
-        if (Arrays.stream(decl.params).anyMatch(Objects::isNull))
-            throw fail(ctx, "function_call", "void parameters aren't allowed (function '" + fname + "')");
-*/
-
         functionEnv.calls.add(fname);
 
         Expression[] call_args;
@@ -928,21 +927,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         call_args = new Expression[decl.params.length + (decl.vararg? 1: 0)];
         int idx;
-        for(idx = 0; idx < decl.params.length; idx ++) {
+        for(idx = 0; idx < decl.params.length; idx ++)
             call_args[idx] = prepareRHS(ctx, decl.params[idx], args.expressions[idx], "Argument number " + (idx + 1) +
                     " of function '" + fname + "'").expression;
-/*
-            if (!decl.params[idx].isValidRHS(args.expressions[idx].type))
-                throw fail(ctx, "function call", "Argument number " + (idx + 1) +
-                        " of function '" + fname + "' expects type '" + decl.params[idx] +
-                        "', received type '" + args.expressions[idx].type + "'");
-
-            call_args[idx] = GenericCast.cast(args.expressions[idx].type.asNumType(),
-                    decl.params[idx].asNumType(),
-                    decl.params[idx].is_signed(),
-                    args.expressions[idx].expression);
-*/
-        }
 
         if (decl.vararg) {
             List<Instruction> func_call_elms = new ArrayList<>();
@@ -1020,12 +1007,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "return", "Function '" + functionEnv.name + "' doesn't return anything");
 
         OneExpression expression = prepareRHS(ctx, functionEnv.returnType, (OneExpression) visit(ctx.expression()), "return");
-
-/*
-        if (!functionEnv.returnType.isValidRHS(expression.type))
-            throw fail(ctx, "return", "Cannot return type '" + expression.type +
-                    "' from a function which is expected to return '" + functionEnv.returnType + "'");
-*/
 
         return new OneInstruction(new DelayedReturn(expression.expression));
     }
@@ -1160,17 +1141,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         OneExpression lhs = (OneExpression) visit(ctx.lhs());
         OneExpression rhs = prepareRHS(ctx, lhs.type, (OneExpression) visit(ctx.expression()), "assignment");
 
-//        OneExpression rhs = (OneExpression) visit(ctx.expression());
-
-/*
-        if (!lhs.type.isValidRHS(rhs.type)) {
-            if (rhs.expression instanceof Const && lhs.type.is_primitive())
-                rhs = new OneExpression(new Const(lhs.type.asNumType(), (Const) rhs.expression), lhs.type);
-            else
-                throw fail(ctx, "assign", "Expression of type " + rhs.type + " cannot be assigned to '" + lhs.type + "'");
-        }
-*/
-
         return new OneInstruction(memory_store(lhs, rhs));
     }
 
@@ -1210,11 +1180,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         List<Instruction> res = new ArrayList<>();
         CType o_type = (CType) visit(ctx.primitive());
 
-/*
-        if (o_type == null)
-            throw fail(ctx, "variable_decl", "void type isn't allowed here");
-*/
-
         BlockEnv blockEnv = blockStack.peek();
 
         for (var v : ctx.local_variable()) {
@@ -1223,6 +1188,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             CType type = o_type;
             for (int i = 0; i < localVar.ref_level; i++)
                 type = type.make_pointer_to();
+
+            if (type.is_void())
+                throw fail(ctx, "variable_decl", "cannot have variable '" + localVar.name + "' of type 'void'");
 
             String varId = functionEnv.registerVar(localVar.name, blockEnv == null? null : blockEnv.block_id,
                     localVar.size == null? type: type.make_pointer_to(),
@@ -1461,6 +1429,9 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (type == null)
             throw fail(ctx, "index", "trying to dereference '" + ptr.type + "' which is not a reference");
 
+        if (type.is_void())
+            throw fail(ctx, "index", "trying to dereference 'void *'");
+
         if (type.is_undefined_struct())
             type = resolveStruct(ctx, type);
 
@@ -1624,21 +1595,6 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                         " are incompatible");
         }
 
-/*
-        if (arg1.type.is_i64() && arg2.type.is_i32() && arg2.expression instanceof Const) {
-            arg2 = new OneExpression(new Const((((Const) arg2.expression).longValue)), arg1.type);
-        }
-        else if (arg2.type.is_i64() && arg1.type.is_i32() && arg1.expression instanceof Const) {
-            arg1 = new OneExpression(new Const((((Const) arg1.expression).longValue)), arg2.type);
-        }
-        else if (arg1.type.is_f64() && arg2.type.is_f32() && arg2.expression instanceof Const) {
-            arg2 = new OneExpression(new Const((((Const) arg2.expression).doubleValue)), arg1.type);
-        }
-        else if (arg2.type.is_f64() && arg1.type.is_f32() && arg1.expression instanceof Const) {
-            arg1 = new OneExpression(new Const((((Const) arg1.expression).doubleValue)), arg2.type);
-        }
-*/
-
         NumType numType;
         CType resType;
 
@@ -1755,6 +1711,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             CType type = exp.type.deref();
             if (type == null)
                 throw fail(ctx, "unary_op", "Trying to dereference '" + exp.type + "', must be a pointer");
+            if (type.is_void())
+                throw fail(ctx, "unary_op", "Trying to dereference 'void *'");
 
             return new OneExpression(memory_load(type, exp.expression), type);
         }
@@ -2072,7 +2030,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return new RuntimeException("[" + ctx.start.getLine() + ":" +
                     ctx.start.getCharPositionInLine() + "] " + desc + " " + ctx.getText() + " : " + error);
         else
-            return new SyntaxError(currentPosition(ctx), error + " (" + desc + ")");
+            return new SyntaxError(currentPosition(ctx), error + " (" + desc + ")", true);
     }
 
 }
