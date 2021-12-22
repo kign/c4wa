@@ -65,7 +65,7 @@ here are some of the most commonly used features of C language **NOT** supported
   * Pointers to arrays, arrays of arrays
   * Function names as variables, indirect function calls
   * Bit Fields
-  * Almost all new features introduced in C99 and later standards (except variable-length arrays, intermingled
+  * Almost all new features introduced in C99 and later standards (except runtime-length arrays, intermingled
     declarations, and one-line comments which are all supported)
   
 ## A bit more details

@@ -19,7 +19,7 @@ WAT format is more than just Web Assembly instructions written as text; it suppo
 some other syntax sugar to make coding easier (See
 excellent [introduction](https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format)
 to WAT format at MDN.) Still, you are required to write each and every Web Assembly instructions manually, 
-so that for example a simple assignment like this: `c = a*a + b*b + 1` might look like this: 
+so a simple assignment like this: `c = a*a + b*b + 1` might look like that: 
  
 ```wat
 (set_local $c (i32.add (i32.add (i32.mul (get_local $a) (get_local $a)) 
@@ -29,12 +29,12 @@ so that for example a simple assignment like this: `c = a*a + b*b + 1` might loo
 `c4wa` purports to be a middle ground between these two extremes. It allows you to write your code in a 
 relatively higher-level language (a subset of `C`) while retaining a close relation to an underlying
 Web Assembly. Instead of a binary WASM file, it generates a well-formatted WAT output 
-which is trying to be similar to what a human programmer would have written when solving the problem directly in WAT.
+which will be similar to what a human programmer would have written when solving the problem directly in WAT.
 
 `c4wa` is not a full C implementation and isn't trying to be one. Still, most of the typical day-to-day
 coding targeting `c4wa` isn't much more complicated than coding in standard C. 
 It supports loops, conditionals, block scope of
-variables, all of C operators and primitive types, `struct`s, arrays, pointer, variable arguments
+variables, all of C operators and primitive types, `struct`s, arrays, pointers, variable arguments
 and dynamic memory allocation. 
 It can also apply external C preprocessor to your code before parsing.
 
@@ -63,7 +63,7 @@ We start from this C code, which we save to file `collatz.c` :
 ```c
 extern int collatz(int N) {
     int len = 0;
-    unsigned long n = (unsigned long) N;
+    unsigned long n = N;
     do {
         if (n == 1)
             break;
@@ -102,7 +102,30 @@ node collatz.js 626331
 # Output: Cycle length of 626331 is 508
 ```
 
-Note that generated WASM file `collatz.wasm` **is only 99 bytes in size**.
+Note that generated WASM file `collatz.wasm` **is only 99 bytes in size**. Here is how it'll look
+as text (WAT) file:
+
+```wat
+(module
+  (func $collatz (export "collatz") (param $N i32) (result i32)
+    (local $len i32)
+    (local $n i64)
+    (set_local $n (i64.extend_i32_s (get_local $N)))
+    (block $@block_1_break
+      (loop $@block_1_continue
+        (br_if $@block_1_break (i64.eq (get_local $n) (i64.const 1)))
+        (if (i64.eqz (i64.rem_u (get_local $n) (i64.const 2)))
+          (then
+            (set_local $n (i64.div_u (get_local $n) (i64.const 2))))
+          (else
+            (set_local $n (i64.add (i64.mul (i64.const 3) (get_local $n)) (i64.const 1)))))
+        (set_local $len (i32.add (get_local $len) (i32.const 1)))
+        (br $@block_1_continue)))
+    (get_local $len)))
+```
+
+If you understand Web Assembly instructions, it is very easy to see exactly how this corresponds to the
+original C code, and it seems reasonably close to how one would solve this problem directly in WAT.
 
 There is nothing whatsoever that forces you to use `node` or JavaScript to execute WASM files.
 There are many universal runtimes with bindings available for many languages. For example, 
@@ -144,6 +167,28 @@ etc/run-wasm 170-life.wasm
 See [Language Spec](https://github.com/kign/c4wa/blob/master/etc/doc/language.md) 
 for in-depth discussion of implementing `printf` in WASM environment, 
 and also the [source code](https://github.com/kign/c4wa/blob/master/etc/wasm-printf.js).
+
+## No standard library
+
+Web Assembly is an _embedded language_; it is intended to be executed from a _runtime_ which interprets
+Web Assembly instructions, perhaps compiles them into a native code (either ahead of time or JIT), and
+handles all communications with OS, execution environment and the user. It could also optionally provide Web
+Assembly code access to some library functions, via _import_ functionality.
+
+From that standpoint, integrating any kind of standard library into WASM compiler isn't practical. To the extent
+Web Assembly code might need access to some library utilities (mathematical utilities such as `atan2`, for example), 
+it is almost always better to simply import them from the runtime, and most of the time, there isn't any other choice
+anyway, since all communication with the environment is done through the runtime. For example, in order to 
+compile to Web Assembly a code which works with files, you will need to import from your runtime something 
+resembling `fopen` function, and then keep in mind that certain runtimes (such as browser) won't be able to do that.
+
+The only exceptions could be methods either already embedded into Web Assembly specification 
+(such as `sqrt` or `memcpy`) or dealing with dynamic memory allocations (`malloc` and `free`), and
+also to some extent common utilities to work with strings. 
+
+Accordingly, `c4wa` compiler exposes all methods already available in Web Assembly as _built-in functions_ 
+and gives a choice of memory managers with number of _built-in libraries_, and that's about it.
+More details are in the [Language Spec](https://github.com/kign/c4wa/blob/master/etc/doc/language.md).
 
 ## Examples
 
@@ -214,4 +259,11 @@ If changed are as expected, _then_ you could run `etc/run-tests all`. It'll do t
 If you are making changes of type 2, at this point you need to make sure WASM files haven't changed and 
 if they indeed haven't, you are all set. If they did change, and were expected to, you need to pay attention
 to the report generated by `run-tests` to make sure all tests actually passed runtime execution.
+
+### Error testing
+
+Since release 0.4 of the compiler, there are separate _error tests_ 
+(see [here](https://github.com/kign/c4wa/tree/master/src/test/resources/error)) 
+consisting of parsable but invalid C code.
+The test target will verify that each of them will generate expected number of errors and warnings.
 

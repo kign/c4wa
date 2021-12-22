@@ -439,7 +439,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     throw fail(g, "global item", "Unknown class " + parseGlobalDecl.getClass());
             }
             catch(SyntaxError err) {
-                moduleEnv.warningHandler.report(err);
+                if (moduleEnv.warningHandler != null)
+                    moduleEnv.warningHandler.report(err);
             }
         }
 
@@ -663,7 +664,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     throw new RuntimeException("Wrong type of parsedElem = " + parsedElem);
             }
             catch(SyntaxError err) {
-                moduleEnv.warningHandler.report(err);
+                if (moduleEnv.warningHandler != null)
+                    moduleEnv.warningHandler.report(err);
             }
         }
         if (blockEnv != null) {

@@ -194,8 +194,8 @@ public class ModuleEnv implements Partial, PostprocessContext {
         missingFunctions ();
         Set<String> included = dependencyList();
 
-        if (included.isEmpty())
-            System.err.println("WARNING: empty module, make sure you have at least one extern function");
+        if (included.isEmpty() && warningHandler != null)
+            warningHandler.report(new SyntaxError("empty module, make sure you have at least one extern function", false));
 
         boolean need_stack = functions.stream().filter(f -> included.contains(f.name)).anyMatch(f -> f.uses_stack);
         if (need_stack) {

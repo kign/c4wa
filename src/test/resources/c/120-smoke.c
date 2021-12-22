@@ -21,7 +21,7 @@ extern int main() {
 
     memset(a, '\0', N * sizeof(int)); // make sure it updates `a`, but not `b`
 
-    a[get_index()] ++; // how many time will we call get_index?
+    a[get_index()] ++; // how many times will we call get_index?
     b[0] |= 1 << 10;
 
     printf("a[%d] = %d, b[0] = %d\n", get_index(), a[get_index()], b[0]);
