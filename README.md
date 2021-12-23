@@ -124,8 +124,8 @@ as text (WAT) file:
     (get_local $len)))
 ```
 
-If you understand Web Assembly instructions, it is very easy to see exactly how this corresponds to the
-original C code, and it seems reasonably close to how one would solve this problem directly in WAT.
+If you can read Web Assembly instructions, it is very easy to see exactly how this corresponds to the
+original C code, and it would seem reasonably close to how one would solve this problem directly in WAT.
 
 There is nothing whatsoever that forces you to use `node` or JavaScript to execute WASM files.
 There are many universal runtimes with bindings available for many languages. For example, 
@@ -198,9 +198,25 @@ There is large (and growing) set of tests, from trivial to rather complicated, i
 [this directory](https://github.com/kign/c4wa/tree/master/src/test/resources/c).
 For each of these files, you can find generated WAT code [here](https://github.com/kign/c4wa/tree/master/tests/wat).
 
+### Sample Web Application
+ 
+Using compiled WASM file in a Web page is a bit more complicated than simply loading it into `node.js`.
+
+   * For security reasons, browsers can't load WASM from local files (`file:///` protocol);
+     you need a local web server to run it.
+   * You need `npm` module [browserify](https://browserify.org/) to use any node-targeted code in Web 
+      (e.g. [printf](https://github.com/kign/c4wa/blob/master/etc/wasm-printf.js).
+
+There is a sample project in [this directory](https://github.com/kign/c4wa/blob/master/etc/sample_web)
+which illustrates how it could be done. Among other features, it also redirects `printf` calls made from C source
+to HTML `<textarea>` element.
+
+To initialize it, install required `npm` modules, compile the source
+and load in browser, use `./init.bash` from this directory; to clean up, run `./init.bash clean`.
+
 ### Game of life
 
-Previously, I wrote a native WAT implementation for Conway's game of life (on a final toroidal board); 
+Previously, I had a native WAT implementation for Conway's game of life (on a final toroidal board); 
 later I used original implementation in C and compiled with `c4wa`.
 
   * [Original implementation in C](https://github.com/kign/life/blob/master/lib/lifestep.c)

@@ -45,7 +45,7 @@ else
   echo "All requirements are satisfied"
 fi
 
-printf "\n${LIGHT_CYAN}Setting up node modules${NC}\n"
+printf "\n${LIGHT_CYAN}Installing node modules${NC}\n"
 if [ -d node_modules ]; then
   echo "Directory node_modules exists, skipping"
 else
