@@ -1,6 +1,7 @@
 #!/bin/bash
 
 LIGHT_CYAN='\033[1;36m'
+CYAN='\033[0;36m'
 LIGHT_RED='\033[1;31m'
 LIGHT_GREEN='\033[1;32m'
 NC='\033[0m' # No Color
@@ -8,14 +9,32 @@ NC='\033[0m' # No Color
 unset CDPATH
 cd "$(dirname "$0")" || exit 1
 
+if [ "$1" == "clean" ]; then
+  echo rm -rf node_modules prime.wat prime.wasm package-lock.json Makefile bundle.js index.html
+  rm -rf node_modules prime.wat prime.wasm package-lock.json Makefile bundle.js index.html
+  exit
+fi
+
 printf "\n${LIGHT_CYAN}Checking requirements${NC}\n"
 
-req=(python3 npm)
 nf=0
-for r in ${req[@]}; do
+compile="c4wa-compile"
+req=(npm make "$compile")
+for r in "${req[@]}"; do
   res="${LIGHT_GREEN}ok${NC}"
-  type $r >/dev/null 2>&1 || { res="${LIGHT_RED}not found${NC}"; nf=$((nf+1)); }
-  printf "%-10s ${res}\n" $r
+  ok=1
+  type $r >/dev/null 2>&1 || { ok=0; res="${LIGHT_RED}not found${NC}"; nf=$((nf+1)); }
+  if [ "$r" == "c4wa-compile" ] && [ $ok -eq 0 ]; then
+    compile=../../build/install/c4wa-compile/bin/c4wa-compile
+    if [ ! -x $compile ] && [ -x ./gradlew ]; then
+      (cd ../.. && ./gradlew installDist)
+    fi
+    if [ -x $compile ]; then
+      res="${CYAN}$compile${NC}"
+      nf=$((nf-1))
+    fi
+  fi
+  printf "%-12s ${res}\n" $r
 done
 
 echo ""
@@ -26,44 +45,6 @@ else
   echo "All requirements are satisfied"
 fi
 
-
-
-printf "\n${LIGHT_CYAN}Looking for c4wa compiler${NC}\n"
-compile="c4wa-compile"
-if ! type $compile >/dev/null 2>&1; then
-  compile=../../build/install/c4wa-compile/bin/c4wa-compile
-  if [ ! -x $compile ]; then
-    (cd ../.. && /gradlew installDist)
-  fi
-fi
-
-echo "Found: $compile"
-
-printf "\n${LIGHT_CYAN}Generating WAT files${NC}\n"
-
-for x in *.c; do
-  echo $compile $x -lmm_incr
-  $compile $x -lmm_incr
-done
-
-printf "\n${LIGHT_CYAN}Generating WASM files${NC}\n"
-
-for x in *.wat; do
-  echo wat2wasm $x
-  wat2wasm $x
-done
-
-printf "\n${LIGHT_CYAN}Setting up virtual environment${NC}\n"
-py=venv/bin/python3
-if [ -d venv ]; then
-  echo "Directory venv exists, skipping"
-else
-  echo python3 -m venv venv
-  python3 -m venv venv
-  $py -m pip install --upgrade pip
-  $py -m pip install inetlab flask
-fi
-
 printf "\n${LIGHT_CYAN}Setting up node modules${NC}\n"
 if [ -d node_modules ]; then
   echo "Directory node_modules exists, skipping"
@@ -72,10 +53,34 @@ else
   npm i
 fi
 
-printf "\n${LIGHT_CYAN}Make JS bundle${NC}\n"
-echo node_modules/.bin/browserify main.js -o bundle.js
-node_modules/.bin/browserify main.js -o bundle.js
+browserify="node_modules/.bin/browserify"
+printf "\n${LIGHT_CYAN}Generating Makefile${NC}\n"
+if [ -e Makefile ]; then
+  echo "Makefile already exists, skipping"
+else
+  rm -f Makefile
+  TAB="$(printf '\t')"
+  for x in *.c; do
+    name="${x%.*}"
+    cat << EOF >> Makefile
+all: $name.wasm bundle.js
+$name.wat: $name.c
+$TAB$compile $name.c -lmm_incr
+$name.wasm: $name.wat
+${TAB}wat2wasm $name.wat
+bundle.js: main.js ../wasm-printf.js
+${TAB}$browserify main.js -o bundle.js
+EOF
+  done
+  cat Makefile
+fi
 
-printf "\n${LIGHT_CYAN}Launch the server${NC}\n"
-echo FLASK_ENV=development $py run-server.py
-FLASK_ENV=development $py run-server.py
+printf "\n${LIGHT_CYAN}Generating files${NC}\n"
+echo make
+make
+
+printf "\n${LIGHT_CYAN}Launching server${NC}\n"
+port=9811
+ln -sf prime.html index.html
+(sleep 1 && open "http://localhost:$port") &
+node_modules/.bin/light-server -s . -p $port -w "*.js,*.c,*.html,*.css # make"
