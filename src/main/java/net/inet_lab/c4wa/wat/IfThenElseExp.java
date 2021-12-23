@@ -14,19 +14,13 @@ public class IfThenElseExp extends Expression {
 
     @Override
     public String toString() {
-        StringBuilder b = new StringBuilder();
 
-        b.append('(').append(name.getName())
-                .append(' ');
-
-        b.append(new Result(numType));
-
-        b.append(' ').append(condition);
-
-        b.append(" (then ").append(_then).append(") (else ").append(_else).append(')');
-        b.append(')');
-
-        return b.toString();
+        return '(' + name.getName() +
+                ' ' +
+                new Result(numType) +
+                ' ' + condition +
+                " (then " + _then + ") (else " + _else + ')' +
+                ')';
     }
 
     @Override

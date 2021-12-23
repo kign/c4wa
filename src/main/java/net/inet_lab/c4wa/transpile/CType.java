@@ -2,23 +2,21 @@ package net.inet_lab.c4wa.transpile;
 
 import net.inet_lab.c4wa.wat.NumType;
 
-import java.nio.file.ClosedDirectoryStreamException;
-
 abstract public class CType implements Partial {
-    static public CType CHAR = getPrimitive(PrimitiveType.CHAR);
-    static public CType SHORT = getPrimitive(PrimitiveType.SHORT);
-    static public CType INT = getPrimitive(PrimitiveType.INT);
-    static public CType LONG = getPrimitive(PrimitiveType.LONG);
-    static public CType UNSIGNED_CHAR = getPrimitiveUnsigned(PrimitiveType.CHAR);
-    static public CType UNSIGNED_SHORT = getPrimitiveUnsigned(PrimitiveType.SHORT);
-    static public CType UNSIGNED_INT = getPrimitiveUnsigned(PrimitiveType.INT);
-    static public CType UNSIGNED_LONG = getPrimitiveUnsigned(PrimitiveType.LONG);
-    static public CType FLOAT = getPrimitive(PrimitiveType.FLOAT);
-    static public CType DOUBLE = getPrimitive(PrimitiveType.DOUBLE);
-    static public CType VOID = getPrimitive(PrimitiveType.VOID);
+    static public final CType CHAR = getPrimitive(PrimitiveType.CHAR);
+    static public final CType SHORT = getPrimitive(PrimitiveType.SHORT);
+    static public final CType INT = getPrimitive(PrimitiveType.INT);
+    static public final CType LONG = getPrimitive(PrimitiveType.LONG);
+    static public final CType UNSIGNED_CHAR = getPrimitiveUnsigned(PrimitiveType.CHAR);
+    static public final CType UNSIGNED_SHORT = getPrimitiveUnsigned(PrimitiveType.SHORT);
+    static public final CType UNSIGNED_INT = getPrimitiveUnsigned(PrimitiveType.INT);
+    static public final CType UNSIGNED_LONG = getPrimitiveUnsigned(PrimitiveType.LONG);
+    static public final CType FLOAT = getPrimitive(PrimitiveType.FLOAT);
+    static public final CType DOUBLE = getPrimitive(PrimitiveType.DOUBLE);
+    static public final CType VOID = getPrimitive(PrimitiveType.VOID);
 
     public enum PrimitiveType {
-        CHAR, SHORT, INT, LONG, FLOAT, DOUBLE, VOID;
+        CHAR, SHORT, INT, LONG, FLOAT, DOUBLE, VOID
     }
 
     private static CType getPrimitive(PrimitiveType primitiveType) {

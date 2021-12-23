@@ -14,7 +14,7 @@ class VariableDecl implements Partial {
     Expression initialValue;
     boolean is_used;
 
-    SyntaxError.Position where_defined;
+    final SyntaxError.Position where_defined;
 
     VariableDecl(CType type, String name, boolean is_mutable, SyntaxError.Position where_defined) {
         this.type = type;

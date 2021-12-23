@@ -25,7 +25,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
     final private List<Variable> variables;
     private boolean is_closed;
 
-    public FunctionEnv (String name, CType returnType, ModuleEnv moduleEnv, boolean vararg, boolean export) {
+    public FunctionEnv (String name, @NotNull CType returnType, ModuleEnv moduleEnv, boolean vararg, boolean export) {
         this.name = name;
         this.moduleEnv = moduleEnv;
         this.returnType = returnType;

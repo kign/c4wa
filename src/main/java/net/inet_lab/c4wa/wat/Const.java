@@ -16,12 +16,6 @@ public class Const extends Expression {
         doubleValue = 0;
     }
 
-    public Const(float value) {
-        super(InstructionName.CONST, NumType.F32);
-        longValue = 0;
-        doubleValue = value;
-    }
-
     public Const(double value) {
         super(InstructionName.CONST, NumType.F64);
         longValue = 0;

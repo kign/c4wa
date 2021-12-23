@@ -7,11 +7,8 @@ public class Neg extends Expression_1 {
 
     @Override
     public Expression comptime_eval() {
-        if (arg instanceof Const) {
-            Const a = (Const) arg;
-
+        if (arg instanceof Const)
             return new Const(numType, -((Const)arg).doubleValue);
-        }
         return this;
     }
 }
