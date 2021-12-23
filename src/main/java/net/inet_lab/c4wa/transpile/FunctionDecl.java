@@ -13,7 +13,9 @@ public class FunctionDecl implements Partial {
     final boolean vararg;
     final SType storage;
 
-    boolean used;
+    boolean is_used;
+    SyntaxError.Position where_used;
+
     enum SType {
         INTERNAL, // Present in this module. Could be declared "static" to please C compiler
         EXPORTED, // Present and exported; must be defined as "extern" and optionally declared as "static"
@@ -33,7 +35,13 @@ public class FunctionDecl implements Partial {
         if (params.length == 0 && vararg)
             throw new RuntimeException("Function '" + name + "': must have at least ine argument before '...'");
 
-        used = false;
+        is_used = false;
+        where_used = null;
+    }
+
+    void markUsed(SyntaxError.Position where_used) {
+        is_used = true;
+        this.where_used = where_used;
     }
 
     public String signature () {

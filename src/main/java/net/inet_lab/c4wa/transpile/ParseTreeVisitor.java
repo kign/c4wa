@@ -550,7 +550,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         for (int i = 0; i < variableWrapper.ref_level; i ++)
             type = type.make_pointer_to();
-        return new VariableDecl(type, variableWrapper.name, true, currentPosition(ctx));
+        return new VariableDecl(type, variableWrapper.name, true, currentPositionWithArgNo(ctx));
     }
 
     @Override
@@ -912,7 +912,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         FunctionDecl decl = moduleEnv.funcDecl.get(fname);
         if (decl == null)
             throw fail(ctx, "function call", "Function '" + fname + "' not defined or declared");
-        decl.used = true;
+        decl.markUsed(currentPositionWithArgNo(ctx));
 
         functionEnv.calls.add(fname);
 
@@ -1249,7 +1249,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 throw fail(ctx, "local variable", "Array size must be INT, not '" + size.type + "'");
         }
         return new LocalVariable(ctx.ID().getText(), ctx.MULT().size(), size == null? null: size.expression,
-                currentPosition(ctx));
+                currentPositionWithArgNo(ctx));
     }
 
     @Override
@@ -1861,9 +1861,14 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return name;
     }
 
-    private static SyntaxError.Position currentPosition(ParserRuleContext ctx) {
+    static private SyntaxError.Position currentPosition(ParserRuleContext ctx) {
         return new SyntaxError.Position(ctx.getStart().getLine(), ctx.getStop().getLine(),
                 ctx.getStart().getCharPositionInLine(), ctx.getStop().getCharPositionInLine());
+    }
+
+    private SyntaxError.Position currentPositionWithArgNo(ParserRuleContext ctx) {
+        return new SyntaxError.Position(ctx.getStart().getLine(), ctx.getStop().getLine(),
+                ctx.getStart().getCharPositionInLine(), ctx.getStop().getCharPositionInLine(), moduleEnv.arg_no);
     }
 
     private OneExpression parseConstant(ParserRuleContext ctx, String textOfConstant) {

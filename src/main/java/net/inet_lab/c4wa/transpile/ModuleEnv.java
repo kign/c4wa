@@ -26,6 +26,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
     final static int IF_THEN_ELSE_SHORT_CIRCUIT_THRESHOLD = 6;
 
     SyntaxError.WarningInterface warningHandler;
+    int arg_no;
 
     public ModuleEnv (Properties prop) {
         funcDecl = new HashMap<>();
@@ -72,7 +73,8 @@ public class ModuleEnv implements Partial, PostprocessContext {
         addDeclaration(new FunctionDecl("memsize", CType.INT, new CType[0], false, FunctionDecl.SType.BUILTIN));
     }
 
-    public void setWarningHandler(SyntaxError.WarningInterface warningHandler) {
+    public void setWarningHandler(int arg_no, SyntaxError.WarningInterface warningHandler) {
+        this.arg_no = arg_no;
         this.warningHandler = warningHandler;
     }
 
@@ -185,8 +187,10 @@ public class ModuleEnv implements Partial, PostprocessContext {
         for (String fname: funcDecl.keySet()) {
             FunctionDecl decl = funcDecl.get(fname);
 
-            if (decl.used && decl.storage == FunctionDecl.SType.EXTERNAL)
-                throw new SyntaxError("'extern' Function '" + fname + "' isn't defined", true);
+            if (decl.is_used && decl.storage == FunctionDecl.SType.EXTERNAL)
+                if (warningHandler != null)
+                    warningHandler.report(new SyntaxError(decl.where_used, "'extern' Function '" + fname + "' isn't defined",
+                        true));
         }
     }
 

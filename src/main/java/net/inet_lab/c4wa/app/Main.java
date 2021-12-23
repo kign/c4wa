@@ -104,6 +104,7 @@ public class Main {
         final int n_units = fileArgs.size() + builtin_libs.size();
         final int[] errors = {0};
         final int[] warnings = {0};
+        final ArrayList<List<String>> programLinesCache = new ArrayList<>();
 
         for (int iarg = 0; iarg < n_units; iarg ++) {
             List<String> _programLines;
@@ -140,39 +141,42 @@ public class Main {
                         .lines().collect(Collectors.toUnmodifiableList());
             }
 
-            final List<String> programLines = _programLines;
-            final String programText = String.join("\n", programLines);
+            programLinesCache.add(_programLines);
+            final String programText = String.join("\n", _programLines);
+            final int arg_no = iarg;
 
             try {
                 if (warningTreatment[0] != WarningTreatment.IGNORE)
-                    moduleEnv.setWarningHandler(err -> {
-                        reportError(fileName, programLines, err);
+                    moduleEnv.setWarningHandler(arg_no, err -> {
+                        reportError(fileName, programLinesCache.get(err.pos.arg_no<0? arg_no: err.pos.arg_no), err);
                         if (err.is_error)
                             errors[0] ++;
                         else
                             warnings[0] ++;
                     });
-                if (iarg >= fileArgs.size())
-                    moduleEnv.setWarningHandler(null);
                 ParseTree tree = buildParseTree(programText);
                 ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
                 v.visit(tree);
                 if (iarg == n_units - 1)
                     wat = moduleEnv.wat().toStringPretty(2);
             } catch (SyntaxError err) {
-                reportError(fileName, programLines, err);
-                System.exit(1);
+                // This should only be used for parsing errors
+                reportError(fileName, programLinesCache.get(err.pos.arg_no < 0 ? arg_no : err.pos.arg_no), err);
+                if (err.is_error)
+                    errors[0]++;
+                else
+                    warnings[0]++;
             }
         }
 
         if (errors[0] > 0) {
-            System.err.printf("%d warning%s and %d error%s generated.\n",
+            System.err.printf("\n%d warning%s and %d error%s generated.\n",
                     warnings[0], warnings[0] > 1? "s" : "",
                     errors[0], errors[0] > 1 ? "s" : "");
             System.exit(1);
         }
         else if (warnings[0] > 0 && warningTreatment[0] == WarningTreatment.TREAS_AS_ERRORS) {
-            System.err.printf("%d warning%s generated (treated as errors due to '-Werror').\n",
+            System.err.printf("\n%d warning%s generated (treated as errors due to '-Werror').\n",
                     warnings[0], warnings[0] > 1 ? "s" : "");
             System.exit(1);
         }
@@ -227,14 +231,14 @@ public class Main {
             programText = String.join("\n", runTextThroughCPreprocessor(programText, ppOptions));
 
         ModuleEnv moduleEnv = new ModuleEnv(prop);
-        moduleEnv.setWarningHandler(warnHandler);
+        moduleEnv.setWarningHandler(-1, warnHandler);
 
         ParseTree tree = buildParseTree(programText);
         ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
         v.visit(tree);
 
         for (String libName: libs) {
-            moduleEnv.setWarningHandler(null);
+            moduleEnv.setWarningHandler(-1,null);
             var programLines = new BufferedReader(
                     new InputStreamReader(
                             Objects.requireNonNull(

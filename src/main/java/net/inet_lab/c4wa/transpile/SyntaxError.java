@@ -20,23 +20,29 @@ public class SyntaxError extends RuntimeException {
     }
 
     public static class Position {
-        final public int line_st, line_en, pos_st, pos_en;
-        public Position(int line_st, int line_en, int pos_st, int pos_en) {
+        final public int line_st, line_en, pos_st, pos_en, arg_no;
+        public Position(int line_st, int line_en, int pos_st, int pos_en, int arg_no) {
             this.line_st = line_st;
             this.line_en = line_en;
             this.pos_st = pos_st;
             this.pos_en = pos_en;
+            this.arg_no = arg_no;
+        }
+
+        public Position(int line_st, int line_en, int pos_st, int pos_en) {
+            this(line_st, line_en, pos_st, pos_en, -1);
+        }
+
+        public Position(int line_st, int pos_st, int arg_no) {
+            this(line_st, line_st, pos_st, pos_st, arg_no);
         }
 
         public Position(int line_st, int pos_st) {
-            this.line_st = line_st;
-            this.line_en = line_st;
-            this.pos_st = pos_st;
-            this.pos_en = pos_st;
+            this(line_st, line_st, pos_st, pos_st, -1);
         }
 
         public Position() {
-            this.line_st = this.line_en = this.pos_st = this.pos_en = -1;
+            this(-1, -1, -1);
         }
     }
 
