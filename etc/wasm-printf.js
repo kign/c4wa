@@ -43,19 +43,13 @@ const read_str = function (mem, offset) {
     return null;
 }
 
-const wasm_printf = function (wasm_mem) {
+const wasm_printf = function (wasm_mem, consumer) {
     return function(fmt, offset) {
-        wasm_mem_fprintf(fmt, offset, wasm_mem, process.stdout);
+        wasm_mem_printf(fmt, offset, wasm_mem, consumer);
     }
 }
 
-const wasm_fprintf = function (wasm_mem, target) {
-    return function(fmt, offset) {
-        wasm_mem_fprintf(fmt, offset, wasm_mem, target);
-    }
-}
-
-const wasm_mem_fprintf = function (p_fmt, offset, wasm_mem, target) {
+const wasm_mem_printf = function (p_fmt, offset, wasm_mem, consumer) {
     // console.log(_fmt, offset, wasm_mem, target);
     const mem = wasm_mem ();
 
@@ -111,16 +105,11 @@ const wasm_mem_fprintf = function (p_fmt, offset, wasm_mem, target) {
 
     const res = printf(fmt.filter(x => x !== null).join(''), ...args);
 
-    if (!target)
-        console.log(res.trim());
-    else if (target.write)
-        target.write(res);
-    else if (target.push)
-        target.push(res);
+    if (consumer)
+        consumer(res);
 }
 
 module.exports = {
-    wasm_printf  : wasm_printf,
-    wasm_fprintf : wasm_fprintf
+    wasm_printf  : wasm_printf
 };
 

@@ -154,8 +154,11 @@ public class FunctionEnv implements Partial, PostprocessContext {
     }
 
     public void close() {
-        if (blocks.size() != 1)
-            throw new RuntimeException("Function " + name + " cannot be closed: blocks.size() = " + blocks.size());
+        if (blocks.size() != 1) {
+            if (moduleEnv.warningHandler != null)
+                moduleEnv.warningHandler.report(new SyntaxError("Fatal error in function '" + name + "' (probably result of earlier errors)", true));
+            return;
+        }
 
         is_closed = true;
         warnUnusedVariables ();

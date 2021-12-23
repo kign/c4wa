@@ -144,20 +144,27 @@ public class Main {
             programLinesCache.add(_programLines);
             final String programText = String.join("\n", _programLines);
             final int arg_no = iarg;
+            final boolean report_warnings_in_libs = false;
 
             try {
-                if (warningTreatment[0] != WarningTreatment.IGNORE)
-                    moduleEnv.setWarningHandler(arg_no, err -> {
-                        reportError(fileName, programLinesCache.get(err.pos.arg_no<0? arg_no: err.pos.arg_no), err);
+                moduleEnv.setWarningHandler(arg_no, err -> {
+                    int idx = err.pos.arg_no < 0 ? arg_no : err.pos.arg_no;
+                    //noinspection ConstantConditions
+                    if (err.is_error || idx < fileArgs.size() ||
+                            (report_warnings_in_libs && warningTreatment[0] != WarningTreatment.IGNORE)) {
+                        reportError(fileName, programLinesCache.get(idx), err);
                         if (err.is_error)
-                            errors[0] ++;
+                            errors[0]++;
                         else
-                            warnings[0] ++;
-                    });
+                            warnings[0]++;
+                    }
+                });
                 ParseTree tree = buildParseTree(programText);
                 ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
                 v.visit(tree);
-                if (iarg == n_units - 1)
+                if (errors[0] == 0 &&
+                        (warnings[0] == 0 || warningTreatment[0] != WarningTreatment.TREAS_AS_ERRORS)
+                        && iarg == n_units - 1)
                     wat = moduleEnv.wat().toStringPretty(2);
             } catch (SyntaxError err) {
                 // This should only be used for parsing errors

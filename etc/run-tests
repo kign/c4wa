@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require("child_process");
 const colors = require('colors'); // unsafe, modifies String prototype
-const { wasm_fprintf } = require('./wasm-printf');
+const { wasm_printf } = require('./wasm-printf');
 
 const def_arr = ["WAT file exists (created by gradlew :test) and has been modified after C file",
     "WAT file compiled to WASM file",
@@ -333,20 +333,20 @@ async function run_c_file(cfile) {
 }
 
 async function run_wasm_file(fname, options) {
-    const target = options.stdout? process.stdout: [];
-
+    const output_a = [];
     const wasm_bytes = new Uint8Array(fs.readFileSync(fname));
 
     let wasm_mem;
 
     const wasm_instance = (await WebAssembly.instantiate(wasm_bytes,
-        {c4wa: {printf: wasm_fprintf(() => new Uint8Array(wasm_mem.buffer), target)}})).instance;
+        {c4wa: {printf: wasm_printf(() => new Uint8Array(wasm_mem.buffer),
+                    x => options.stdout ? process.stdout.write(x) : output_a.push(x))}})).instance;
 
     wasm_mem = wasm_instance.exports.memory;
     wasm_instance.exports.main ();
 
     if (!options.stdout)
-        return target.join('');
+        return output_a.join('');
 }
 
 main();
