@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "browserify": "^17.0.0",
+    "fast-printf": "^1.6.9"
+  }
+}
