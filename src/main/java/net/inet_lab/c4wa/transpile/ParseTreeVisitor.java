@@ -434,7 +434,15 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     moduleEnv.addDeclaration((VariableDecl) parseGlobalDecl);
                 } else if (parseGlobalDecl instanceof StructDefinition) {
                     StructDefinition def = (StructDefinition) parseGlobalDecl;
-                    moduleEnv.addStruct(def.name, new Struct(def.name, def.members));
+                    Struct s = new Struct(def.name, def.members);
+                    Struct existing_s = moduleEnv.structs.get(def.name);
+                    if (existing_s == null)
+                        moduleEnv.addStruct(def.name, s);
+                    else if (!existing_s.same(s)) {
+                        if (moduleEnv.warningHandler != null)
+                            moduleEnv.warningHandler.report(new SyntaxError(currentPositionWithArgNo(g),
+                                    "struct '" + def.name + "' is redefined", true));
+                    }
                 } else
                     throw fail(g, "global item", "Unknown class " + parseGlobalDecl.getClass());
             }
@@ -1352,6 +1360,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
         if (!ptr.type.deref().is_struct())
             throw fail(ctx, "struct_member", "'" + ptr.type.deref() + "' is not a defined struct");
+
+        if(ptr.type.deref().is_undefined_struct())
+            throw fail(ctx, "struct_member", "'" + ptr.type.deref() + "' is not defined");
+
 
         return lhs_struct_member(ctx, (Struct) ptr.type.deref(), ctx.ID().getText(), ptr.expression);
     }

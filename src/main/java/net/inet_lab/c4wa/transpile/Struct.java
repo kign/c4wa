@@ -2,6 +2,7 @@ package net.inet_lab.c4wa.transpile;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class Struct extends StructDecl {
     final Map<String,Var> m;
@@ -22,9 +23,28 @@ public class Struct extends StructDecl {
         size = offset;
     }
 
+    public boolean sameSchema(Struct o) {
+        if (size != o.size)
+            return false;
+        for (String key: m.keySet()) {
+            Var v1 = m.get(key);
+            Var v2 = o.m.get(key);
+            if (v2 == null || !v1.same(v2))
+                return false;
+        }
+
+        return true;
+    }
+
     @Override
     public int size() {
         return size;
+    }
+
+
+    @Override
+    public boolean is_undefined_struct() {
+        return false;
     }
 
     static class VarInput {
@@ -49,10 +69,9 @@ public class Struct extends StructDecl {
             this.offset = offset;
             this.size = v.size;
         }
-    }
 
-    @Override
-    public boolean is_undefined_struct() {
-        return false;
+        boolean same(Var o) {
+            return type.same(o.type) && offset == o.offset && Objects.equals(size, o.size);
+        }
     }
 }

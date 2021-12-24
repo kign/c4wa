@@ -10,8 +10,8 @@ unset CDPATH
 cd "$(dirname "$0")" || exit 1
 
 if [ "$1" == "clean" ]; then
-  echo rm -rf node_modules prime.wat prime.wasm package-lock.json Makefile bundle.js index.html
-  rm -rf node_modules prime.wat prime.wasm package-lock.json Makefile bundle.js index.html
+  echo rm -rf node_modules *.wat *.wasm package-lock.json Makefile bundle.js index.html
+  rm -rf node_modules *.wat *.wasm package-lock.json Makefile bundle.js index.html
   exit
 fi
 
@@ -23,7 +23,7 @@ req=(npm make "$compile")
 for r in "${req[@]}"; do
   res="${LIGHT_GREEN}ok${NC}"
   ok=1
-  type $r >/dev/null 2>&1 || { ok=0; res="${LIGHT_RED}not found${NC}"; nf=$((nf+1)); }
+  type "$r" >/dev/null 2>&1 || { ok=0; res="${LIGHT_RED}not found${NC}"; nf=$((nf+1)); }
   if [ "$r" == "c4wa-compile" ] && [ $ok -eq 0 ]; then
     compile=../../build/install/c4wa-compile/bin/c4wa-compile
     if [ ! -x $compile ] && [ -x ./gradlew ]; then
@@ -34,7 +34,7 @@ for r in "${req[@]}"; do
       nf=$((nf-1))
     fi
   fi
-  printf "%-12s ${res}\n" $r
+  printf "%-12s ${res}\n" "$r"
 done
 
 echo ""
@@ -81,6 +81,9 @@ make
 
 printf "\n${LIGHT_CYAN}Launching server${NC}\n"
 port=9811
-ln -sf prime.html index.html
+for x in *.html; do
+  ln -sf "$x" index.html
+  break
+done
 (sleep 1 && open "http://localhost:$port") &
 node_modules/.bin/light-server -s . -p $port -w "*.js,*.c,*.html,*.css # make"

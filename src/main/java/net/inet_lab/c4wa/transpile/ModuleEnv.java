@@ -189,7 +189,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
 
             if (decl.is_used && decl.storage == FunctionDecl.SType.EXTERNAL)
                 if (warningHandler != null)
-                    warningHandler.report(new SyntaxError(decl.where_used, "'extern' Function '" + fname + "' isn't defined",
+                    warningHandler.report(new SyntaxError(decl.where_used, "'extern' Function '" + fname + "' declared but not defined",
                         true));
         }
     }
