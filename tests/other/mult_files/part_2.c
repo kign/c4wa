@@ -1,4 +1,4 @@
-void printf ();
+void printf (char * fmt, ...);
 
 void bar (int level) {
     printf("bar(%d)\n", level);

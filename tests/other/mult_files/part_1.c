@@ -1,4 +1,4 @@
-void printf ();
+void printf (char * fmt, ...);
 
 extern void bar(int);
 
