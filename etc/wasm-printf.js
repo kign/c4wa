@@ -110,6 +110,7 @@ const wasm_mem_printf = function (p_fmt, offset, wasm_mem, consumer) {
 }
 
 module.exports = {
-    wasm_printf  : wasm_printf
+    wasm_printf  : wasm_printf,
+    read_i32 : read_i32
 };
 

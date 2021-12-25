@@ -194,6 +194,9 @@ public class Main {
     }
 
     private static void reportError(String fileName, List<String> programLines, SyntaxError err) {
+        /* Ideally, we should be using colors from GCC_COLORS; see
+            https://gcc.gnu.org/onlinedocs/gcc-10.1.0/gcc/Diagnostic-Message-Formatting-Options.html
+         */
         boolean is_tty = System.console() != null;
         final String sType = err.is_error ? (is_tty? Color.RED_BOLD + "error" + Color.RESET : "error") :
                                             (is_tty? (Color.MAGENTA_BOLD + "warning" + Color.RESET) : "warning");

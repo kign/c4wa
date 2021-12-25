@@ -130,7 +130,7 @@ directives and only runs them through preprocessor when necessary, _or_ if there
 When preprocessor is used by `c4wa`, symbol `C4WA` is always defined. You can use it to create separate branches
 for `c4wa` and standard C compiler.
 
-`c4wa` does also come some include files of its own; they are installed as part of ZIP distribution and path is
+`c4wa` also comes with a few include files of its own; they are installed as part of ZIP distribution and path is
 automatically added to the preprocessor.
 
 Finally, `c4wa` does process so-called "line directives" inserted by a preprocessor and therefore 
@@ -334,6 +334,84 @@ we are _not_ checking for stack overflow, so if you take too much memory you'd s
 
 Arrays are permitted in `struct`s, but must have fixed (= known at compile time) size. 
 
+### Use case: returning complex data types from exported functions
+
+While `c4wa` compiler allows us to write a code where functions could exchange complex data structures
+via linear memory, it can't provide a ready-to-use solution if there is a need to exchange such data
+types between Web Assembly code and the runtime, since it knows nothing of the runtime.
+
+Consider one example. Let's say we need to call a function from JS runtime to return a boundary
+box for a certain 2D region, as determined by 4 numbers: `xmin`, `xmax`, `ymin`, `ymax`.
+
+A regular C function would look like this:
+
+```c
+void find_boundary_box(int * p_xmin, int * p_xmax, int * p_ymin, int * p_ymax) { ... }  
+```
+
+We can't easily use it in an exported function though, because then the runtime would need to know exactly which memory
+addresses it could pass as parameters, and this would mean that memory allocation inside C/WASM code would 
+need to be coordinated with the runtime. It's not undoable, but it's complicated and a bad design.
+
+One obvious alternative is to simply split this into 4 separate function for each integer to be returned,
+with some internal cache to avoid unnecessary repeated calculations. This has an advantage of being limited
+to C/WASM code and not requiring any new logic in terms of communicating with the runtime; but it's still
+complicated, requires a separate logic to save and invalidate static cache, etc.
+
+Finally, we could allocate new memory region, save 4 integers there, and return memory address to the runtime.
+This is a lot better, but one remaining issue is that if we want to reclaim this memory, it'll again
+require a rather complicated logic since it couldn't be released in a function where it was allocated.
+
+Using stack allocation solves this last problem, because stack memory is already tracked globally.
+So here is what we can do:
+
+C-code:
+
+```c
+extern int * find_boundary_box() {
+    int boundary_box[4];
+    ......................
+    boundary_box[0] = xmin;
+    boundary_box[1] = xmax;
+    boundary_box[2] = ymin;
+    boundary_box[3] = ymax;
+    
+    return boundary_box;
+}
+```
+
+JavaScript runtime:
+
+```javascript
+// ............................
+const wasm = await WebAssembly.instantiate(bytes, import_object);
+const exports = wasm.instance.exports;
+const linear_memory = new Uint8Array(exports.memory.buffer);
+const boundary_box = exports.find_boundary_box();
+const [xmin, xmax, ymin, ymax] = [...Array(4).keys()].map(i => read_i32(linear_memory, boundary_box + 4 * i));
+```
+
+Function `read_i32` could be imported from 
+[here](https://github.com/kign/c4wa/blob/master/etc/wasm-printf.js).
+
+If you are verifying your code in standard C compiler (which is recommended), it will probably complain 
+about returning stack value from a function `find_boundary_box`. You can restructure your code slightly to
+avoid this warning:
+
+```c
+extern int * find_boundary_box() {
+    int boundary_box[4];
+    int * ret_val = boundary_box;
+    ......................
+    boundary_box[0] = xmin;
+    boundary_box[1] = xmax;
+    boundary_box[2] = ymin;
+    boundary_box[3] = ymax;
+    
+    return ret_val;
+}
+```
+
 ### Memory functions
 
 These functions behave as normal C function in C code with given signatures 
@@ -341,9 +419,9 @@ but `c4wa` internally replaces them with Web Assembly memory operators:
 
 | Name    | Arguments                               | Return Value | Description                                                      | 
 |---------|-----------------------------------------|--------------|------------------------------------------------------------------|
-| memset  | `void * addr`, `char value`, `int size` | _none_       | Same as in C                                                     |
-| memcpy  | `void * dest`, `void * src`, `int size` | _none_       | Same as in C                                                     |
-| memgrow | `int n_pages`                           | _none_       | Increase memory size by specified number of pages (1 page = 64K) |
+| memset  | `void * addr`, `char value`, `int size` | _void_       | Same as in C library                                             |
+| memcpy  | `void * dest`, `void * src`, `int size` | _void_       | Same as in C library                                             |
+| memgrow | `int n_pages`                           | _void_       | Increase memory size by specified number of pages (1 page = 64K) |
 | memsize | _none_                                  | `int`        | Get current memory size in pages                                 |
 
 Note that if using `memset` and `memcpy`, you'll need option `--enable-bulk-memory` to use `wat2wasm`.
