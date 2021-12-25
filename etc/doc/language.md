@@ -305,8 +305,9 @@ Compiled to WAT, function `bar` will look like this:
 
 ```wat
 (func $bar
- (local $a i32)
- (call $foo (get_local $a)))
+  (local $a i32)
+  (set_local $a (i32.const 14)) 
+  (call $foo (get_local $a)))
 ```
 
 Let's now change parameter of `foo` to a pointer and argument to `&a`:
@@ -315,7 +316,7 @@ Let's now change parameter of `foo` to a pointer and argument to `&a`:
 void foo(int * par) { ... }
 
 void bar() {
-    int a;
+    int a = 14;
     foo(&a);
 }
 ```
@@ -329,6 +330,7 @@ This simple change will result in a very different WAT code for `bar :
   (set_local $@stack_entry (global.get $@stack))
   (set_local $a (global.get $@stack))
   (global.set $@stack (i32.add (global.get $@stack) (i32.const 4)))
+  (i32.store (get_local $a) (i32.const 14))
   (call $foo (get_local $a))
   (global.set $@stack (get_local $@stack_entry)))
 ```
