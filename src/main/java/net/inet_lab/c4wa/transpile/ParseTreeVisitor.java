@@ -1314,6 +1314,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             throw fail(ctx, "address of variable", "'" + name + "' is array, cannot take address of an array");
 
         decl.inStack = true;
+        functionEnv.markAsUsingStack();
         decl.markUsed();
 
         return new OneExpression(new DelayedLocalAccess(varId, true), decl.type.make_pointer_to());

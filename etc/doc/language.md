@@ -7,10 +7,7 @@ Obviously, details might change as work on the compiler continues.
 
   * **Direct translation.**<br> We try to only support features of C language which could be directly and unambiguously
     translated to WAT text format with S-expressions. This way, generated WAT code should be readable and 
-   reasonably close to what 
-    a human programmer would write.
-  * **Functionality first, syntax sugar later.**<br> Implement the widest possible scope of C language features first, worry 
-    about convenience only as necessary.
+   reasonably close to what a human programmer would write.
   * **Cross compilation.**<br> It should be easy to write code which could be compiled and tested 
      with both `c4wa` _and_ an ordinary C compiler. All features which are in some way WASM-specific
     are introduced in a way to make them understood by C compiler as good as possible.
@@ -277,23 +274,75 @@ and it could be an overkill for simpler tasks.
 ### stack variables
 
 Web Assembly supports unlimited number of local variables, so when you have a local variable in C,
-we directly map it to a local variable in Web Assembly under same name (these names are only present in WAT file,
-actual WASM code simply refers to them by consecutive numbers). 
+we directly map it to a local variable in Web Assembly 
+(see [below](https://github.com/kign/c4wa/blob/master/etc/doc/language.md#local-variables-mapping) 
+on how WAT names for these variables are selected). 
 
 In some situations though we have to store value in the _stack_, keeping its _address_ as a local variable.
 In this case we refer to this variable as _stack variable_. This happens in these two cases:
 
 First, this happens if you declare a variable of type array (not pointer) or `struct`. In this case,
 your variable is allocated in the _stack_ (first `module.stackSize` bytes of linear memory). Actual WASM local variable
-holds a _pointer_ to this memory (which is one case when pointer could have a numeric value 0, a very top of the stack).
+holds a _pointer_ to this memory.
 
 ### `&`
 
 However, `cw4a` would also assign a regular primitive type variable to the stack _if you attempt to take an
-address of this variable_. If everything works as it should, whether a local variable is allocated in the stack
-or not should make no difference on the C code; however, constantly accessing and saving memory could 
-have a performance hit and also generate larger and more complex WAT code. It is therefore recommended to
-limit use of stack variables to get better results.
+address of this variable_. 
+
+Consider this C code:
+
+```c
+void foo(int par) { ... }
+
+void bar() {
+    int a;
+    foo(a);
+}
+```
+
+Compiled to WAT, function `bar` will look like this:
+
+```wat
+(func $bar
+ (local $a i32)
+ (call $foo (get_local $a)))
+```
+
+Let's now change parameter of `foo` to a pointer and argument to `&a`:
+
+```c
+void foo(int * par) { ... }
+
+void bar() {
+    int a;
+    foo(&a);
+}
+```
+
+This simple change will result in a very different WAT code for `bar :
+
+```wat
+(func $bar
+  (local $@stack_entry i32)
+  (local $a i32)
+  (set_local $@stack_entry (global.get $@stack))
+  (set_local $a (global.get $@stack))
+  (global.set $@stack (i32.add (global.get $@stack) (i32.const 4)))
+  (call $foo (get_local $a))
+  (global.set $@stack (get_local $@stack_entry)))
+```
+
+What happened here? We can't pass an address of a local variable; the only way to return a value from a 
+Web Assembly function other than through a return value is through linear memory: to pass a memory address
+(or index) and have function write data to this address.
+
+So, there is still a local variable `$a` but now it holds a memory address. Any attempt to access it
+will necessitate memory access. Additionally, we need to adjust stack pointer, preserve stack pointer value at function
+entrance and restore it at all function exit points.
+
+Still, If everything works as it should, whether a local variable is allocated in the stack
+or not should make no difference in execution, but performance might well suffer. 
 
 You can't take an address of an array (since it's already the address) or a global variable 
 (since they can't be put on the stack)
@@ -305,8 +354,8 @@ simply replace this expression with `a + 1`, which is what it is anyway.
 
 ### stack arrays
 
-You can bypass manual memory allocation by using stack. When you declare a stack array, `type variable[size]`.
-Variable-length arrays are supported: `size` doesn't have to be a compile-time constant, 
+You can bypass manual memory allocation by using stack. Variable-length arrays are supported:
+When you declare an array, `type variable[size]`, `size` doesn't have to be a compile-time constant, 
 it could be any valid integer expression, subject to the limit imposed by allocated stack space.
 
 For example, if you need to allocate integer array of size `N` and fill it in with consecutive numbers `0 ... N-1`,
@@ -336,7 +385,7 @@ Arrays are permitted in `struct`s, but must have fixed (= known at compile time)
 
 ### Use case: returning complex data types from exported functions
 
-While `c4wa` compiler allows us to write a code where functions could exchange complex data structures
+While `c4wa` compiler allows us to write a code where C functions could exchange complex data structures
 via linear memory, it can't provide a ready-to-use solution if there is a need to exchange such data
 types between Web Assembly code and the runtime, since it knows nothing of the runtime.
 
@@ -349,17 +398,17 @@ A regular C function would look like this:
 void find_boundary_box(int * p_xmin, int * p_xmax, int * p_ymin, int * p_ymax) { ... }  
 ```
 
-We can't easily use it in an exported function though, because then the runtime would need to know exactly which memory
+We can't easily use it as an exported function though, because then the runtime would need to know exactly which memory
 addresses it could pass as parameters, and this would mean that memory allocation inside C/WASM code would 
 need to be coordinated with the runtime. It's not undoable, but it's complicated and a bad design.
 
 One obvious alternative is to simply split this into 4 separate function for each integer to be returned,
 with some internal cache to avoid unnecessary repeated calculations. This has an advantage of being limited
-to C/WASM code and not requiring any new logic in terms of communicating with the runtime; but it's still
+to C/WASM code and not requiring any new logic in terms of communications with the runtime; but it's still
 complicated, requires a separate logic to save and invalidate static cache, etc.
 
-Finally, we could allocate new memory region, save 4 integers there, and return memory address to the runtime.
-This is a lot better, but one remaining issue is that if we want to reclaim this memory, it'll again
+Finally, we could allocate new memory region, store 4 integers there, and return memory address to the runtime.
+This is a lot better, but one remaining issue is that if we want to reclaim this memory later, it'll again
 require a rather complicated logic since it couldn't be released in a function where it was allocated.
 
 Using stack allocation solves this last problem, because stack memory is already tracked globally.
@@ -586,12 +635,12 @@ In this case, there are 5 _actual_ arguments, but imported function will still b
 (just like in C, any array, including string, is passed as memory address of its first element);<br>
 2-nd argument `offset`: memory address to read the read of arguments from.
 
-To acquire actual values `A`, `B`,`C` and `D`, implementation will then need to gain access to liner memory
+To acquire actual values `A`, `B`,`C` and `D`, implementation will then need to gain access to linear memory
 and read arguments at the following memory locations:
 
 Variable `A` at address `offset` (actual 32-bit value of `A` is converted to 64–bit);<br>
 Variable `B` at address `offset + 8`;<br>
-Variable `C` at address `offset + 16`;
+Variable `C` at address `offset + 16`;<br>
 String `D` is a string to be read from a location which value (32-bit converted to 64) is stored at address `offset + 24`.
 
 When passing arguments, all integer values are converted to `long`, and all float values to `double`.
