@@ -296,7 +296,7 @@ Consider this C code:
 void foo(int par) { ... }
 
 void bar() {
-    int a;
+    int a = 14;
     foo(a);
 }
 ```
