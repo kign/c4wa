@@ -339,7 +339,7 @@ What happened here? We can't pass an address of a local variable; the only way t
 Web Assembly function other than through a return value is through linear memory: to pass a memory address
 (or index) and have function write data to this address.
 
-So, there is still a local variable `$a` but now it holds a memory address. Any attempt to access it
+So, there is still a local variable `$a` but now it holds a memory address. Any attempt to access or change it
 will necessitate memory access. Additionally, we need to adjust stack pointer, preserve stack pointer value at function
 entrance and restore it at all function exit points.
 
@@ -768,7 +768,9 @@ int * p_int = 0;
 
 (In theory, we might have used `-1` instead of `0` as an illegal pointer value, so an attempt to dereference it would
 have failed; this however would lead to quite a lot of complications, like properly interpreting pointers as booleans,
-`if (ptr) {...}`, etc; it is way easier to keep NULL=0. While `NULL` checks by themselves are mostly OK as a 
+`if (ptr) {...}`, etc; besides, even with `ptr=-1`, we would still have same problem with `ptr[idx]` where idx > 0.
+
+It is way easier to keep NULL=0. While `NULL` checks by themselves are mostly OK as a 
 design patter, a programmer shouldn't rely too much on runtime errors as validation. Also, in the future
 we may add a special "debug" mode with some additional run-time checks, including stack overflow and dereferencing 0).
 
