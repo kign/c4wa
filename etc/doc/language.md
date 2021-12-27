@@ -31,9 +31,9 @@ Web Assembly environment.
     (for example, `c4wa` doesn't require you to define or declare functions before they are called, as long as they
     are defined later in the code).
   * While `c4wa` is designed to properly report most common syntax error in a way which is broadly consistent with 
-    standard C compiler, there is no guarantee it won't successfully compile some obviously invalid C code.
-    Most of the testing done on `c4wa`, for obvious reasons, is done on the code which is already known to pass
-    throw a C compiler.
+    standard C compiler, it might either fail with an exception or on some rare occasions even compile successfully
+    invalid C source. Most of the testing, for obvious practical reasons, is done on the code which is already 
+    known to pass throw a C compiler.
   * There is no expectation that any existing C code, other than completely trivial, would pass through `c4wa`
     compilation unchanged. However, for a typical C code, which doesn't rely on external functions
     or libraries (excluding `malloc` and everything you can easily implement or import from your runtime), 
@@ -43,7 +43,7 @@ Web Assembly environment.
 ## TL;DR
 
 To get this out of the way as early as possible, 
-here are some of the most commonly used features of C language **NOT** supported by `c4wa`:
+here are some of the most commonly used features of C language **NOT** supported by `c4wa`. 
 
   * No standard library; other than a handful of built-in utilities, all functions must be implemented or imported
   * `switch`
@@ -74,8 +74,8 @@ dynamic memory allocation, and `c4wa` does provide certain memory management uti
 
 `cw4a` supports Web Assembly primitive types (`i32`, `i64`, `f32` and `f64` which translate to C as 
 `int`, `long`, `float` and `double` correspondingly), also `char` and `short` 
-(which are internally `i32`, except for `struct` members, also some operations work for them differently), 
-pointers (including `void *` pointers), structures and arrays. 
+(which are internally `i32`, except for `struct` members and arrays, also some operations work for them differently), 
+pointers, including `void *` pointers (also `i32` internally), structures and arrays. 
 Not all possible combinations are supported though, like you can't have
 pointer to an array, etc.
 
@@ -83,7 +83,7 @@ Any integer type could be `unsigned`. `sizeof` is supported (but may return resu
 compiler due to different pointer size and no alignment in WASM).
 
 `typedef` isn't supported. You must use syntax `struct NAME` when declaring variables of type `struct`.
-A `stuct` can have other `struct` as its member ot itself as a pointer. 
+A `stuct` can have other `struct` as its member or itself as a pointer. 
 Recursive declarations are allowed. There are no `union`s.
 
 `c4wa` supports all C operators, but assignment isn't treated as an operator, so you can't have syntax like

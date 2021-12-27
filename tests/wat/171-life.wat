@@ -745,7 +745,9 @@
         (set_local $y (i32.add (get_local $y) (i32.const 1)))
         (br $@block_1_continue))))
   (func $to_arr (param $n i32) (param $pts i32)
+    (local $@stack_entry i32)
     (local $k i32)
+    (set_local $@stack_entry (global.get $@stack))
     (set_local $k (global.get $@stack))
     (global.set $@stack (i32.add (global.get $@stack) (i32.const 4)))
     (i32.store (get_local $k) (i32.const 0))
@@ -753,7 +755,8 @@
       (then
         (call $to_arr0 (global.get $world) (get_local $n) (get_local $pts) (get_local $k)))
       (else
-        (call $to_arr1 (global.get $world) (get_local $n) (get_local $pts) (get_local $k)))))
+        (call $to_arr1 (global.get $world) (get_local $n) (get_local $pts) (get_local $k))))
+    (global.set $@stack (get_local $@stack_entry)))
   (func $mulberry32 (result f64)
     (local $t i32)
     (global.set $seed (i32.add (global.get $seed) (i32.const 1831565813)))

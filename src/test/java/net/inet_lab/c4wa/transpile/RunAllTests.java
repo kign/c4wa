@@ -96,13 +96,14 @@ public class RunAllTests {
                               "02-error.c: 1,0; "  +
                               "03-error.c: 1,0; "  +
                               "04-error.c: 2,2; "  +
-                              "05-error.c: 2,0; "  ;
+                              "05-error.c: 2,0; "  +
+                              "06-error.c: 1,0; "  ;
 
             Pattern pattern = Pattern.compile("(^|\\s)" + fname + ":\\s(\\d+),(\\d+);");
             Matcher m = pattern.matcher(expected);
-            assertTrue(m.find());
-            int n_errors = Integer.parseInt(m.group(2));
-            int n_warnings = Integer.parseInt(m.group(3));
+            final boolean file_found = m.find();
+            final int n_errors = file_found? Integer.parseInt(m.group(2)) : -1;
+            final int n_warnings = file_found ? Integer.parseInt(m.group(3)) : -1;
 
             tests.add(DynamicTest.dynamicTest(fileName, () -> {
                 final int[] warnCount = {0};
@@ -113,6 +114,7 @@ public class RunAllTests {
                         List.of(),
                         null,
                         err -> {if (err.is_error) errCount[0] ++; else warnCount[0] ++; });
+                assertTrue(file_found, "'" + fname + "': " + errCount[0] +  " errors, " + warnCount[0] +  " warnings; add to `expected'\n");
                 assertEquals(n_errors, errCount[0]);
                 assertEquals(n_warnings, warnCount[0]);
             }));
