@@ -38,7 +38,8 @@ Web Assembly environment.
     compilation unchanged. However, for a typical C code, which doesn't rely on external functions
     or libraries (excluding `malloc` and everything you can easily implement or import from your runtime), 
     doesn't use any compiler- or OS-specific features, and doesn't make too much use of the more obscure 
-    C language features (`union`s, `goto`s, etc.), making it `c4wa`-compatible shouldn't take too much effort. 
+     (`union`s, `goto`s, etc.) or recently added (`long long`, `_Generic`, etc.) C language features, 
+     making it `c4wa`-compatible shouldn't take too much effort. 
 
 ## TL;DR
 
@@ -53,7 +54,6 @@ here are some of the most commonly used features of C language **NOT** supported
   * `static` variables or functions
   * `while() ...` loop
   * wide char
-  * Pragmas
   * Array initializers
   * Assignment operators `=`, `+=`, `++` etc. in expressions
   * Assignment of `struct`s or using `struct` (not pointer) as an argument
@@ -62,6 +62,8 @@ here are some of the most commonly used features of C language **NOT** supported
   * Pointers to arrays, arrays of arrays
   * Function names as variables, indirect function calls
   * Bit Fields
+  * Pragmas
+  * Rarely used qualifiers `restrict`, `volatile` and specifiers `auto` and `register`
   * Almost all new features introduced in C99 and later standards (except runtime-length arrays, intermingled
     declarations, and one-line comments which are all supported)
   
@@ -82,8 +84,8 @@ pointer to an array, etc.
 Any integer type could be `unsigned`. `sizeof` is supported (but may return results different from native C
 compiler due to different pointer size and no alignment in WASM).
 
-`typedef` isn't supported. You must use syntax `struct NAME` when declaring variables of type `struct`.
-A `stuct` can have other `struct` as its member or itself as a pointer. 
+`typedef` isn't supported. All structures must have a name, and the only way to declare a variable of type `struct` is
+to use syntax `struct NAME`. A `stuct` can have other `struct` as its member or itself as a pointer. 
 Recursive declarations are allowed. There are no `union`s.
 
 `c4wa` supports all C operators, but assignment isn't treated as an operator, so you can't have syntax like
