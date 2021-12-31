@@ -9,8 +9,8 @@ Obviously, details might change as work on the compiler continues.
     translated to WAT text format with S-expressions. This way, generated WAT code should be readable and 
    reasonably close to what a human programmer would write.
   * **Cross compilation.**<br> It should be easy to write code which could be compiled and tested 
-     with both `c4wa` _and_ an ordinary C compiler. All features which are in some way WASM-specific
-    are introduced in a way to make them understood by C compiler as good as possible.
+     with both `c4wa` _and_ an ordinary C compiler. All WASM-specific features are introduced 
+    in a way to ensure the best possible compatibility with standard C.
   
 ## What this compiler is NOT
 
@@ -323,7 +323,7 @@ void bar() {
 }
 ```
 
-This simple change will result in a very different WAT code for `bar :
+This simple change will result in a very different WAT code for `bar` :
 
 ```wat
 (func $bar
@@ -341,7 +341,7 @@ What happened here? We can't pass an address of a local variable; the only way t
 Web Assembly function other than through a return value is through linear memory: to pass a memory address
 (or index) and have function write data to this address.
 
-So, there is still a local variable `$a` but now it holds a memory address. Any attempt to access or change it
+So, there is still a local variable `$a` but now it holds a _memory address_. Any attempt to access or change it
 will necessitate memory access. Additionally, we need to adjust stack pointer, preserve stack pointer value at function
 entrance and restore it at all function exit points.
 
@@ -444,7 +444,7 @@ const boundary_box = exports.find_boundary_box();
 const [xmin, xmax, ymin, ymax] = [...Array(4).keys()].map(i => read_i32(linear_memory, boundary_box + 4 * i));
 ```
 
-Function `read_i32` could be imported from 
+JavaScript function `read_i32` could be imported from 
 [here](https://github.com/kign/c4wa/blob/master/etc/wasm-printf.js).
 
 If you are verifying your code in standard C compiler (which is recommended), it will probably complain 
@@ -706,7 +706,8 @@ f = (float) g; // woudn't work without a cast
 (additionally, when integer types involved are only different by only one of them being `unsigned`, 
 this will trigger compilation error without an explicit cast).
 
-Now, all integer constants in `c4wa` have type `int` and all float constant have type `double`. This may
+Now, all integer constants in `c4wa` have type `int` and all float constants 
+(differentiated from integer constants by having a dot `.` ) have type `double`. This may
 create a problem when initializing a `float`, for example
 
 ```c
