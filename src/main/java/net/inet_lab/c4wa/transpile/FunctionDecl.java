@@ -66,6 +66,7 @@ public class FunctionDecl implements Partial {
 
     public int legalInAnotherFile(FunctionDecl o) {
         // returns 0 if not legal, -1 if old declaration stands, 1 if new declaration rules
+        // "this" = "old", "o" = "new"
         if (storage == SType.IMPORTED && o.storage == SType.IMPORTED)
             return -1;
         if (storage == SType.EXTERNAL && o.storage == SType.INTERNAL)
@@ -73,6 +74,10 @@ public class FunctionDecl implements Partial {
         if (storage == SType.INTERNAL && o.storage == SType.EXTERNAL)
             return -1;
         if (storage == SType.EXTERNAL && o.storage == SType.EXTERNAL)
+            return -1;
+        if (storage == SType.EXTERNAL && o.storage == SType.EXPORTED)
+            return 1;
+        if (storage == SType.EXPORTED && o.storage == SType.EXTERNAL)
             return -1;
 
         return 0;

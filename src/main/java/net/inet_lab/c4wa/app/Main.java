@@ -63,7 +63,8 @@ public class Main {
 
         String error = parseCommandLineArgs(args,
                 List.of(new Option('o', "output", true),
-                        new Option('h', "help")),
+                        new Option('h', "help"),
+                        new Option('v', null)),
                 parsedArgs, fileArgs, prop, ppOptions, builtin_libs, warningTreatment);
 
         final boolean forcePP = !ppOptions.isEmpty();
@@ -118,11 +119,11 @@ public class Main {
                 }
 
                 if (forcePP)
-                    _programLines = runFileThroughCPreprocessor(ppCmd, fileName, ppOptions);
+                    _programLines = runFileThroughCPreprocessor(ppCmd, fileName, ppOptions, parsedArgs.containsKey("v"));
                 else {
                     _programLines = Files.lines(Paths.get(fileName), StandardCharsets.UTF_8).collect(Collectors.toUnmodifiableList());
                     if (_programLines.stream().anyMatch(line -> ppp.matcher(line).find()))
-                        _programLines = runFileThroughCPreprocessor(ppCmd, fileName, ppOptions);
+                        _programLines = runFileThroughCPreprocessor(ppCmd, fileName, ppOptions, parsedArgs.containsKey("v"));
                 }
 
                 if (_programLines.isEmpty()) {
@@ -293,6 +294,7 @@ public class Main {
                 " -D<name>=value  pass definition to C preprocessor\n" +
                 " -X<name>=value  override compiler property (see below)\n" +
                 " -l<name>        include built-in library <name> (use -lh to list available libraries)\n" +
+                " -v              Print (on standard error output) the preprocessor commands\n" +
                 " -w              Inhibit all warning messages\n" +
                 " -Werror         Make all warnings into errors\n" +
                 " -o, --output <FILE>  specify output WAT file (or - for stdout)\n" +
@@ -408,7 +410,7 @@ public class Main {
         return null;
     }
 
-    private static List<String> runFileThroughCPreprocessor(String ppCmd, String fileName, List<String> ppOptions) throws IOException {
+    private static List<String> runFileThroughCPreprocessor(String ppCmd, String fileName, List<String> ppOptions, boolean verbose) throws IOException {
         // https://gcc.gnu.org/onlinedocs/gcc/Preprocessor-Options.html
         // -E invokes preprocessor
         // -P inhibits line markers [no longer needed]
@@ -416,6 +418,8 @@ public class Main {
 
         String include = getIncludePath();
         String command = ppCmd + " " + String.join(" ", ppOptions) + " -I" + include + " " + fileName;
+        if (verbose)
+            System.err.println(command);
         Process process = Runtime.getRuntime().exec(command);
         List<String> output = new BufferedReader(new InputStreamReader(process.getInputStream()))
                 .lines().collect(Collectors.toUnmodifiableList());
@@ -440,7 +444,7 @@ public class Main {
         Properties prop = defaultProperties();
         String ppCmd = prop.getProperty("preprocessor.command");
 
-        return runFileThroughCPreprocessor(ppCmd, tempFile.getAbsolutePath(), ppOptions);
+        return runFileThroughCPreprocessor(ppCmd, tempFile.getAbsolutePath(), ppOptions, false);
     }
 
     static private class ThrowingErrorListener extends BaseErrorListener {
