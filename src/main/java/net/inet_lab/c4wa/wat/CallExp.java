@@ -1,5 +1,6 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 public class CallExp extends Expression {
@@ -30,5 +31,13 @@ public class CallExp extends Expression {
     @Override
     public Expression postprocess(PostprocessContext ppctx) {
         return new CallExp(funcName, numType, Arrays.stream(args).map(e -> e.postprocess(ppctx)).toArray(Expression[]::new));
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        for (Expression arg : args)
+            arg.wasm(mCtx, fCtx, out);
+        out.writeOpcode(this);
+        out.writeInt(mCtx.funcs.get(funcName));
     }
 }

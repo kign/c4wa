@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
+
 public class Instruction_1ref extends Instruction {
     public final String ref;
     final public Expression arg;
@@ -23,4 +25,10 @@ public class Instruction_1ref extends Instruction {
             return new Instruction[]{new Instruction_1ref(type, ref, arg.postprocess(ppctx))};
     }
 
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        arg.wasm(mCtx, fCtx, out);
+        out.writeOpcode(type);
+        out.writeInt(type.getMain() == InstructionName.SET_GLOBAL? mCtx.globals.get(ref) : fCtx.locals.get(ref));
+    }
 }

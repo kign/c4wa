@@ -1,6 +1,8 @@
 package net.inet_lab.c4wa.wat;
 
-abstract public class Expression {
+import java.io.IOException;
+
+abstract public class Expression implements WasmOutputStream.Opcode {
     final InstructionName name;
     final NumType numType;
 
@@ -36,5 +38,20 @@ abstract public class Expression {
             return new Eqz(numType, this);
         else
             throw new RuntimeException("Cannot take logical negative of '" + fullName() + "'");
+    }
+
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        throw new RuntimeException("Not yet implemented for " + numType + "."  + name);
+    }
+
+    @Override
+    public byte opcode() {
+        if (numType == null ||
+                name == InstructionName.GET_LOCAL ||
+                name == InstructionName.GET_GLOBAL ||
+                name == InstructionName.CALL)
+            return name.opcode();
+        else
+            return name.opcode(numType);
     }
 }

@@ -1,11 +1,34 @@
 package net.inet_lab.c4wa.wat;
 
-public class Param extends Instruction_Decl {
-    public Param(String ref, NumType numType) {
-        super(InstructionName.PARAM, new Special(ref), new Special(numType));
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+public class Param extends Instruction {
+    final @Nullable String ref;
+    final NumType numType;
+
+    public Param(@NotNull String ref, NumType numType) {
+        super(InstructionName.PARAM);
+        this.ref = ref;
+        this.numType = numType;
     }
 
     public Param(NumType numType) {
-        super(InstructionName.PARAM, new Special(numType));
+        super(InstructionName.PARAM);
+        this.ref = null;
+        this.numType = numType;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder b = new StringBuilder();
+        b.append('(').append(type.getName());
+        if (ref != null)
+            b.append(" $").append(ref);
+
+        b.append(' ').append(numType);
+        b.append(')');
+
+        return b.toString();
     }
 }

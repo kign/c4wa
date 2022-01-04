@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
+
 public class Expression_2 extends Expression {
     final public Expression arg1;
     final public Expression arg2;
@@ -41,5 +43,12 @@ public class Expression_2 extends Expression {
     @Override
     public Expression postprocess(PostprocessContext ppctx) {
         return new Expression_2(name, numType, arg1.postprocess(ppctx), arg2.postprocess(ppctx), op_i, op_f);
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        arg1.wasm(mCtx, fCtx, out);
+        arg2.wasm(mCtx, fCtx, out);
+        out.writeOpcode(this);
     }
 }

@@ -1,5 +1,6 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 public class Call extends Instruction {
@@ -26,5 +27,13 @@ public class Call extends Instruction {
     @Override
     public Instruction[] postprocess(PostprocessContext ppctx) {
         return new Instruction[]{new Call(name, Arrays.stream(args).map(e -> e.postprocess(ppctx)).toArray(Expression[]::new))};
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        for (Expression arg: args)
+            arg.wasm(mCtx, fCtx, out);
+        out.writeOpcode(type);
+        out.writeInt(mCtx.funcs.get(name));
     }
 }

@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
+
 public class Const extends Expression {
     public final long longValue;
     public final double doubleValue;
@@ -79,5 +81,20 @@ public class Const extends Expression {
     @Override
     public int complexity() {
         return 0;
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        out.writeDirect(opcode());
+        if (numType == NumType.I32)
+            out.writeInt((int)longValue);
+        else if (numType == NumType.I64)
+            out.writeLong(longValue);
+        else if (numType == NumType.F32)
+            out.writeFloat((float)doubleValue);
+        else if (numType == NumType.F64)
+            out.writeDouble(doubleValue);
+        else
+            throw new RuntimeException("invalid numType =" + numType);
     }
 }

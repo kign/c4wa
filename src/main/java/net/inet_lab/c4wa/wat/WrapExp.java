@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
+
 public class WrapExp extends Instruction_1 {
     public WrapExp(Expression arg) {
         super(InstructionName.SPECIAL, arg);
@@ -17,5 +19,10 @@ public class WrapExp extends Instruction_1 {
     @Override
     public String toString() {
         return arg.toString();
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        arg.wasm(mCtx, fCtx, out);
     }
 }

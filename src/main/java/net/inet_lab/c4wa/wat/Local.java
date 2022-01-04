@@ -1,7 +1,17 @@
 package net.inet_lab.c4wa.wat;
 
-public class Local extends Instruction_Decl {
+public class Local extends Instruction {
+    final String ref;
+    final NumType numType;
+
     public Local(String ref, NumType numType) {
-        super(InstructionName.LOCAL, new Special(ref), new Special(numType));
+        super(InstructionName.LOCAL);
+        this.ref = ref;
+        this.numType = numType;
+    }
+
+    @Override
+    public String toString() {
+        return "(" + type.getName() + " $" + ref + " " + numType + ")";
     }
 }

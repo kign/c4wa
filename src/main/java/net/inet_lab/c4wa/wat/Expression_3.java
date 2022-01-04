@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
+
 public class Expression_3 extends Expression {
     final Expression arg1;
     final Expression arg2;
@@ -25,5 +27,13 @@ public class Expression_3 extends Expression {
     @Override
     public String toString() {
         return "(" + fullName() + " " + arg1 + " " + arg2 + " " + arg3 + ")";
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        arg1.wasm(mCtx, fCtx, out);
+        arg2.wasm(mCtx, fCtx, out);
+        arg3.wasm(mCtx, fCtx, out);
+        out.writeOpcode(this);
     }
 }

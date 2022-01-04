@@ -31,11 +31,11 @@ class VariableDecl implements Partial {
         is_used = true;
     }
 
-    public Global wat (String gobalImportName) {
+    public Global wat (String globalImportName) {
         if (exported)
             return new Global(name, name, type.asNumType(), mutable, initialValue);
         else if (imported)
-            return new Global(name, gobalImportName, name, type.asNumType(), mutable);
+            return new Global(name, globalImportName, name, type.asNumType(), mutable);
         else
             return new Global(name, type.asNumType(), mutable, initialValue);
     }

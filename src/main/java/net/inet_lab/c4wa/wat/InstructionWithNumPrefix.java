@@ -23,4 +23,12 @@ public class InstructionWithNumPrefix implements InstructionType {
     public InstructionName getMain() {
         return main;
     }
+
+    @Override
+    public byte opcode() {
+        if (numType == null)
+            return main.opcode();
+        else
+            return main.opcode(numType);
+    }
 }

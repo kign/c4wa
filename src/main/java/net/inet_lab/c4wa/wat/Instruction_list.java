@@ -20,6 +20,7 @@ public class Instruction_list extends Instruction {
         this.elements = elements;
     }
 
+/*
     public Instruction_list(InstructionType type, String ref, Instruction[] attributes, Instruction[] elements) {
         super(type);
         this.attributes = new Instruction[attributes.length + 1];
@@ -27,6 +28,7 @@ public class Instruction_list extends Instruction {
         System.arraycopy(attributes, 0, this.attributes, 1, attributes.length);
         this.elements = elements;
     }
+*/
 
     public Instruction_list(InstructionType type, Instruction[] elements_or_attributes, boolean pElements) {
         super(type);
@@ -66,6 +68,10 @@ public class Instruction_list extends Instruction {
             return this;
         else if (res.size() == 0)
             return null;
+        else if (type == InstructionName.MODULE)
+            return new Module(res);
+        else if (type == InstructionName.FUNC)
+            return new Func(Arrays.asList(attributes), res);
         else
             return new Instruction_list(type, attributes, res.toArray(Instruction[]::new));
     }

@@ -194,7 +194,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
         }
     }
 
-    public Instruction wat () {
+    public Module wat () {
         missingFunctions ();
         Set<String> included = dependencyList();
 
@@ -254,7 +254,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
                 elements.add(new FuncWat(libf, code));
         }
 
-        return (new Module(elements)).postprocessList(this);
+        return (Module)((new Module(elements)).postprocessList(this));
     }
 
     static final Map<String, String> library = Map.ofEntries(
@@ -267,5 +267,4 @@ public class ModuleEnv implements Partial, PostprocessContext {
             Map.entry("@max_64u", "(param $a i64) (param $b i64) (result i64) (select (get_local $a) (get_local $b) (i64.gt_u (get_local $a) (get_local $b)))"),
             Map.entry("@min_64u", "(param $a i64) (param $b i64) (result i64) (select (get_local $b) (get_local $a) (i64.gt_u (get_local $a) (get_local $b)))")
     );
-
 }

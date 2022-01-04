@@ -1,7 +1,15 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
+
 public class GetLocal extends Expression_ref {
     public GetLocal(NumType numType, String ref) {
         super(InstructionName.GET_LOCAL, numType, ref);
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        out.writeOpcode(this);
+        out.writeInt(fCtx.locals.get(ref));
     }
 }

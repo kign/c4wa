@@ -15,6 +15,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import net.inet_lab.c4wa.transpile.SyntaxError;
+import net.inet_lab.c4wa.wat.Module;
+import net.inet_lab.c4wa.wat.WasmOutputStream;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -64,6 +66,7 @@ public class Main {
         String error = parseCommandLineArgs(args,
                 List.of(new Option('o', "output", true),
                         new Option('h', "help"),
+                        new Option('k', "keep"),
                         new Option('v', null)),
                 parsedArgs, fileArgs, prop, ppOptions, builtin_libs, warningTreatment);
 
@@ -87,20 +90,21 @@ public class Main {
             System.exit(1);
         }
 
-        String output =
+        String _output =
                 parsedArgs.containsKey("output") ? parsedArgs.get("output") :
-                fileArgs.size() == 1 ? Paths.get(fileArgs.get(0)).getFileName().toString().replaceFirst("[.][^.]+$", "") + ".wat" :
-                "bundle.wat";
+                fileArgs.size() == 1 ? Paths.get(fileArgs.get(0)).getFileName().toString().replaceFirst("[.][^.]+$", "") + ".wasm" :
+                "bundle.wasm";
 
-        boolean makeWasm = output.endsWith(".wasm");
-
-        if (makeWasm) {
-            System.err.println("Compiling WAT to WASM is not yet implemented");
+        if (!_output.equals("-") && !_output.endsWith(".wasm") && !_output.endsWith(".wat")) {
+            System.err.println("Error: Output file must be either .wasm or .wat");
             System.exit(1);
         }
+        String wasm_output = _output.endsWith(".wasm")? _output: null;
+        String wat_output = _output.equals("-") || _output.endsWith(".wat") ? _output :
+                parsedArgs.containsKey("keep")? _output.substring(0, _output.length() - 5) + ".wat" : null;
 
         ModuleEnv moduleEnv = new ModuleEnv(prop);
-        String wat = null;
+        Module wat = null;
         Pattern ppp = Pattern.compile("^#\\s*(define|if|undef|include)");
         final int n_units = fileArgs.size() + builtin_libs.size();
         final int[] errors = {0};
@@ -166,7 +170,7 @@ public class Main {
                 if (errors[0] == 0 &&
                         (warnings[0] == 0 || warningTreatment[0] != WarningTreatment.TREAS_AS_ERRORS)
                         && iarg == n_units - 1)
-                    wat = moduleEnv.wat().toStringPretty(2);
+                    wat = moduleEnv.wat(); //
             } catch (SyntaxError err) {
                 // This should only be used for parsing errors
                 reportError(fileName, programLinesCache.get(err.pos.arg_no < 0 ? arg_no : err.pos.arg_no), err);
@@ -188,10 +192,18 @@ public class Main {
                     warnings[0], warnings[0] > 1 ? "s" : "");
             System.exit(1);
         }
-        else if ("-".equals(output))
-            System.out.println(wat);
-        else
-            (new PrintStream(output)).println(wat);
+        else {
+            assert wat != null;
+            if (wat_output != null) {
+                String sWat = wat.toStringPretty(2);
+                if ("-".equals(wat_output))
+                    System.out.println(wat);
+                else
+                    (new PrintStream(wat_output)).println(sWat);
+            }
+            if (wasm_output != null)
+                wat.wasm(new WasmOutputStream(wasm_output));
+        }
     }
 
     private static void reportError(String fileName, List<String> programLines, SyntaxError err) {
@@ -295,6 +307,7 @@ public class Main {
                 " -X<name>=value  override compiler property (see below)\n" +
                 " -l<name>        include built-in library <name> (use -lh to list available libraries)\n" +
                 " -v              Print (on standard error output) the preprocessor commands\n" +
+                " -k              If output is WASM, retain intermediary WAT file\n" +
                 " -w              Inhibit all warning messages\n" +
                 " -Werror         Make all warnings into errors\n" +
                 " -o, --output <FILE>  specify output WAT file (or - for stdout)\n" +

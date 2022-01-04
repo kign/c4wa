@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
+
 public class Instruction_1 extends Instruction {
     public final Expression arg;
 
@@ -24,4 +26,9 @@ public class Instruction_1 extends Instruction {
             return new Instruction[]{new Instruction_1(type, arg.postprocess(ppctx))};
     }
 
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        arg.wasm(mCtx, fCtx, out);
+        out.writeOpcode(type);
+    }
 }
