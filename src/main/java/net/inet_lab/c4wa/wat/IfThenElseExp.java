@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
+
 public class IfThenElseExp extends Expression {
     final Expression condition;
     final Expression _then;
@@ -31,5 +33,16 @@ public class IfThenElseExp extends Expression {
     @Override
     public Expression postprocess(PostprocessContext ppctx) {
         return new IfThenElseExp(condition.postprocess(ppctx), numType, _then.postprocess(ppctx), _else.postprocess(ppctx));
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        condition.wasm(mCtx, fCtx, out);
+        out.writeOpcode(InstructionName.IF);
+        out.writeOpcode(numType);
+        _then.wasm(mCtx, fCtx, out);
+        out.writeOpcode(InstructionName.ELSE);
+        _else.wasm(mCtx, fCtx, out);
+        out.writeOpcode(InstructionName.END);
     }
 }

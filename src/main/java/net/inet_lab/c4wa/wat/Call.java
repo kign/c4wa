@@ -34,6 +34,6 @@ public class Call extends Instruction {
         for (Expression arg: args)
             arg.wasm(mCtx, fCtx, out);
         out.writeOpcode(type);
-        out.writeInt(mCtx.funcs.get(name));
+        out.writeUnsignedInt(mCtx.funcs.get(name));
     }
 }

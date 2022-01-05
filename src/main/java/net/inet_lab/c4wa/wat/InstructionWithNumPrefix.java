@@ -15,7 +15,7 @@ public class InstructionWithNumPrefix implements InstructionType {
     }
 
     @Override
-    public NumType getPrefix() {
+    public NumType getNumType() {
         return numType;
     }
 

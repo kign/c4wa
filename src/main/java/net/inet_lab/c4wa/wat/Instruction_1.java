@@ -28,7 +28,8 @@ public class Instruction_1 extends Instruction {
 
     @Override
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
-        arg.wasm(mCtx, fCtx, out);
+        if (arg != null)
+            arg.wasm(mCtx, fCtx, out);
         out.writeOpcode(type);
     }
 }

@@ -1,5 +1,6 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -19,16 +20,6 @@ public class Instruction_list extends Instruction {
         this.attributes = new Instruction[]{new Special(ref)};
         this.elements = elements;
     }
-
-/*
-    public Instruction_list(InstructionType type, String ref, Instruction[] attributes, Instruction[] elements) {
-        super(type);
-        this.attributes = new Instruction[attributes.length + 1];
-        this.attributes[0] = new Special(ref);
-        System.arraycopy(attributes, 0, this.attributes, 1, attributes.length);
-        this.elements = elements;
-    }
-*/
 
     public Instruction_list(InstructionType type, Instruction[] elements_or_attributes, boolean pElements) {
         super(type);
@@ -103,5 +94,37 @@ public class Instruction_list extends Instruction {
     @Override
     public String toString() {
         return toStringPretty(0);
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        String blockName = null;
+        NumType returnType = null;
+        if (attributes != null) {
+            for (Instruction a: attributes) {
+                if (a instanceof Special && ((Special)a).ref != null && blockName == null)
+                    blockName = ((Special) a).ref;
+                else if (a instanceof Result && returnType == null) {
+                    returnType = ((Result) a).numType;
+                    throw new RuntimeException("That's what BlockExp is for");
+                }
+                else
+                    throw new RuntimeException(type + " with unknown attribute " + a + "; class = " + getClass().getSimpleName());
+            }
+        }
+        if (returnType == null)
+            returnType = NumType.VOID;
+        if (blockName == null)
+            blockName = "<noname>";
+        fCtx.blockStack.addFirst(blockName);
+        if (type != InstructionName.THEN)
+            out.writeOpcode(type);
+        if (type != InstructionName.THEN && type != InstructionName.ELSE)
+            out.writeOpcode(returnType);
+        for (Instruction i: elements)
+            i.wasm(mCtx, fCtx, out);
+        if (type != InstructionName.THEN && type != InstructionName.ELSE)
+            out.writeOpcode(InstructionName.END);
+        fCtx.blockStack.removeFirst();
     }
 }

@@ -2,6 +2,6 @@ package net.inet_lab.c4wa.wat;
 
 public interface InstructionType extends WasmOutputStream.Opcode {
     String getName ();
-    NumType getPrefix();
+    NumType getNumType();
     InstructionName getMain();
 }

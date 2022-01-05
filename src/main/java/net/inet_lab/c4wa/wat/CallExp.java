@@ -38,6 +38,6 @@ public class CallExp extends Expression {
         for (Expression arg : args)
             arg.wasm(mCtx, fCtx, out);
         out.writeOpcode(this);
-        out.writeInt(mCtx.funcs.get(funcName));
+        out.writeUnsignedInt(mCtx.funcs.get(funcName));
     }
 }

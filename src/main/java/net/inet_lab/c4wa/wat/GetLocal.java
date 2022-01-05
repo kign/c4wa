@@ -10,6 +10,6 @@ public class GetLocal extends Expression_ref {
     @Override
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         out.writeOpcode(this);
-        out.writeInt(fCtx.locals.get(ref));
+        out.writeUnsignedInt(fCtx.locals.get(ref));
     }
 }

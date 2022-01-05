@@ -10,6 +10,6 @@ public class GetGlobal extends Expression_ref {
     @Override
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         out.writeOpcode(this);
-        out.writeInt(mCtx.globals.get(ref));
+        out.writeUnsignedInt(mCtx.globals.get(ref));
     }
 }

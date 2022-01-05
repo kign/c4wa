@@ -2,7 +2,7 @@ package net.inet_lab.c4wa.wat;
 
 public enum InstructionName implements InstructionType, WasmOutputStream.Opcode {
     ADD ("add", null, 0x6a7c92a0),
-    SUB ("sub", null, 0x6b7d92a0),
+    SUB ("sub", null, 0x6b7d93a1),
     NEG ("neg", null, 0x00008c9a),
     MUL ("mul", null, 0x6c7e94a2),
     DIV ("div", null,  0x000095a3),
@@ -89,8 +89,8 @@ public enum InstructionName implements InstructionType, WasmOutputStream.Opcode 
     REINTERPRET_I32 ("reinterpret_i32", null, 0x0000be00),
     REINTERPRET_I64 ("reinterpret_i64", null, 0x000000bf),
 
-    MEMORY_FILL ("memory.fill", null, null),
-    MEMORY_COPY ("memory.copy", null, null),
+    MEMORY_FILL ("memory.fill", 0x0b, null), // after PREFIX_MISC
+    MEMORY_COPY ("memory.copy", 0x0a, null), // after PREFIX_MISC
     MEMORY_GROW ("memory.grow", 0x40, null),
     MEMORY_SIZE ("memory.size", 0x3f, null),
 
@@ -108,6 +108,8 @@ public enum InstructionName implements InstructionType, WasmOutputStream.Opcode 
 
     UNREACHABLE ("unreachable", 0x00, null),
     END ("end", 0x0b, null),
+
+    PREFIX_MISC ("<prefix misc>", 0xFC, null),
 
     SPECIAL("<special>", null, null); // fake
 
@@ -127,7 +129,7 @@ public enum InstructionName implements InstructionType, WasmOutputStream.Opcode 
     }
 
     @Override
-    public NumType getPrefix() {
+    public NumType getNumType() {
         return null;
     }
 
@@ -138,8 +140,10 @@ public enum InstructionName implements InstructionType, WasmOutputStream.Opcode 
 
     @Override
     public byte opcode() {
+        if (opcode == null && opcode4 == null)
+            throw new RuntimeException(this + " is not a real instruction, thus no opcode");
         if (opcode == null)
-            throw new RuntimeException("No single opcode for " + this);
+            throw new RuntimeException("No single opcode for " + this + ", numType required");
         return (byte) (int) opcode;
     }
 

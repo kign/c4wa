@@ -29,6 +29,20 @@ public class Instruction_1ref extends Instruction {
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         arg.wasm(mCtx, fCtx, out);
         out.writeOpcode(type);
-        out.writeInt(type.getMain() == InstructionName.SET_GLOBAL? mCtx.globals.get(ref) : fCtx.locals.get(ref));
+        if (type == InstructionName.SET_GLOBAL)
+            out.writeUnsignedInt(mCtx.globals.get(ref));
+        else if (type == InstructionName.SET_LOCAL)
+            out.writeUnsignedInt(fCtx.locals.get(ref));
+        else if (type == InstructionName.BR_IF) {
+            int idx = 0;
+            for (String blockId: fCtx.blockStack) {
+                if (blockId.equals(ref))
+                    break;
+                idx++;
+            }
+            if (idx == fCtx.blockStack.size())
+                throw new RuntimeException("Cannot find block label " + ref);
+            out.writeUnsignedInt(idx);
+        }
     }
 }

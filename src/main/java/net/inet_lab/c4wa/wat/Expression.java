@@ -48,7 +48,10 @@ abstract public class Expression implements WasmOutputStream.Opcode {
     public byte opcode() {
         if (numType == null ||
                 name == InstructionName.GET_LOCAL ||
+                name == InstructionName.TEE_LOCAL ||
                 name == InstructionName.GET_GLOBAL ||
+                name == InstructionName.BR_IF ||
+                name == InstructionName.BLOCK ||
                 name == InstructionName.CALL)
             return name.opcode();
         else

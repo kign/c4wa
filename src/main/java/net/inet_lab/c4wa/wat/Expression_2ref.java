@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
+
 public class Expression_2ref extends Expression {
     final String ref;
     final Expression arg1;
@@ -25,5 +27,25 @@ public class Expression_2ref extends Expression {
     @Override
     public Expression postprocess(PostprocessContext ppctx) {
         return new Expression_2ref(name, numType, ref, arg1.postprocess(ppctx), arg2.postprocess(ppctx));
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        arg1.wasm(mCtx, fCtx, out);
+        arg2.wasm(mCtx, fCtx, out);
+        out.writeOpcode(this);
+        if (name == InstructionName.BR_IF) {
+            int idx = 0;
+            for (String blockId : fCtx.blockStack) {
+                if (blockId.equals(ref))
+                    break;
+                idx++;
+            }
+            if (idx == fCtx.blockStack.size())
+                throw new RuntimeException("Cannot find block label " + ref);
+            out.writeUnsignedInt(idx);
+        }
+        else
+            throw new RuntimeException("Not yet implemented for " + this);
     }
 }

@@ -87,7 +87,7 @@ public class Const extends Expression {
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         out.writeDirect(opcode());
         if (numType == NumType.I32)
-            out.writeInt((int)longValue);
+            out.writeSignedInt((int)longValue);
         else if (numType == NumType.I64)
             out.writeLong(longValue);
         else if (numType == NumType.F32)

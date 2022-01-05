@@ -1,5 +1,6 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,5 +39,17 @@ public class BlockExp extends Expression {
         for (var i : body)
             pp.addAll(Arrays.asList(i.postprocess(ppctx)));
         return new BlockExp(ref, numType, pp.toArray(Instruction[]::new), returnExp.postprocess(ppctx));
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        fCtx.blockStack.addFirst(ref);
+        out.writeOpcode(this);
+        out.writeOpcode(numType);
+        for (Instruction i : body)
+            i.wasm(mCtx, fCtx, out);
+        returnExp.wasm(mCtx, fCtx, out);
+        out.writeOpcode(InstructionName.END);
+        fCtx.blockStack.removeFirst();
     }
 }

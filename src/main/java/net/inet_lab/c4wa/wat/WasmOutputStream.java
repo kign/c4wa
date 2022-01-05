@@ -21,7 +21,8 @@ public class WasmOutputStream {
         return (ByteArrayOutputStream)this.out;
     }
 
-    void writeInt(int value) throws IOException {
+    void writeUnsignedInt(int value) throws IOException {
+        // https://android.googlesource.com/platform/libcore/+/522b917/dex/src/main/java/com/android/dex/Leb128.java
         int remaining = value >>> 7;
         while (remaining != 0) {
             out.write((byte) ((value & 0x7f) | 0x80));
@@ -29,6 +30,19 @@ public class WasmOutputStream {
             remaining >>>= 7;
         }
         out.write((byte) (value & 0x7f));
+    }
+
+    void writeSignedInt(int value) throws IOException {
+        int remaining = value >> 7;
+        boolean hasMore = true;
+        int end = ((value & Integer.MIN_VALUE) == 0) ? 0 : -1;
+        while (hasMore) {
+            hasMore = (remaining != end)
+                    || ((remaining & 1) != ((value >> 6) & 1));
+            out.write((byte) ((value & 0x7f) | (hasMore ? 0x80 : 0)));
+            value = remaining;
+            remaining >>= 7;
+        }
     }
 
     void writeLong(long value) throws IOException {
@@ -64,7 +78,7 @@ public class WasmOutputStream {
     }
 
     void writeString(byte[] str) throws IOException {
-        writeInt(str.length);
+        writeUnsignedInt(str.length);
         writeDirect(str);
     }
 
@@ -81,12 +95,15 @@ public class WasmOutputStream {
     }
 
     void writeSection(Opcode section, List<WasmOutputStream> items) throws IOException {
+        if (items.isEmpty())
+            return;
+
         writeOpcode(section);
         WasmOutputStream sub = new WasmOutputStream();
-        sub.writeInt(items.size());
+        sub.writeUnsignedInt(items.size());
         for (WasmOutputStream item : items)
             sub.writeSubStream(item);
-        writeInt(sub.size());
+        writeUnsignedInt(sub.size());
         writeSubStream(sub);
     }
 

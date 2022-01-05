@@ -2,6 +2,8 @@ package net.inet_lab.c4wa.wat;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
+
 public class IfThenElse extends Instruction {
     final Expression condition;
     final Instruction_list _then;
@@ -58,5 +60,15 @@ public class IfThenElse extends Instruction {
         public Else(Instruction[] elements) {
             super(InstructionName.ELSE, elements, true);
         }
+    }
+
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        condition.wasm(mCtx, fCtx, out);
+        out.writeOpcode(type);
+        out.writeOpcode(NumType.VOID);
+        _then.wasm(mCtx, fCtx, out);
+        if (_else != null)
+            _else.wasm(mCtx, fCtx, out);
+        out.writeOpcode(InstructionName.END);
     }
 }

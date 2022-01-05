@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Module extends Instruction_list {
     enum Section implements WasmOutputStream.Opcode {
@@ -86,7 +87,7 @@ public class Module extends Instruction_list {
         out.writeDirect(new byte[]{0x00, 'a', 's', 'm'});
         out.writeDirect(new byte[]{0x01, 0x00, 0x00, 0x00});
 
-        List<WasmOutputStream> types = new ArrayList<>();
+        List<Func.WasmType> types = new ArrayList<>();
         List<WasmOutputStream> imports = new ArrayList<>();
         List<WasmOutputStream> functions = new ArrayList<>();
         List<WasmOutputStream> memories = new ArrayList<>();
@@ -97,32 +98,38 @@ public class Module extends Instruction_list {
 
         WasmContext mCtx = new WasmContext();
 
-        int type_idx = 0;
+        int func_idx = 0;
+        int type_idx;
         for (Instruction i: elements) {
             if (i.type == InstructionName.IMPORT) {
                 Import iImport = (Import) i;
                 if (iImport.decl != null && iImport.decl.type == InstructionName.FUNC) {
                     Func iFunc = (Func) iImport.decl;
-                    types.add(iFunc.wasmSignature());
-                    type_idx++;
+                    Func.WasmType iType = iFunc.wasmSignature();
+                    for (type_idx = 0; type_idx < types.size() && !types.get(type_idx).same(iType); type_idx++) ;
+                    if (type_idx == types.size())
+                        types.add(iType);
 
                     WasmOutputStream subImport = new WasmOutputStream();
                     subImport.writeString(iImport.importModule);
                     subImport.writeString(iImport.importName);
                     subImport.writeOpcode(Desc.FUNC);
-                    subImport.writeInt(type_idx - 1);
+                    subImport.writeUnsignedInt(type_idx);
                     imports.add(subImport);
 
-                    mCtx.funcs.put(iFunc.getName(), type_idx - 1);
+                    mCtx.funcs.put(iFunc.getName(), func_idx);
+                    func_idx++;
                 }
             }
             else if (i.type == InstructionName.FUNC) {
                 Func iFunc = (Func) i;
-                types.add(iFunc.wasmSignature());
-                type_idx++;
+                Func.WasmType iType = iFunc.wasmSignature();
+                for(type_idx = 0; type_idx < types.size() && !types.get(type_idx).same(iType); type_idx ++);
+                if (type_idx == types.size())
+                    types.add(iType);
 
                 WasmOutputStream subFunc = new WasmOutputStream();
-                subFunc.writeInt(type_idx - 1);
+                subFunc.writeUnsignedInt(type_idx);
                 functions.add(subFunc);
 
                 Export export = iFunc.getExport();
@@ -130,24 +137,19 @@ public class Module extends Instruction_list {
                     WasmOutputStream subExport = new WasmOutputStream();
                     subExport.writeString(export.exportName);
                     subExport.writeOpcode(Desc.FUNC);
-                    subExport.writeInt(type_idx - 1);
+                    subExport.writeUnsignedInt(func_idx);
                     exports.add(subExport);
                 }
 
-                WasmOutputStream subCode = new WasmOutputStream();
-                WasmOutputStream fCode = iFunc.makeWasm(mCtx);
-                subCode.writeInt(fCode.size());
-                subCode.writeSubStream(fCode);
-                codes.add(subCode);
-
-                mCtx.funcs.put(iFunc.getName(), type_idx - 1);
+                mCtx.funcs.put(iFunc.getName(), func_idx);
+                func_idx++;
             }
             else if (i.type == InstructionName.MEMORY) {
                 Memory iMemory = (Memory) i;
 
                 WasmOutputStream subMemory = new WasmOutputStream();
                 subMemory.writeOpcode(Limits.MIN_ONLY);
-                subMemory.writeInt(iMemory.pages);
+                subMemory.writeUnsignedInt(iMemory.pages);
                 memories.add(subMemory);
 
                 if (iMemory.anImport != null) {
@@ -161,7 +163,7 @@ public class Module extends Instruction_list {
                     WasmOutputStream subExport = new WasmOutputStream();
                     subExport.writeString(iMemory.export.exportName);
                     subExport.writeOpcode(Desc.MEM);
-                    subExport.writeInt(0); // I assume this is index of memory? So always 0?
+                    subExport.writeUnsignedInt(0); // I assume this is index of memory? So always 0?
                     exports.add(subExport);
                 }
             }
@@ -195,7 +197,7 @@ public class Module extends Instruction_list {
                 Data iData = (Data) i;
 
                 WasmOutputStream subData = new WasmOutputStream();
-                subData.writeInt(0); // index of data, always 0
+                subData.writeUnsignedInt(0); // index of data, always 0
                 datas.add(subData);
                 iData.offset.wasm(mCtx, null, subData);
                 subData.writeOpcode(InstructionName.END);
@@ -203,7 +205,18 @@ public class Module extends Instruction_list {
             }
         }
 
-        out.writeSection(Section.TYPE, types);
+        for (Instruction i : elements) {
+            if (i.type == InstructionName.FUNC) {
+                Func iFunc = (Func) i;
+                WasmOutputStream subCode = new WasmOutputStream();
+                WasmOutputStream fCode = iFunc.makeWasm(mCtx);
+                subCode.writeUnsignedInt(fCode.size());
+                subCode.writeSubStream(fCode);
+                codes.add(subCode);
+            }
+        }
+
+        out.writeSection(Section.TYPE, types.stream().map(Func.WasmType::wasm).collect(Collectors.toUnmodifiableList()));
         out.writeSection(Section.IMPORT, imports);
         out.writeSection(Section.FUNCTION, functions);
         out.writeSection(Section.MEMORY, memories);

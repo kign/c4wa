@@ -1,5 +1,7 @@
 package net.inet_lab.c4wa.wat;
 
+import java.io.IOException;
+
 public class Instruction_3 extends Instruction {
     final public Expression arg1;
     final public Expression arg2;
@@ -20,5 +22,17 @@ public class Instruction_3 extends Instruction {
     @Override
     public Instruction[] postprocess(PostprocessContext ppctx) {
         return new Instruction[]{new Instruction_3(type, arg1.postprocess(ppctx), arg2.postprocess(ppctx), arg3.postprocess(ppctx))};
+    }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        arg1.wasm(mCtx, fCtx, out);
+        arg2.wasm(mCtx, fCtx, out);
+        arg3.wasm(mCtx, fCtx, out);
+        if (type == InstructionName.MEMORY_COPY || type == InstructionName.MEMORY_FILL)
+            out.writeOpcode(InstructionName.PREFIX_MISC);
+        out.writeOpcode(type);
+        if (type == InstructionName.MEMORY_COPY || type == InstructionName.MEMORY_FILL)
+            out.writeDirect(new byte[]{0x00, 0x00});
     }
 }

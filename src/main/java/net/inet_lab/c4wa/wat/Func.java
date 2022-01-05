@@ -1,14 +1,9 @@
 package net.inet_lab.c4wa.wat;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Func extends Instruction_list {
-    final byte OP_WASM_FUNC = 0x60;
-
     public Func(List<Instruction> attributes, List<Instruction> elements) {
         super(InstructionName.FUNC, attributes.toArray(Instruction[]::new), elements.toArray(Instruction[]::new));
     }
@@ -17,24 +12,15 @@ public class Func extends Instruction_list {
         super(InstructionName.FUNC, attributes.toArray(Instruction[]::new), false);
     }
 
-    public WasmOutputStream wasmSignature() throws IOException {
-        WasmOutputStream bout = new WasmOutputStream();
-        List<Param> params = new ArrayList<>();
-        List<Result> results = new ArrayList<>();
+    public WasmType wasmSignature() {
+        WasmType wasmType = new WasmType();
         for (Instruction i: attributes)
             if (i.type == InstructionName.PARAM)
-                params.add((Param) i);
+                wasmType.params.add((Param) i);
             else if (i.type == InstructionName.RESULT)
-                results.add((Result) i);
-        bout.writeInt(OP_WASM_FUNC);
-        bout.writeInt(params.size());
-        for (Param p: params)
-            bout.writeOpcode(p.numType);
-        bout.writeInt(results.size());
-        for (Result r: results)
-            bout.writeOpcode(r.numType);
+                wasmType.results.add((Result) i);
 
-        return bout;
+        return wasmType;
     }
 
     public String getName () {
@@ -73,9 +59,9 @@ public class Func extends Instruction_list {
 
         WasmOutputStream out = new WasmOutputStream();
 
-        out.writeInt(n_types);
+        out.writeUnsignedInt(n_types);
         for (int idx = 0; idx < n_types; idx ++) {
-            out.writeInt(counts_1[idx]);
+            out.writeUnsignedInt(counts_1[idx]);
             out.writeOpcode(types[idx]);
         }
 
@@ -109,11 +95,71 @@ public class Func extends Instruction_list {
         return out;
     }
 
+    static class WasmType {
+        final List<Param> params;
+        final List<Result> results;
+
+        private WasmType() {
+            params = new ArrayList<>();
+            results = new ArrayList<>();
+        }
+
+        WasmOutputStream wasm()  {
+            // used in stream filter so no exceptions
+            WasmOutputStream bout = new WasmOutputStream();
+            try {
+                bout.writeOpcode(NumType.FUNC);
+                bout.writeUnsignedInt(params.size());
+                for (Param p : params)
+                    bout.writeOpcode(p.numType);
+                bout.writeUnsignedInt(results.size());
+                for (Result r : results)
+                    bout.writeOpcode(r.numType);
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.exit(1);
+            }
+
+            return bout;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder b = new StringBuilder();
+
+            for(Param p: params)
+                b.append(p.numType).append(' ');
+
+            if (results.isEmpty())
+                b.append("-> void");
+            else
+                b.append("-> ").append(results.get(0).numType);
+
+            return b.toString();
+        }
+
+        boolean same(WasmType o) {
+            if (params.size() != o.params.size())
+                return false;
+            if (results.size() != o.results.size())
+                return false;
+            if (!results.isEmpty() && results.get(0).numType != o.results.get(0).numType)
+                return false;
+            for (int i = 0; i < params.size(); i ++)
+                if (params.get(i).numType != o.params.get(i).numType)
+                    return false;
+
+            return true;
+        }
+    }
+
     static class WasmContext {
         final Map<String,Integer> locals;
+        final Deque<String> blockStack;
 
         WasmContext() {
             this.locals = new HashMap<>();
+            this.blockStack = new ArrayDeque<>();
         }
     }
 }
