@@ -32,7 +32,9 @@ public class Instruction_3 extends Instruction {
         if (type == InstructionName.MEMORY_COPY || type == InstructionName.MEMORY_FILL)
             out.writeOpcode(InstructionName.PREFIX_MISC);
         out.writeOpcode(type);
+        if (type == InstructionName.MEMORY_COPY)
+            out.writeDirect((byte) 0x00);
         if (type == InstructionName.MEMORY_COPY || type == InstructionName.MEMORY_FILL)
-            out.writeDirect(new byte[]{0x00, 0x00});
+            out.writeDirect((byte) 0x00);
     }
 }

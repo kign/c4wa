@@ -247,24 +247,87 @@ public class ModuleEnv implements Partial, PostprocessContext {
                 elements.add(f.wat());
 
         for (String libf: libraryFunctions) {
-            String code = library.get(libf);
+            Func code = library.get(libf);
             if (code == null)
                 System.err.println("Library function '" + libf + "' isn't available");
             else
-                elements.add(new FuncWat(libf, code));
+                elements.add(code);
         }
 
         return (Module)((new Module(elements)).postprocessList(this));
     }
 
-    static final Map<String, String> library = Map.ofEntries(
-            Map.entry("@max_32s", "(param $a i32) (param $b i32) (result i32) (select (get_local $a) (get_local $b) (i32.gt_s (get_local $a) (get_local $b)))"),
-            Map.entry("@min_32s", "(param $a i32) (param $b i32) (result i32) (select (get_local $b) (get_local $a) (i32.gt_s (get_local $a) (get_local $b)))"),
-            Map.entry("@max_32u", "(param $a i32) (param $b i32) (result i32) (select (get_local $a) (get_local $b) (i32.gt_u (get_local $a) (get_local $b)))"),
-            Map.entry("@min_32u", "(param $a i32) (param $b i32) (result i32) (select (get_local $b) (get_local $a) (i32.gt_u (get_local $a) (get_local $b)))"),
-            Map.entry("@max_64s", "(param $a i64) (param $b i64) (result i64) (select (get_local $a) (get_local $b) (i64.gt_s (get_local $a) (get_local $b)))"),
-            Map.entry("@min_64s", "(param $a i64) (param $b i64) (result i64) (select (get_local $b) (get_local $a) (i64.gt_s (get_local $a) (get_local $b)))"),
-            Map.entry("@max_64u", "(param $a i64) (param $b i64) (result i64) (select (get_local $a) (get_local $b) (i64.gt_u (get_local $a) (get_local $b)))"),
-            Map.entry("@min_64u", "(param $a i64) (param $b i64) (result i64) (select (get_local $b) (get_local $a) (i64.gt_u (get_local $a) (get_local $b)))")
-    );
+    static final Map<String, Func> library = Map.ofEntries(
+                Map.entry("@max_32s", new Func(List.of(
+                        new Special("@max_32s"),
+                        new Param("a", NumType.I32),
+                        new Param("b", NumType.I32),
+                        new Result(NumType.I32)),List.of(
+                                new WrapExp(
+                                        new Select(
+                                                new Cmp(NumType.I32, false, false, true, new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")),
+                                                new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")))))),
+                Map.entry("@min_32s", new Func(List.of(
+                        new Special("@min_32s"),
+                        new Param("a", NumType.I32),
+                        new Param("b", NumType.I32),
+                        new Result(NumType.I32)),List.of(
+                                new WrapExp(
+                                        new Select(
+                                                new Cmp(NumType.I32, false, false, true, new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")),
+                                                new GetLocal(NumType.I32, "b"), new GetLocal(NumType.I32, "a")))))),
+                Map.entry("@max_32u", new Func(List.of(
+                        new Special("@max_32u"),
+                        new Param("a", NumType.I32),
+                        new Param("b", NumType.I32),
+                        new Result(NumType.I32)),List.of(
+                                new WrapExp(
+                                        new Select(
+                                                new Cmp(NumType.I32, false, false, false, new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")),
+                                                new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")))))),
+                Map.entry("@min_32u", new Func(List.of(
+                        new Special("@min_32u"),
+                        new Param("a", NumType.I32),
+                        new Param("b", NumType.I32),
+                        new Result(NumType.I32)),List.of(
+                                new WrapExp(
+                                        new Select(
+                                                new Cmp(NumType.I32, false, false, false, new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")),
+                                                new GetLocal(NumType.I32, "b"), new GetLocal(NumType.I32, "a")))))),
+                Map.entry("@max_64s", new Func(List.of(
+                        new Special("@max_64s"),
+                        new Param("a", NumType.I64),
+                        new Param("b", NumType.I64),
+                        new Result(NumType.I64)),List.of(
+                                new WrapExp(
+                                        new Select(
+                                                new Cmp(NumType.I64, false, false, true, new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")),
+                                                new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")))))),
+                Map.entry("@min_64s", new Func(List.of(
+                        new Special("@min_64s"),
+                        new Param("a", NumType.I64),
+                        new Param("b", NumType.I64),
+                        new Result(NumType.I64)),List.of(
+                                new WrapExp(
+                                        new Select(
+                                                new Cmp(NumType.I64, false, false, true, new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")),
+                                                new GetLocal(NumType.I64, "b"), new GetLocal(NumType.I64, "a")))))),
+                Map.entry("@max_64u", new Func(List.of(
+                        new Special("@max_64u"),
+                        new Param("a", NumType.I64),
+                        new Param("b", NumType.I64),
+                        new Result(NumType.I64)),List.of(
+                                new WrapExp(
+                                        new Select(
+                                                new Cmp(NumType.I64, false, false, false, new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")),
+                                                new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")))))),
+                Map.entry("@min_64u", new Func(List.of(
+                        new Special("@min_64u"),
+                        new Param("a", NumType.I64),
+                        new Param("b", NumType.I64),
+                        new Result(NumType.I64)),List.of(
+                                new WrapExp(
+                                        new Select(
+                                                new Cmp(NumType.I64, false, false, false, new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")),
+                                                new GetLocal(NumType.I64, "b"), new GetLocal(NumType.I64, "a")))))));
 }

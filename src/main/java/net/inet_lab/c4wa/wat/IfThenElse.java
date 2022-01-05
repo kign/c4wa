@@ -67,7 +67,7 @@ public class IfThenElse extends Instruction {
         out.writeOpcode(type);
         out.writeOpcode(NumType.VOID);
         _then.wasm(mCtx, fCtx, out);
-        if (_else != null)
+        if (_else != null && _else.elements.length > 0)
             _else.wasm(mCtx, fCtx, out);
         out.writeOpcode(InstructionName.END);
     }

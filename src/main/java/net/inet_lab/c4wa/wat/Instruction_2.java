@@ -32,18 +32,7 @@ public class Instruction_2 extends Instruction {
         arg1.wasm(mCtx, fCtx, out);
         arg2.wasm(mCtx, fCtx, out);
         out.writeOpcode(type);
-        byte alignment = -1;
-        if (type.getMain() == InstructionName.STORE)
-            alignment = type.getNumType().is64() ? (byte) 0x03 : (byte) 0x02;
-        else if (type.getMain() == InstructionName.STORE8)
-            alignment = 0x00;
-        else if (type.getMain() == InstructionName.STORE16)
-            alignment = 0x00;
-
-        if (type.getMain() == InstructionName.STORE ||
-        type.getMain() == InstructionName.STORE8 ||
-        type.getMain() == InstructionName.STORE16 ||
-        type.getMain() == InstructionName.STORE32 )
-            out.writeDirect(new byte[]{type.getNumType().is64()? (byte)0x03 : (byte)0x02, 0x00}); // i64.store 3 0 : I have no idea
+        if (this instanceof Store)
+            out.writeDirect(new byte[]{((Store)this).getAlignment(), 0x00});
     }
 }

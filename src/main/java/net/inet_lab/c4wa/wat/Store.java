@@ -15,7 +15,17 @@ public class Store extends Instruction_2 {
         this.numType = numType;
     }
 
-/*
+    byte getAlignment() {
+        if (type.getMain() == InstructionName.STORE8)
+            return 0x00;
+        else if (type.getMain() == InstructionName.STORE16)
+            return 0x01;
+        else if (numType.is32())
+            return 0x02;
+        else
+            return 0x03;
+    }
+
     @Override
     public Instruction[] postprocess(PostprocessContext ppctx) {
         Expression offset = arg1.postprocess(ppctx);
@@ -25,6 +35,4 @@ public class Store extends Instruction_2 {
                       : new Store(numType, offset, value);
         return new Instruction[]{store};
     }
-*/
-
 }

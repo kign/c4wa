@@ -929,4 +929,5 @@
     (call $printf (i32.const 2584) (global.get $@stack))
     (global.set $@stack (get_local $@stack_entry))
     (i32.const 0))
-  (func $@max_32s (param $a i32) (param $b i32) (result i32) (select (get_local $a) (get_local $b) (i32.gt_s (get_local $a) (get_local $b)))))
+  (func $@max_32s (param $a i32) (param $b i32) (result i32)
+    (select (get_local $a) (get_local $b) (i32.gt_s (get_local $a) (get_local $b)))))

@@ -649,4 +649,5 @@
     (call $test_nonuniform (i32.const 100) (i32.const 10000) (i32.const 100000))
     (call $print_histogram)
     (i32.const 0))
-  (func $@min_32s (param $a i32) (param $b i32) (result i32) (select (get_local $b) (get_local $a) (i32.gt_s (get_local $a) (get_local $b)))))
+  (func $@min_32s (param $a i32) (param $b i32) (result i32)
+    (select (get_local $b) (get_local $a) (i32.gt_s (get_local $a) (get_local $b)))))

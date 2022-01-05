@@ -45,14 +45,17 @@ public class WasmOutputStream {
         }
     }
 
-    void writeLong(long value) throws IOException {
-        long remaining = value >>> 7;
-        while (remaining != 0) {
-            out.write((byte) ((value & 0x7f) | 0x80));
+    void writeSignedLong(long value) throws IOException {
+        long remaining = value >> 7;
+        boolean hasMore = true;
+        int end = ((value & Long.MIN_VALUE) == 0) ? 0 : -1;
+        while (hasMore) {
+            hasMore = (remaining != end)
+                    || ((remaining & 1) != ((value >> 6) & 1));
+            out.write((byte) ((value & 0x7f) | (hasMore ? 0x80 : 0)));
             value = remaining;
-            remaining >>>= 7;
+            remaining >>= 7;
         }
-        out.write((byte) (value & 0x7f));
     }
 
     void writeFloat(float value) throws IOException {

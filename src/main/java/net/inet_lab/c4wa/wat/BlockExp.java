@@ -43,7 +43,7 @@ public class BlockExp extends Expression {
 
     @Override
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
-        fCtx.blockStack.addFirst(ref);
+        fCtx.blockStack.addFirst(ref == null? "noname" : ref);
         out.writeOpcode(this);
         out.writeOpcode(numType);
         for (Instruction i : body)

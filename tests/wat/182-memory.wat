@@ -469,4 +469,5 @@
   (func $mm_histogram (param $p_count i32) (result i32)
     (i32.store (get_local $p_count) (i32.const 20))
     (global.get $__mm_report_histogram))
-  (func $@min_32s (param $a i32) (param $b i32) (result i32) (select (get_local $b) (get_local $a) (i32.gt_s (get_local $a) (get_local $b)))))
+  (func $@min_32s (param $a i32) (param $b i32) (result i32)
+    (select (get_local $b) (get_local $a) (i32.gt_s (get_local $a) (get_local $b)))))

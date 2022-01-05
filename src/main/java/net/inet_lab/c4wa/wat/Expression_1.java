@@ -28,8 +28,8 @@ public class Expression_1 extends Expression {
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         arg.wasm(mCtx, fCtx, out);
         out.writeOpcode(this);
-        if (name == InstructionName.LOAD)
-            out.writeDirect(new byte[]{numType.is64() ? (byte) 0x03 : (byte) 0x02, 0x00}); // i64.store 3 0 : I have no idea
+        if (this instanceof Load)
+            out.writeDirect(new byte[]{((Load)this).getAlignment(), 0x00}); // i64.store 3 0 : I have no idea
         else if (name == InstructionName.MEMORY_GROW)
             out.writeDirect((byte) 0x00); // "memory.size reserved value must be 0"
     }

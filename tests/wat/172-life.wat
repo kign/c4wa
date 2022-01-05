@@ -1134,4 +1134,5 @@
       (set_local $n (i32.add (get_local $n) (i32.const 1)))
       (br_if $@block_1_continue (i32.load8_s (get_local $str))))
     (get_local $n))
-  (func $@max_32s (param $a i32) (param $b i32) (result i32) (select (get_local $a) (get_local $b) (i32.gt_s (get_local $a) (get_local $b)))))
+  (func $@max_32s (param $a i32) (param $b i32) (result i32)
+    (select (get_local $a) (get_local $b) (i32.gt_s (get_local $a) (get_local $b)))))

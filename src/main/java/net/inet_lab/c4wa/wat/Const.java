@@ -89,7 +89,7 @@ public class Const extends Expression {
         if (numType == NumType.I32)
             out.writeSignedInt((int)longValue);
         else if (numType == NumType.I64)
-            out.writeLong(longValue);
+            out.writeSignedLong(longValue);
         else if (numType == NumType.F32)
             out.writeFloat((float)doubleValue);
         else if (numType == NumType.F64)
