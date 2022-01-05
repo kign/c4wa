@@ -178,6 +178,12 @@ public class FunctionEnv implements Partial, PostprocessContext {
     }
 
     private void postprocessWat(List<LocalVar> localVars) {
+        // This is not required for successful WAT or WASM creation
+        // However when creating binary WASM format, our implementation
+        // is more aggressive in lumping all locals of the same type together,
+        // thus yielding binary WASM file results different (sometimes smaller) than `wat2wasm`
+        localVars.sort(Comparator.comparingInt(a -> a.is_param? -1: a.numType.ordinal()));
+
         List<Instruction> attributes = new ArrayList<>();
         List<Instruction> elements = new ArrayList<>();
 

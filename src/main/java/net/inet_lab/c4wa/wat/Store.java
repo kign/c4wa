@@ -14,4 +14,17 @@ public class Store extends Instruction_2 {
                 offset, value);
         this.numType = numType;
     }
+
+/*
+    @Override
+    public Instruction[] postprocess(PostprocessContext ppctx) {
+        Expression offset = arg1.postprocess(ppctx);
+        Expression value = arg2.postprocess(ppctx);
+        Store store = type.getMain() == InstructionName.STORE8 ? new Store(numType, 8, offset, value)
+                      : type.getMain() == InstructionName.STORE16 ? new Store(numType, 16, offset, value)
+                      : new Store(numType, offset, value);
+        return new Instruction[]{store};
+    }
+*/
+
 }

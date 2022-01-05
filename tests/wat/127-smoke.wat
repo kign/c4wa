@@ -5,8 +5,8 @@
   (data (i32.const 1024) "%.2f\0A\00")
   (func $average (param $num i32) (param $__offset i32) (result f64)
     (local $arguments i32)
-    (local $sum f64)
     (local $x i32)
+    (local $sum f64)
     (set_local $arguments (i32.sub (get_local $__offset) (i32.const 8)))
     (block $@block_1_break
       (loop $@block_1_continue

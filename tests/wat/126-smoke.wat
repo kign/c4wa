@@ -26,8 +26,8 @@
     (global.set $@stack (get_local $@stack_entry)))
   (func $test_2
     (local $@stack_entry i32)
-    (local $a i64)
     (local $b i32)
+    (local $a i64)
     (set_local $@stack_entry (global.get $@stack))
     (loop $@block_1_continue
       (set_local $a (i64.const 10))
