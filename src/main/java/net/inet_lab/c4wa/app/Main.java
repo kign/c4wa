@@ -170,7 +170,7 @@ public class Main {
                 if (errors[0] == 0 &&
                         (warnings[0] == 0 || warningTreatment[0] != WarningTreatment.TREAS_AS_ERRORS)
                         && iarg == n_units - 1)
-                    wat = moduleEnv.wat(); //
+                    wat = moduleEnv.wat();
             } catch (SyntaxError err) {
                 // This should only be used for parsing errors
                 reportError(fileName, programLinesCache.get(err.pos.arg_no < 0 ? arg_no : err.pos.arg_no), err);

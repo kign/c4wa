@@ -29,8 +29,12 @@ public class Instruction_1ref extends Instruction {
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         arg.wasm(mCtx, fCtx, out);
         out.writeOpcode(type);
-        if (type == InstructionName.SET_GLOBAL)
-            out.writeUnsignedInt(mCtx.globals.get(ref));
+        if (type == InstructionName.SET_GLOBAL) {
+            Integer global_idx = mCtx.globals.get(ref);
+            if (global_idx == null)
+                throw new RuntimeException("Global variable '$" + ref + "' not found" );
+            out.writeUnsignedInt(global_idx);
+        }
         else if (type == InstructionName.SET_LOCAL)
             out.writeUnsignedInt(fCtx.locals.get(ref));
         else if (type == InstructionName.BR_IF) {

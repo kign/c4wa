@@ -20,6 +20,8 @@ public class ModuleEnv implements Partial, PostprocessContext {
     final MemoryState memoryState;
     final String MEMORY_NAME;
 
+    final boolean support_bulk_mem;
+
     final static String STACK_VAR_NAME = "@stack";
     // `A? B: C` translates to (if A (then B) (else C)) if other B or C has complexity greater or equal than this value;
     // otherwise, (select B C A) is used (which will evaluate all arguments regardless)
@@ -58,6 +60,8 @@ public class ModuleEnv implements Partial, PostprocessContext {
             throw new RuntimeException("Invalid value of property 'module.memoryStatus'");
 
         STACK_SIZE = memoryState == MemoryState.NONE? 0 : Integer.parseInt(prop.getProperty("module.stackSize"));
+
+        this.support_bulk_mem = List.of("y","yes","t","true").contains(prop.getProperty("wasm.bulk-memory").toLowerCase());
 
         data = new ArrayList<>();
 

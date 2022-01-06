@@ -1,8 +1,32 @@
 # C compiler for Web Assembly (`c4wa`)
 
-This a compiler from a subset of C language to
-[Web Assembly Text format](https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format).
-WAT files could subsequently be compiled to Web Assembly with a `wat2wasm` tool.
+This is a compiler from a subset of C language to Web Assembly.
+
+If you're not familiar with Web Assembly, check out [Wikipedia article](https://en.wikipedia.org/wiki/WebAssembly).
+Web Assembly is a new universal executable format for the Web; it complements more traditional JavaScript
+for computationally intensive tasks or if there is a need to port to Web existing code written in other languages.
+
+There are many compilers targeting Web Assembly format; there is a comprehensive list 
+[here](https://github.com/appcypher/awesome-wasm-langs). Why do we need another one?
+
+Here are some unique features of `c4wa` :
+
+ * It creates minimalistic well-optimized Web Assembly output without any "glue" to make it
+   work with your application, without any embedded libraries, or any other overhead. This is simply 
+   C code translated as efficiently as possible to WASM; nothing more
+ * It is out of the box fully compatible with any WASM runtime; there are no dependencies on JavaScript or `node`
+ * It can efficiently utilize WASM linear memory model, making it possible to write applications 
+   with full dynamic memory allocation support and still only minimal overhead
+ * In addition to binary WASM format, it can create output in text-based 
+   [WAT format](https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format),
+   which is entirely readable, properly formatted and could be used for better understanding
+   inner workings of the compiler, edited manually, copied to separate WASM projects, or used for teaching/learning 
+   Web Assembly and WAT format
+
+`c4wa` is not a full C implementation and isn't trying to be one. Still, most of the typical day-to-day coding
+targeting `c4wa` isn't much more complicated than coding in standard C. It supports loops, conditionals, block scope of
+variables, all of C operators and primitive types, `struct`s, arrays, pointers, variable arguments and dynamic memory
+allocation. It can also apply external C preprocessor to your code before parsing.
 
 ## Motivation
 
@@ -31,12 +55,13 @@ relatively higher-level language (a subset of `C`) while retaining a close relat
 Web Assembly. Instead of a binary WASM file, it generates a well-formatted WAT output 
 which will be similar to what a human programmer would have written when solving the problem directly in WAT.
 
-`c4wa` is not a full C implementation and isn't trying to be one. Still, most of the typical day-to-day
-coding targeting `c4wa` isn't much more complicated than coding in standard C. 
-It supports loops, conditionals, block scope of
-variables, all of C operators and primitive types, `struct`s, arrays, pointers, variable arguments
-and dynamic memory allocation. 
-It can also apply external C preprocessor to your code before parsing.
+## Dependencies
+
+`c4wa` needs Java 11 or above. Using preprocessors requires external C compiler (`gcc` is recommended).
+
+While most of the testing tools and examples given below assume POSIX-based environment, compiler itself
+should work on any platform with Java installed. Generated WASM files are, of course, platform-independent.
+(WAT files will be created in a default text format for your platform).
 
 ## Installation
 
@@ -78,11 +103,10 @@ extern int collatz(int N) {
 }
 ```
 
-Use `c4wa-compile` to compile to WAT and then `wat2wasm` to compile to WASM:
+Use `c4wa-compile` to compile:
 
 ```bash
 c4wa-compile -Xmodule.memoryStatus=none collatz.c
-wat2wasm collatz.wat
 ```
 
 Write this simple `node`-based wrapper (save it as file `collatz.js`)
@@ -102,8 +126,9 @@ node collatz.js 626331
 # Output: Cycle length of 626331 is 508
 ```
 
-Note that generated WASM file `collatz.wasm` **is only 99 bytes in size**. Here is how it looks
-as text (WAT) file:
+Note that generated WASM file `collatz.wasm` **is only 99 bytes in size**. 
+
+If you run compiler with option `-k`, it'll also save a WAT file, which looks like this:
 
 ```wat
 (module
@@ -124,7 +149,7 @@ as text (WAT) file:
     (get_local $len)))
 ```
 
-If you can read Web Assembly instructions, it is very easy to see exactly how this corresponds to the
+If you can read Web Assembly instructions, you can see how this corresponds to the
 original C code, and it would seem reasonably close to how one would solve this problem directly in WAT.
 
 There is nothing whatsoever that forces you to use `node` or JavaScript to execute WASM files.

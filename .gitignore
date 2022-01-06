@@ -10,6 +10,8 @@ hs_err_pid*
 # build directory
 /build
 
+/tests/other/im_ex/*.wasm
+
 .DS_Store
 *.class
 *.o

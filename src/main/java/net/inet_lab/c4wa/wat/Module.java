@@ -100,6 +100,7 @@ public class Module extends Instruction_list {
 
         int func_idx = 0;
         int type_idx;
+        int global_idx = 0;
         for (Instruction i: elements) {
             if (i.type == InstructionName.IMPORT) {
                 Import iImport = (Import) i;
@@ -147,16 +148,20 @@ public class Module extends Instruction_list {
             else if (i.type == InstructionName.MEMORY) {
                 Memory iMemory = (Memory) i;
 
-                WasmOutputStream subMemory = new WasmOutputStream();
-                subMemory.writeOpcode(Limits.MIN_ONLY);
-                subMemory.writeUnsignedInt(iMemory.pages);
-                memories.add(subMemory);
 
-                if (iMemory.anImport != null) {
+                if (iMemory.anImport == null) {
+                    WasmOutputStream subMemory = new WasmOutputStream();
+                    subMemory.writeOpcode(Limits.MIN_ONLY);
+                    subMemory.writeUnsignedInt(iMemory.pages);
+                    memories.add(subMemory);
+                }
+                else {
                     WasmOutputStream subImport = new WasmOutputStream();
                     subImport.writeString(iMemory.anImport.importModule);
                     subImport.writeString(iMemory.anImport.importName);
                     subImport.writeOpcode(Desc.MEM);
+                    subImport.writeOpcode(Limits.MIN_ONLY);
+                    subImport.writeUnsignedInt(iMemory.pages);
                     imports.add(subImport);
                 }
                 if (iMemory.export != null) {
@@ -169,29 +174,36 @@ public class Module extends Instruction_list {
             }
             else if (i.type == InstructionName.GLOBAL) {
                 Global iGlobal = (Global) i;
-                WasmOutputStream subGlobal = new WasmOutputStream();
-                subGlobal.writeOpcode(iGlobal.numType);
-                subGlobal.writeOpcode(iGlobal.mutable ? Mutable.MUT : Mutable.CONST);
-                if (iGlobal.initialization != null) {
-                    iGlobal.initialization.wasm(mCtx, null, subGlobal);
-                    subGlobal.writeOpcode(InstructionName.END);
-                }
-                mCtx.globals.put(iGlobal.ref, globals.size());
-                globals.add(subGlobal);
 
-                if (iGlobal.anImport != null) {
+                if (iGlobal.anImport == null) {
+                    WasmOutputStream subGlobal = new WasmOutputStream();
+                    subGlobal.writeOpcode(iGlobal.numType);
+                    subGlobal.writeOpcode(iGlobal.mutable ? Mutable.MUT : Mutable.CONST);
+                    if (iGlobal.initialization != null) {
+                        iGlobal.initialization.wasm(mCtx, null, subGlobal);
+                        subGlobal.writeOpcode(InstructionName.END);
+                    }
+                    globals.add(subGlobal);
+                }
+                else {
                     WasmOutputStream subImport = new WasmOutputStream();
                     subImport.writeString(iGlobal.anImport.importModule);
                     subImport.writeString(iGlobal.anImport.importName);
                     subImport.writeOpcode(Desc.GLOBAL);
+                    subImport.writeOpcode(iGlobal.numType);
+                    subImport.writeOpcode(iGlobal.mutable ? Mutable.MUT : Mutable.CONST);
                     imports.add(subImport);
                 }
+
                 if (iGlobal.export != null) {
                     WasmOutputStream subExport = new WasmOutputStream();
                     subExport.writeString(iGlobal.export.exportName);
                     subExport.writeOpcode(Desc.GLOBAL);
+                    subExport.writeUnsignedInt(global_idx);
                     exports.add(subExport);
                 }
+                mCtx.globals.put(iGlobal.ref, global_idx);
+                global_idx++;
             }
             else if (i.type == InstructionName.DATA) {
                 Data iData = (Data) i;

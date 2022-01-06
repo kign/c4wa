@@ -477,7 +477,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     public VariableDecl visitGlobal_decl_variable(c4waParser.Global_decl_variableContext ctx) {
         VariableDecl decl = (VariableDecl) visit(ctx.variable_decl());
         decl.exported = ctx.EXTERN() != null;
-        decl.imported = ctx.STATIC() == null;
+        decl.imported = !decl.exported && ctx.STATIC() == null;
         decl.mutable = ctx.CONST() == null;
 
         if (ctx.expression() == null) {
