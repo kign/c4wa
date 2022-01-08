@@ -3,6 +3,23 @@
 `c4wa` compiler operates on a subset of C language. In this section, we attempt to describe this subset.
 Obviously, details might change as work on the compiler continues.
 
+To make it clear from the start, there is no expectation that any existing C code, 
+other than completely trivial, would pass through `c4wa`
+compilation unchanged. However, for a typical C code, which doesn't rely on external functions or libraries (
+excluding `malloc` and everything you can easily implement or import from your runtime), doesn't use any compiler- or
+OS-specific features, and doesn't make too much use of the more obscure
+(`union`s, `goto`s, etc.) or recently added (`long long`, `_Generic`, etc.) C language features, making it `c4wa`
+-compatible shouldn't take too much effort.
+
+Instead of attempting to support any _existing_ C code (an attempt which would be futile 
+anyway without supporting significant chunk of standard library), emphasis was made to make it
+easier to write _new_ code
+
+ 1. with as few limitations as possible compared to standard C,
+ 2. such that this new code would still compile with standard C compiler.
+
+
+
 ## Design goals
 
   * **Direct translation.**<br> We try to only support features of C language which could be directly and unambiguously
@@ -12,35 +29,6 @@ Obviously, details might change as work on the compiler continues.
      with both `c4wa` _and_ an ordinary C compiler. All WASM-specific features are introduced 
     in a way to ensure the best possible compatibility with standard C.
   
-## What this compiler is NOT
-
-Just to set expectations correctly, a few things **can't** be guaranteed due to limited scope of this project, 
-unavoidable inconsistencies with the standard C compiler, and differences between native executable and 
-Web Assembly environment.
-
-  * Your code might successfully pass through `c4wa` but still fail `wat2wasm` compilation. 
-    As of version 0.3 of the compiler, there are no known cases of this happening, but it can't be completely 
-    ruled out yet.
-  * Your code might successfully compile with both regular compiler and `c4wa`, generate correctly working
-    native executable, but still work incorrectly in Web Assembly. This could be due to a limited number of known
-    inconsistencies you should be aware of when writing code for `c4wa`.
-  * There could be occasional instances when due to a bug native executable would fail, yet Web Assembly version
-    would still work as expected.
-  * `cw4a` might support certain features your C compiler does not, thus your code could compile and correctly execute
-    in Web Assembly, yet still require some adaptation to pass through C compiler 
-    (for example, `c4wa` doesn't require you to define or declare functions before they are called, as long as they
-    are defined later in the code).
-  * While `c4wa` is designed to properly report most common syntax error in a way which is broadly consistent with 
-    standard C compiler, it might either fail with an exception or on some rare occasions even compile successfully
-    invalid C source. Most of the testing, for obvious practical reasons, is done on the code which is already 
-    known to pass throw a C compiler.
-  * There is no expectation that any existing C code, other than completely trivial, would pass through `c4wa`
-    compilation unchanged. However, for a typical C code, which doesn't rely on external functions
-    or libraries (excluding `malloc` and everything you can easily implement or import from your runtime), 
-    doesn't use any compiler- or OS-specific features, and doesn't make too much use of the more obscure 
-     (`union`s, `goto`s, etc.) or recently added (`long long`, `_Generic`, etc.) C language features, 
-     making it `c4wa`-compatible shouldn't take too much effort. 
-
 ## TL;DR
 
 To get this out of the way as early as possible, 
@@ -52,7 +40,8 @@ here are some of the most commonly used features of C language **NOT** supported
   * `union`
   * `enum`
   * `static` variables or functions
-  * `while() ...` loop
+  * `while() {...}` loop
+  * `size_t`
   * wide char
   * Array initializers
   * Assignment operators `=`, `+=`, `++` etc. in expressions
@@ -81,8 +70,9 @@ pointers, including `void *` pointers (also `i32` internally), structures and ar
 Not all possible combinations are supported though, like you can't have
 pointer to an array, etc.
 
-Any integer type could be `unsigned`. `sizeof` is supported (but may return results different from native C
-compiler due to different pointer size and no alignment in WASM).
+Any integer type could be `unsigned` (unlike standard C though, primitive type cannot be omitted, `unsigned a` is invalid). 
+`sizeof` is supported (but may return results different from native C compiler due to different pointer size and 
+alignment rules in WASM).
 
 `typedef` isn't supported. All structures must have a name, and the only way to declare a variable of type `struct` is
 to use syntax `struct NAME`. A `stuct` can have other `struct` as its member or itself as a pointer. 
@@ -108,11 +98,22 @@ structures (except literal strings, which are zero-terminated `char` arrays); ne
 could be assigned to.
 
 If you reach the end of a non-void function without returning a value, this will trigger 
-"unreachable" run time error in WASM even if return value is never actually used.
+"_unreachable_" run time error in WASM even if return value is never actually used.
+
+Though you _can_ simply ignore return value of a non-`void` function, you _can't_ use 
+any other expression as an operator. So for example 
+if you have functions `foo` and `bar` returning `int`,
+
+```c
+int x = foo(); 
+foo();           // ignore result, OK
+bar ();          // same
+foo() + bar();   // atempt to use expression as an operator, not allowed 
+```
 
 ## Compiling multiple source files
 
-If you specify more than one source files, compiler will yield one "bundle" WAT file.
+If you specify more than one source files, compiler will yield one "bundle" WAT or WASM file.
 Functions called from a file they aren't defined in must be declared `extern`; 
 more on this below. You can't currently have a global variables shared between multiple
 files in a way which would be consistent with C compiler and won't depend on files order, 
@@ -135,16 +136,16 @@ automatically added to the preprocessor.
 Finally, `c4wa` does process so-called "line directives" inserted by a preprocessor and therefore 
 will use proper line numbers when reporting syntax errors.
 
-## Built-in functions and built-in libraries
+## Built-in functions, built-in libraries and system libraries
 
 While there is nothing resembling C standard library in `c4wa`, it does support a few utilities. 
-They come in the form of _built-in functions_ and _built-in libraries_.
+They come in the form of _built-in functions_, _built-in libraries_ and _system libraries_.
 
 **Built-in functions** are typically such that could be directly mapped to WASM instructions (in other words,
 they are _inline_ functions). There is a full list further down in the documentation.
 
 **Built-in libraries**, on the other hand, are separate pieces of functionality that could be optionally
-added to the generated WAT. They don't become available unless explicitly "linked" with `-l<library name>`
+added to the output. They don't become available unless explicitly "linked" with `-l<library name>`
 command line option. Technically, "linking" with such library is functionally equivalent to adding 
 additional source files to compile, except these source files are part of the compiler installation.
 
@@ -152,10 +153,10 @@ Note that functions provided by libraries _still need to be declared_ as `extern
 built-in functions, on the other hand, do not need to be declared. Some libraries might have dedicated
 header files (with a name matching a standard C header file, e.g. `stdarg.h` or `stdlib.h`)
 
-To note, by default with one very small exception (built-in functions `min` and `max` when applied to
-integers), `c4wa` does not embed any "library" functionality to generated WAT; you would only get 
-whatever functions are in your source and nothing else. On the other hand, incorporating a built-in library, 
-for example for memory management, could add noticeable amount of additional library code.
+**System libraries** apply to a few instances where something which behaves as a built-in function
+in reality is implemented with a library. This is the only situation where some (very small) library
+will be added to your output transparently. Other than that, WAT/WASM output will only have
+functions you implemented in C and nothing more.
 
 ## Import and export
 
@@ -167,7 +168,7 @@ and memory); instead of introducing new incompatible syntax,
 A function which is not `extern` will not be exported. Obviously, you should always have at least one `extern` function,
 but you can have as many as you want.
 
-`c4wa` will only output WAT source for functions which are exported (that is, declared `extern`) or are called from an
+`c4wa` will only output generated code for functions which are exported (that is, declared `extern`) or are called from an
 exported function. If you have no exported functions, you'll get an empty module and a warning.
 
 **Function declaration** could be `static` or `extern`; either attribute will cause declared function _not_ 
@@ -224,7 +225,7 @@ Any C attribute not listed above is explicitly not allowed
 
 A simple C program might not require a linear memory at all; you can use 
 [compiler option](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md) `module.memoryStatus=none`
-to not add any memory declaration to generated WAT file. However, many features, such as 
+to not add any memory declaration in the output. However, many features, such as 
 taking address of a local variable, using `struct`s or arrays, 
 calling functions with variable number of arguments (like `printf`), 
 and obviously allocating memory directly, won't work without 
@@ -234,7 +235,7 @@ linear memory.
 
 ![Linear memory](https://github.com/kign/c4wa/blob/master/etc/doc/memory.png?raw=true "Linear memory" )
 
-Generated WAT will have two special blocks of linear memory with configurable sizes.
+Generated WAT/WASM file will have two special blocks of linear memory with configurable sizes.
 
   * **Stack**, size `module.stackSize` (default 1024), for stack variables;
   * **Data**, for string literals; size is flexible depending on actual space used.
@@ -323,7 +324,7 @@ void bar() {
 }
 ```
 
-This simple change will result in a very different WAT code for `bar` :
+This simple change will result in a very different WAT output for `bar` :
 
 ```wat
 (func $bar
@@ -470,15 +471,19 @@ extern int * find_boundary_box() {
 These functions behave as normal C function in C code with given signatures 
 but `c4wa` internally replaces them with Web Assembly memory operators:
 
-| Name    | Arguments                               | Return Value | Description                                                      | 
-|---------|-----------------------------------------|--------------|------------------------------------------------------------------|
-| memset  | `void * addr`, `char value`, `int size` | _void_       | Same as in C library                                             |
-| memcpy  | `void * dest`, `void * src`, `int size` | _void_       | Same as in C library                                             |
-| memgrow | `int n_pages`                           | _void_       | Increase memory size by specified number of pages (1 page = 64K) |
-| memsize | _none_                                  | `int`        | Get current memory size in pages                                 |
+| Name    | Arguments                               | Return Value | Description                                                                                   | 
+|---------|-----------------------------------------|--------------|-----------------------------------------------------------------------------------------------|
+| memset  | `void * addr`, `char value`, `int size` | _void_       | Same as in C library                                                                          |
+| memcpy  | `void * dest`, `void * src`, `int size` | _void_       | Same as in C library                                                                          |
+| memgrow | `int n_pages`                           | `int`        | Increase memory size by specified number of pages (1 page = 64K); returns old number of pages |
+| memsize | _none_                                  | `int`        | Get current memory size in pages                                                              |
 
-Note that if using `memset` and `memcpy`, you'll need option `--enable-bulk-memory` to use `wat2wasm`.
-Also, generated WASM module might not be compatible with some runtimes (such as `wasmer` as of this writing).
+Note that `memset` and `memcpy` are known as _bulk-memory operations_ and as of now are still
+considered experimental; they may not be supported by all runtimes. If you compile WAT file
+which includes these operators with `wat2wasm`, you must include option `--enable-bulk-memory`.
+
+`c4wa` supports these operations by default. However, for better compatibility, it provides a
+transparent emulation, which can enabled with compiler option `-Xwasm.bulk-memory=false` .
 
 Since `memgrow` and `memsize` are WASM-specific, when cross-compiling with a native C compiler
 you should provide a suitable replacement, e.g.
@@ -490,10 +495,6 @@ static int __memory_size = 1;
 #define memsize() __memory_size
 #endif 
 ```
-
-Note also that while [memory.grow](https://github.com/sunfishcode/wasm-reference-manual/blob/master/WebAssembly.md#grow-linear-memory-size)
-instruction in WASM does return a value (previous memory size on success, -1 on failure), it is currently ignored
-(dropped) in `c4wa`.
 
 ## Built-in functions
 
@@ -520,9 +521,9 @@ terminating zero byte).
 
 All string literals in C code are placed in DATA section with terminating `\0`; 
 identical strings are assigned same memory address.
-When assigned to a variable or passed as an argument to a function, string literals have type `char *`.
+Just like in standard C, when assigned to a variable or passed as an argument to a function, string literals have type `char *`.
 
-Consecutive string literals are joined together, so the following code is legal:
+Again, like in newer C compilers, consecutive string literals are joined together, so the following code is legal:
 
 ```c
 char * file = 
@@ -663,7 +664,7 @@ Known inconsistencies and bugs are:
   * Incorrect prioritization of `&`;
   * Assignment operators: `=`, `++`, `--`, `+=`, `-=`, `*=`, `/=`, `%=`, `>>=`, `<<=`, `&=`, `^=`, `|=` could 
     not be re-used in an expression; operators in `c4wa` have no immediate side effects (that is, other than via
-    function calls). Thus, operators `++` and `--` are postfix only (`a ++` is valid, `++ a` is not);
+    function calls). Thus, operators `++` and `--` are postfix only (`a++` is valid, `++a` is not);
   * Comma `,` isn't technically an operator, it's an alternative to block `{ ... }` to make a composite statement.
    `a = b, c` is illegal, but `a = b, c = d` or `i ++, j ++` are ok;
   * Boolean expressions `!!x`, `!(x == 0)`, `!x == 0`, `x != 0`, `(x == 0) == 0` are always simplified to just `x`, 
@@ -676,7 +677,7 @@ support for `true` or `false` constants, feel free to add your own via preproces
 
 One thing to note, `c4wa` _does_ support proper semantics for boolean `&&` and `||` (so when evaluating
 `A && B`, if `A` evaluates to _false_, `B` is not evaluated, similarly for `A || B`), 
-but at a price of generating more complex WAT code 
+but at a price of generating more complex code 
 (since there is no built-in support for such operations in Web Assembly). You may consider
 using bitwise `&` and `|` instead in some situations, which directly translate to WASM instructions
 resulting in simpler and faster code.
@@ -779,10 +780,13 @@ we may add a special "debug" mode with some additional run-time checks, includin
 
 ## Local variables mapping
 
-Since WAT format supports local variables, it is tempting to simply map local variables in C directly to WAT
+Web Assembly binary format (WASM) doesn't have a concept of a variable _name_; it references variables by their
+consecutive numbers. However, in your output is text-based WAT file, it does have variable names. Since there
+is a close correspondence between local variables in C and in the generated Web Assembly, 
+it is tempting to simply map local variables in C directly to WAT
 names, so that if for example you have variable `long acnt_id` in C code, it'd be mapped to `(local $acnt_id i64)`
-in WAT, as that's exactly what `c4wa` does, most of the time. However, since release 0.4, `c4wa` supports
-block scope for local variables, and it makes things tad more complicated.
+in WAT, as luckily that's exactly what `c4wa` does, most of the time. However, since release 0.4, `c4wa` supports
+_block scope for local variables_, and it makes things tad more complicated.
 
 Consider this fragment of C code:
 

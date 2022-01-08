@@ -154,5 +154,4 @@ public enum InstructionName implements InstructionType, WasmOutputStream.Opcode 
         if (numType == NumType.I32) return (byte) ((opcode4 >>> 24) & 0xFF);
         throw new RuntimeException("Unknown numType = " + numType);
     }
-
 }

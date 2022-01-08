@@ -6,7 +6,7 @@ If you're not familiar with Web Assembly, check out [Wikipedia article](https://
 Web Assembly is a new universal executable format for the Web; it complements more traditional JavaScript
 for computationally intensive tasks or if there is a need to port to Web existing code written in other languages.
 
-There are many compilers targeting Web Assembly format; there is a comprehensive list 
+There are many compilers targeting Web Assembly; see for example a comprehensive list 
 [here](https://github.com/appcypher/awesome-wasm-langs). Why do we need another one?
 
 Here are some unique features of `c4wa` :
@@ -17,15 +17,15 @@ Here are some unique features of `c4wa` :
  * It is out of the box fully compatible with any WASM runtime; there are no dependencies on JavaScript or `node`
  * It can efficiently utilize WASM linear memory model, making it possible to write applications 
    with full dynamic memory allocation support and still only minimal overhead
- * In addition to binary WASM format, it can create output in text-based 
+ * In addition to binary WASM format, it can output text-based 
    [WAT format](https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format),
    which is entirely readable, properly formatted and could be used for better understanding
    inner workings of the compiler, edited manually, copied to separate WASM projects, or used for teaching/learning 
    Web Assembly and WAT format
 
 `c4wa` is not a full C implementation and isn't trying to be one. Still, most of the typical day-to-day coding
-targeting `c4wa` isn't much more complicated than coding in standard C. It supports loops, conditionals, block scope of
-variables, all of C operators and primitive types, `struct`s, arrays, pointers, variable arguments and dynamic memory
+targeting `c4wa` isn't much more complicated than coding in standard C. It supports loops, conditionals, block scope of variables, intermingled declarations, all of C operators and primitive types, `struct`s, 
+arrays, pointers, variable arguments and dynamic memory
 allocation. It can also apply external C preprocessor to your code before parsing.
 
 ## Motivation
@@ -33,7 +33,7 @@ allocation. It can also apply external C preprocessor to your code before parsin
 There are [many existing compilers](https://github.com/appcypher/awesome-wasm-langs)
 from various programming languages to Web Assembly, including popular
 [`emscripten`](https://github.com/emscripten-core/emscripten) for compiling C code. They typically treat
-Web Assembly as a target not too different from normal machine-level assembly; their main advantage is
+Web Assembly as a target not too different from a machine-level assembly; their main advantage is
 full support of the underlying language (so you can compile your existing code base with few, if any, changes),
 but in the process they often create bloated, unnecessary, and poorly fitting Web Assembly design code.
 
@@ -52,21 +52,33 @@ so a simple assignment like this: `c = a*a + b*b + 1` might look like that:
 
 `c4wa` purports to be a middle ground between these two extremes. It allows you to write your code in a 
 relatively higher-level language (a subset of `C`) while retaining a close relation to an underlying
-Web Assembly. Instead of a binary WASM file, it generates a well-formatted WAT output 
+Web Assembly. In addition to a binary WASM file, it can generate a well-formatted WAT output 
 which will be similar to what a human programmer would have written when solving the problem directly in WAT.
 
 ## Dependencies
 
-`c4wa` needs Java 11 or above. Using preprocessors requires external C compiler (`gcc` is recommended).
+`c4wa` needs Java 11 or above. Using preprocessor requires external C compiler (`gcc` is recommended).
 
 While most of the testing tools and examples given below assume POSIX-based environment, compiler itself
 should work on any platform with Java installed. Generated WASM files are, of course, platform-independent.
 (WAT files will be created in a default text format for your platform).
 
+In order to run Web Assembly, you need a runtime. Easiest runtime to use is `node`; there are also 
+universal runtimes such as [wasmtime](https://wasmtime.dev/) and [wasmer](https://wasmer.io/) with bindings
+for many languages. Any modern browser will also have a Web Assembly runtime built-in, though it is
+a bit more complicated since you'd also need a local server. 
+
+`cw4a` is entirely runtime-agnostic, though its testing framework is built on the top of `node`. 
+
+Finally, if you are working with Web Assembly, you probably should have 
+[WebAssembly Binary Toolkit](https://github.com/WebAssembly/wabt) handy;
+it allows you to compile WAT files, verify a WASM file, dump its content by sections, and a lot more. 
+However, it's not required.    
+
 ## Installation
 
-Download last release from [here](https://github.com/kign/c4wa/releases/); unzip to any directory
-and use shell wrapper `c4wa-compile` 
+Download the latest release from [here](https://github.com/kign/c4wa/releases/); unzip to any directory
+and use shell wrapper `c4wa-compile`. For example,
 
 ```bash
 mkdir -p ~/Apps
@@ -257,6 +269,15 @@ later I used original implementation in C and compiled with `c4wa`.
   * Performance of `c4wa`-generated implementation is pretty much same as the original implementation directly in WAT, 
     except for `wasmer` runtime, where it is significantly better.
 
+### Game of Life: infinite board
+
+[https://github.com/kign/life-inf](https://github.com/kign/life-inf)
+
+Unlike previous example, this Web Application was designed with `c4wa` in mind. It uses a scalable 
+implementation which can support a board of almost any dimensions. Board/Game algorithms are written in C,
+and generated Web Assembly file (production version) is about 6Kb. You can also take a look at 
+[corresponding WAT file](https://github.com/kign/life-inf/blob/master/etc/bundle.wat).
+
 ## Documentation
 
  * [Comparison with `emscripten` and other compilers](https://github.com/kign/c4wa/blob/master/etc/doc/comparison.md)
@@ -276,6 +297,7 @@ First command will run all units tests; **this only verifies successful compilat
 node.js-based script `run-tests` will then run `wat2wasm` on every created WAT file and will verify that 
 generated WASM would run and print expected output (saved as commented out section in every source file).
 It will also cross-compile with native C and check that output is exactly the same.
+Finally, it will compare binary WASM file generated by `wat2wasm` and one made directly by `c4wa`.
 
 Due to this multistage process C Source => WAT => WASM => execute, there could be three types of changes you are
 making:
