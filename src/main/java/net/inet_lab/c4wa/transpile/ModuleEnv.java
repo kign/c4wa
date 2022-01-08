@@ -10,10 +10,9 @@ public class ModuleEnv implements Partial, PostprocessContext {
     final List<FunctionEnv> functions;
     final Map<String, FunctionDecl> funcDecl;
     final Map<String, VariableDecl> varDecl;
-    final Map<Integer,Integer> strings;
-    final Map<String,Struct> structs;
-    final Set<String> libraryFunctions_TBR;
-    private final Map<String,Integer> libraryRequests;
+    final Map<Integer, Integer> strings;
+    final Map<String, Struct> structs;
+    private final Map<String, Integer> libraryRequests;
 
     final List<Byte> data;
 
@@ -32,38 +31,33 @@ public class ModuleEnv implements Partial, PostprocessContext {
     SyntaxError.WarningInterface warningHandler;
     int arg_no;
 
-    public ModuleEnv (Properties prop) {
+    public ModuleEnv(Properties prop) {
         funcDecl = new HashMap<>();
         varDecl = new HashMap<>();
         functions = new ArrayList<>();
         strings = new HashMap<>();
         structs = new HashMap<>();
-        libraryFunctions_TBR = new HashSet<>();
 
         GLOBAL_IMPORT_NAME = prop.getProperty("module.importName");
         String memoryStatus = prop.getProperty("module.memoryStatus");
         if (memoryStatus.startsWith("import:")) {
             MEMORY_NAME = memoryStatus.substring(7);
             memoryState = MemoryState.IMPORT;
-        }
-        else if (memoryStatus.startsWith("export:")) {
+        } else if (memoryStatus.startsWith("export:")) {
             MEMORY_NAME = memoryStatus.substring(7);
             memoryState = MemoryState.EXPORT;
-        }
-        else if (memoryStatus.equals("internal")) {
+        } else if (memoryStatus.equals("internal")) {
             MEMORY_NAME = "";
             memoryState = MemoryState.INTERNAL;
-        }
-        else if (memoryStatus.equals("none")) {
+        } else if (memoryStatus.equals("none")) {
             MEMORY_NAME = null;
             memoryState = MemoryState.NONE;
-        }
-        else
+        } else
             throw new RuntimeException("Invalid value of property 'module.memoryStatus'");
 
-        STACK_SIZE = memoryState == MemoryState.NONE? 0 : Integer.parseInt(prop.getProperty("module.stackSize"));
+        STACK_SIZE = memoryState == MemoryState.NONE ? 0 : Integer.parseInt(prop.getProperty("module.stackSize"));
 
-        this.support_bulk_mem = List.of("y","yes","t","true").contains(prop.getProperty("wasm.bulk-memory").toLowerCase());
+        this.support_bulk_mem = List.of("y", "yes", "t", "true").contains(prop.getProperty("wasm.bulk-memory").toLowerCase());
 
         data = new ArrayList<>();
         this.libraryRequests = new HashMap<>();
@@ -91,10 +85,10 @@ public class ModuleEnv implements Partial, PostprocessContext {
     public Collection<String> requiredLibs() {
         Set<String> res = new HashSet<>();
 
-        for (String fName: libraryRequests.keySet())
+        for (String fName : libraryRequests.keySet())
             if (libraryRequests.get(fName) == 0) {
                 boolean found = false;
-                for (String libName: library.keySet()) {
+                for (String libName : library.keySet()) {
                     if (library.get(libName).contains(fName)) {
                         res.add(libName);
                         found = true;
@@ -114,11 +108,6 @@ public class ModuleEnv implements Partial, PostprocessContext {
     public void setWarningHandler(int arg_no, SyntaxError.WarningInterface warningHandler) {
         this.arg_no = arg_no;
         this.warningHandler = warningHandler;
-    }
-
-    public String library_TBR(String name) {
-        libraryFunctions_TBR.add(name);
-        return name;
     }
 
     public void addStruct(String name, Struct struct) {
@@ -196,7 +185,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
     private Set<String> dependencyList() {
         Map<String, FunctionEnv> fmap = new HashMap<>();
         for (FunctionEnv f : functions)
-                fmap.put(f.name, f);
+            fmap.put(f.name, f);
 
         Deque<String> stack = new ArrayDeque<>();
         for (FunctionEnv f : functions)
@@ -205,7 +194,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
 
         Set<String> res = new HashSet<>();
 
-        while(!stack.isEmpty()) {
+        while (!stack.isEmpty()) {
             String fname = stack.pop();
             if (res.contains(fname))
                 continue;
@@ -215,25 +204,25 @@ public class ModuleEnv implements Partial, PostprocessContext {
             if (f == null)
                 continue;
 
-            for (String x: f.calls)
+            for (String x : f.calls)
                 stack.push(x);
         }
         return res;
     }
 
     private void missingFunctions() {
-        for (String fname: funcDecl.keySet()) {
+        for (String fname : funcDecl.keySet()) {
             FunctionDecl decl = funcDecl.get(fname);
 
             if (decl.is_used && decl.storage == FunctionDecl.SType.EXTERNAL)
                 if (warningHandler != null)
                     warningHandler.report(new SyntaxError(decl.where_used, "'extern' Function '" + fname + "' declared but not defined",
-                        true));
+                            true));
         }
     }
 
-    public Module wat () {
-        missingFunctions ();
+    public Module wat() {
+        missingFunctions();
         Set<String> included = dependencyList();
 
         if (included.isEmpty() && warningHandler != null)
@@ -270,108 +259,25 @@ public class ModuleEnv implements Partial, PostprocessContext {
         if (memoryState == MemoryState.EXPORT)
             elements.add(new Memory(MEMORY_NAME, 1));
         else if (memoryState == MemoryState.INTERNAL)
-            elements.add(new Memory( 1));
+            elements.add(new Memory(1));
 
         if (!data.isEmpty()) {
             byte[] data_arr = new byte[data.size()];
             int idx = 0;
-            for (byte b: data)
-                data_arr[idx ++] = b;
+            for (byte b : data)
+                data_arr[idx++] = b;
             elements.add(new Data(STACK_SIZE, data_arr, data.size()));
         }
 
         for (FunctionEnv f : functions)
-            if(included.contains(f.name))
+            if (included.contains(f.name))
                 elements.add(f.wat());
 
-/*
-        for (String libf: libraryFunctions_TBR) {
-            Func code = library_TBR.get(libf);
-            if (code == null)
-                System.err.println("Library function '" + libf + "' isn't available");
-            else
-                elements.add(code);
-        }
-*/
-
-        return (Module)((new Module(elements)).postprocessList(this));
+        return (Module) ((new Module(elements)).postprocessList(this));
     }
 
     static final Map<String, Set<String>> library = Map.ofEntries(
-        Map.entry("sys_minmax", Set.of("__max_32s", "__min_32s", "__max_32u", "__min_32u", "__max_64s", "__min_64s", "__max_64u", "__min_64u"))
+            Map.entry("sys_minmax", Set.of("__max_32s", "__min_32s", "__max_32u", "__min_32u", "__max_64s", "__min_64s", "__max_64u", "__min_64u")),
+            Map.entry("sys_bulkmem", Set.of("memcpy", "memset"))
     );
-
-    static final Map<String, Func> library_TBR = Map.ofEntries(
-                Map.entry("@max_32s", new Func(List.of(
-                        new Special("@max_32s"),
-                        new Param("a", NumType.I32),
-                        new Param("b", NumType.I32),
-                        new Result(NumType.I32)),List.of(
-                                new WrapExp(
-                                        new Select(
-                                                new Cmp(NumType.I32, false, false, true, new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")),
-                                                new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")))))),
-                Map.entry("@min_32s", new Func(List.of(
-                        new Special("@min_32s"),
-                        new Param("a", NumType.I32),
-                        new Param("b", NumType.I32),
-                        new Result(NumType.I32)),List.of(
-                                new WrapExp(
-                                        new Select(
-                                                new Cmp(NumType.I32, false, false, true, new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")),
-                                                new GetLocal(NumType.I32, "b"), new GetLocal(NumType.I32, "a")))))),
-                Map.entry("@max_32u", new Func(List.of(
-                        new Special("@max_32u"),
-                        new Param("a", NumType.I32),
-                        new Param("b", NumType.I32),
-                        new Result(NumType.I32)),List.of(
-                                new WrapExp(
-                                        new Select(
-                                                new Cmp(NumType.I32, false, false, false, new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")),
-                                                new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")))))),
-                Map.entry("@min_32u", new Func(List.of(
-                        new Special("@min_32u"),
-                        new Param("a", NumType.I32),
-                        new Param("b", NumType.I32),
-                        new Result(NumType.I32)),List.of(
-                                new WrapExp(
-                                        new Select(
-                                                new Cmp(NumType.I32, false, false, false, new GetLocal(NumType.I32, "a"), new GetLocal(NumType.I32, "b")),
-                                                new GetLocal(NumType.I32, "b"), new GetLocal(NumType.I32, "a")))))),
-                Map.entry("@max_64s", new Func(List.of(
-                        new Special("@max_64s"),
-                        new Param("a", NumType.I64),
-                        new Param("b", NumType.I64),
-                        new Result(NumType.I64)),List.of(
-                                new WrapExp(
-                                        new Select(
-                                                new Cmp(NumType.I64, false, false, true, new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")),
-                                                new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")))))),
-                Map.entry("@min_64s", new Func(List.of(
-                        new Special("@min_64s"),
-                        new Param("a", NumType.I64),
-                        new Param("b", NumType.I64),
-                        new Result(NumType.I64)),List.of(
-                                new WrapExp(
-                                        new Select(
-                                                new Cmp(NumType.I64, false, false, true, new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")),
-                                                new GetLocal(NumType.I64, "b"), new GetLocal(NumType.I64, "a")))))),
-                Map.entry("@max_64u", new Func(List.of(
-                        new Special("@max_64u"),
-                        new Param("a", NumType.I64),
-                        new Param("b", NumType.I64),
-                        new Result(NumType.I64)),List.of(
-                                new WrapExp(
-                                        new Select(
-                                                new Cmp(NumType.I64, false, false, false, new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")),
-                                                new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")))))),
-                Map.entry("@min_64u", new Func(List.of(
-                        new Special("@min_64u"),
-                        new Param("a", NumType.I64),
-                        new Param("b", NumType.I64),
-                        new Result(NumType.I64)),List.of(
-                                new WrapExp(
-                                        new Select(
-                                                new Cmp(NumType.I64, false, false, false, new GetLocal(NumType.I64, "a"), new GetLocal(NumType.I64, "b")),
-                                                new GetLocal(NumType.I64, "b"), new GetLocal(NumType.I64, "a")))))));
 }

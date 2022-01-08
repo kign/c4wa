@@ -986,9 +986,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
 
         if ("memset".equals(fname))
-            func_call_void = new MemoryFill(call_args[0], call_args[1], call_args[2]);
+            func_call_void = moduleEnv.support_bulk_mem ? new MemoryFill(call_args[0], call_args[1], call_args[2]) :
+                    new Call(requestLibraryFunc("memset"), call_args);
         else if ("memcpy".equals(fname))
-            func_call_void = new MemoryCopy(call_args[0], call_args[1], call_args[2]);
+            func_call_void = moduleEnv.support_bulk_mem? new MemoryCopy(call_args[0], call_args[1], call_args[2]) :
+                new Call(requestLibraryFunc("memcpy"), call_args);
         else if ("memgrow".equals(fname))
             func_call_with_return = new MemoryGrow(call_args[0]);
         else if ("memsize".equals(fname))

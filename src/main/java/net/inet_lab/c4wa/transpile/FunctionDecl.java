@@ -79,6 +79,8 @@ public class FunctionDecl implements Partial {
             return 1;
         if (storage == SType.EXPORTED && o.storage == SType.EXTERNAL)
             return -1;
+        if (storage == SType.BUILTIN && o.storage == SType.INTERNAL)
+            return 1;
 
         return 0;
     }
