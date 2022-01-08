@@ -285,6 +285,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 boolean isGlobal = false;
                 if (decl == null) {
                     decl = moduleEnv.varDecl.get(varId_a[i]);
+                    functionEnv.globals.add(varId_a[i]);
                     isGlobal = true;
                 }
 

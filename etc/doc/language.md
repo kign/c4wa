@@ -17,17 +17,6 @@ easier to write _new_ code
 
  1. with as few limitations as possible compared to standard C,
  2. such that this new code would still compile with standard C compiler.
-
-
-
-## Design goals
-
-  * **Direct translation.**<br> We try to only support features of C language which could be directly and unambiguously
-    translated to WAT text format with S-expressions. This way, generated WAT code should be readable and 
-   reasonably close to what a human programmer would write.
-  * **Cross compilation.**<br> It should be easy to write code which could be compiled and tested 
-     with both `c4wa` _and_ an ordinary C compiler. All WASM-specific features are introduced 
-    in a way to ensure the best possible compatibility with standard C.
   
 ## TL;DR
 
@@ -108,7 +97,7 @@ if you have functions `foo` and `bar` returning `int`,
 int x = foo(); 
 foo();           // ignore result, OK
 bar ();          // same
-foo() + bar();   // atempt to use expression as an operator, not allowed 
+foo() + bar();   // attempt to use expression as an operator, not allowed 
 ```
 
 ## Compiling multiple source files
@@ -837,6 +826,8 @@ const test_mode = 1;      // non-mutable, implicitly 'static' unless declared 'e
 ```
 
 Global values could be initialized to any compile-time constant; compile-time expressions may use `sizeof`.
+
+`static` variables in functions aren't supported.
 
 ## `const`
 

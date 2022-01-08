@@ -1,6 +1,5 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
-  (global $seed (mut i32) (i32.const 57))
   (global $__mm_inuse (mut i32) (i32.const 0))
   (global $__mm_expand_by (mut i32) (i32.const 10))
   (global $__mm_extra_offset (mut i32) (i32.const -1))

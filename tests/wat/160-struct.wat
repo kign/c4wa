@@ -1,7 +1,6 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $__mm_capacity (mut i32) (i32.const 0))
-  (global $__mm_stat_freed (mut i32) (i32.const 0))
   (global $__mm_inuse (mut i32) (i32.const 0))
   (global $__mm_expand_by (mut i32) (i32.const 10))
   (global $__mm_start (mut i32) (i32.const 0))

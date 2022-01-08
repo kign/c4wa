@@ -223,12 +223,12 @@ public class ModuleEnv implements Partial, PostprocessContext {
 
     public Module wat() {
         missingFunctions();
-        Set<String> included = dependencyList();
+        Set<String> includedF = dependencyList();
 
-        if (included.isEmpty() && warningHandler != null)
+        if (includedF.isEmpty() && warningHandler != null)
             warningHandler.report(new SyntaxError("empty module, make sure you have at least one extern function", false));
 
-        boolean need_stack = functions.stream().filter(f -> included.contains(f.name)).anyMatch(f -> f.uses_stack);
+        boolean need_stack = functions.stream().filter(f -> includedF.contains(f.name)).anyMatch(f -> f.uses_stack);
         if (need_stack) {
             VariableDecl stackDecl = new VariableDecl(CType.INT, STACK_VAR_NAME, true, new SyntaxError.Position());
             stackDecl.imported = false;
@@ -251,9 +251,14 @@ public class ModuleEnv implements Partial, PostprocessContext {
         if (memoryState == MemoryState.IMPORT)
             elements.add(new Memory(GLOBAL_IMPORT_NAME, MEMORY_NAME, 1));
 
+        Set<String> includedG = new HashSet<>();
+        for (FunctionEnv f : functions)
+            if (includedF.contains(f.name))
+                includedG.addAll(f.globals);
+
         // now we include everything non-imported
         for (VariableDecl v : varDecl.values())
-            if (!v.imported)
+            if (!v.imported && (v.name.startsWith("@") || includedG.contains(v.name)))
                 elements.add(v.wat());
 
         if (memoryState == MemoryState.EXPORT)
@@ -270,7 +275,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
         }
 
         for (FunctionEnv f : functions)
-            if (included.contains(f.name))
+            if (includedF.contains(f.name))
                 elements.add(f.wat());
 
         return (Module) ((new Module(elements)).postprocessList(this));

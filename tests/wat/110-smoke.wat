@@ -2,7 +2,6 @@
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $__last_offset (mut i32) (i32.const 1100))
   (global $__available_size (mut i32) (i32.const -1))
-  (global $precision f64 (f64.const 1.0E-9))
   (global $@stack (mut i32) (i32.const 1))
   (memory (export "memory") 1)
   (data (i32.const 1024) "a = %d, b = %d, c = %d: \00no roots\0A\00one root %.6f\0A\00two roots, %.6f and %.6f\0A\00")
