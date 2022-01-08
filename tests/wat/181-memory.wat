@@ -67,7 +67,7 @@
           (then
             (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $n)))
             (call $printf (i32.const 1036) (global.get $@stack))))
-        (set_local $@temp_i32 (i32.add (global.get $__mm_report_histogram) (i32.mul (call $@min_32s (i32.add (get_local $n) (i32.const 6)) (i32.const 19)) (i32.const 4))))
+        (set_local $@temp_i32 (i32.add (global.get $__mm_report_histogram) (i32.mul (call $__min_32s (i32.add (get_local $n) (i32.const 6)) (i32.const 19)) (i32.const 4))))
         (i32.store (get_local $@temp_i32) (i32.add (i32.load (get_local $@temp_i32)) (i32.const 1)))
         (set_local $idx (i32.const 0))
         (block $@block_1_1_break
@@ -649,5 +649,5 @@
     (call $test_nonuniform (i32.const 100) (i32.const 10000) (i32.const 100000))
     (call $print_histogram)
     (i32.const 0))
-  (func $@min_32s (param $a i32) (param $b i32) (result i32)
+  (func $__min_32s (param $a i32) (param $b i32) (result i32)
     (select (get_local $b) (get_local $a) (i32.gt_s (get_local $a) (get_local $b)))))

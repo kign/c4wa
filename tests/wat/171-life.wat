@@ -906,7 +906,7 @@
     (local $@stack_entry i32)
     (local $test i32)
     (set_local $@stack_entry (global.get $@stack))
-    (call $mm_init (i32.const 0) (call $@max_32s (i32.const 216) (i32.const 116)))
+    (call $mm_init (i32.const 0) (call $__max_32s (i32.const 216) (i32.const 116)))
     (block $@block_1_break
       (set_local $test (i32.const 1))
       (loop $@block_1_continue
@@ -929,5 +929,5 @@
     (call $printf (i32.const 2584) (global.get $@stack))
     (global.set $@stack (get_local $@stack_entry))
     (i32.const 0))
-  (func $@max_32s (param $a i32) (param $b i32) (result i32)
+  (func $__max_32s (param $a i32) (param $b i32) (result i32)
     (select (get_local $a) (get_local $b) (i32.gt_s (get_local $a) (get_local $b)))))

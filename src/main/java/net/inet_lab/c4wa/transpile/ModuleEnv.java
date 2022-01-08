@@ -4,6 +4,7 @@ import net.inet_lab.c4wa.wat.*;
 import net.inet_lab.c4wa.wat.Module;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ModuleEnv implements Partial, PostprocessContext {
     final List<FunctionEnv> functions;
@@ -11,7 +12,8 @@ public class ModuleEnv implements Partial, PostprocessContext {
     final Map<String, VariableDecl> varDecl;
     final Map<Integer,Integer> strings;
     final Map<String,Struct> structs;
-    final Set<String> libraryFunctions;
+    final Set<String> libraryFunctions_TBR;
+    private final Map<String,Integer> libraryRequests;
 
     final List<Byte> data;
 
@@ -36,7 +38,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
         functions = new ArrayList<>();
         strings = new HashMap<>();
         structs = new HashMap<>();
-        libraryFunctions = new HashSet<>();
+        libraryFunctions_TBR = new HashSet<>();
 
         GLOBAL_IMPORT_NAME = prop.getProperty("module.importName");
         String memoryStatus = prop.getProperty("module.memoryStatus");
@@ -64,17 +66,49 @@ public class ModuleEnv implements Partial, PostprocessContext {
         this.support_bulk_mem = List.of("y","yes","t","true").contains(prop.getProperty("wasm.bulk-memory").toLowerCase());
 
         data = new ArrayList<>();
+        this.libraryRequests = new HashMap<>();
 
         addDeclaration(new FunctionDecl("memset", CType.VOID,
                 new CType[]{CType.VOID.make_pointer_to(), CType.CHAR, CType.INT}, false, FunctionDecl.SType.BUILTIN));
         addDeclaration(new FunctionDecl("memcpy", CType.VOID,
                 new CType[]{CType.VOID.make_pointer_to(), CType.VOID.make_pointer_to(), CType.INT}, false, FunctionDecl.SType.BUILTIN));
-        // Note that `memory.grow` actually return value (old memory size), but you are free to ignore it
-        // without invoking `drop`.
-        // I don't think this is a common design patter though, so it's easier all around to simply make
-        // `memory.grow` void.
-        addDeclaration(new FunctionDecl("memgrow", CType.VOID, new CType[]{CType.INT}, false, FunctionDecl.SType.BUILTIN));
+        addDeclaration(new FunctionDecl("memgrow", CType.INT, new CType[]{CType.INT}, false, FunctionDecl.SType.BUILTIN));
         addDeclaration(new FunctionDecl("memsize", CType.INT, new CType[0], false, FunctionDecl.SType.BUILTIN));
+    }
+
+    String requestLibraryFunc(String fName) {
+        if (!libraryRequests.containsKey(fName))
+            libraryRequests.put(fName, 0);
+        return fName;
+    }
+
+    void registerLibraryFunc(String fName) {
+        if (!libraryRequests.containsKey(fName))
+            return;
+        libraryRequests.put(fName, 1);
+    }
+
+    public Collection<String> requiredLibs() {
+        Set<String> res = new HashSet<>();
+
+        for (String fName: libraryRequests.keySet())
+            if (libraryRequests.get(fName) == 0) {
+                boolean found = false;
+                for (String libName: library.keySet()) {
+                    if (library.get(libName).contains(fName)) {
+                        res.add(libName);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    throw new RuntimeException("No such library function '" + fName + "'");
+            }
+        return res;
+    }
+
+    public Collection<String> missingLibraryFuncs() {
+        return libraryRequests.keySet().stream().filter(x -> libraryRequests.get(x) == 0).collect(Collectors.toUnmodifiableList());
     }
 
     public void setWarningHandler(int arg_no, SyntaxError.WarningInterface warningHandler) {
@@ -82,8 +116,8 @@ public class ModuleEnv implements Partial, PostprocessContext {
         this.warningHandler = warningHandler;
     }
 
-    public String library(String name) {
-        libraryFunctions.add(name);
+    public String library_TBR(String name) {
+        libraryFunctions_TBR.add(name);
         return name;
     }
 
@@ -250,18 +284,24 @@ public class ModuleEnv implements Partial, PostprocessContext {
             if(included.contains(f.name))
                 elements.add(f.wat());
 
-        for (String libf: libraryFunctions) {
-            Func code = library.get(libf);
+/*
+        for (String libf: libraryFunctions_TBR) {
+            Func code = library_TBR.get(libf);
             if (code == null)
                 System.err.println("Library function '" + libf + "' isn't available");
             else
                 elements.add(code);
         }
+*/
 
         return (Module)((new Module(elements)).postprocessList(this));
     }
 
-    static final Map<String, Func> library = Map.ofEntries(
+    static final Map<String, Set<String>> library = Map.ofEntries(
+        Map.entry("sys_minmax", Set.of("__max_32s", "__min_32s", "__max_32u", "__min_32u", "__max_64s", "__min_64s", "__max_64u", "__min_64u"))
+    );
+
+    static final Map<String, Func> library_TBR = Map.ofEntries(
                 Map.entry("@max_32s", new Func(List.of(
                         new Special("@max_32s"),
                         new Param("a", NumType.I32),

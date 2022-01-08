@@ -204,7 +204,7 @@
     (if (i32.gt_s (get_local $size) (i32.mul (i32.const 64) (global.get $__mm_min)))
       (then
         (set_local $n (i32.add (i32.const 2) (i32.div_s (i32.sub (get_local $size) (i32.add (i32.mul (i32.const 64) (global.get $__mm_min)) (i32.const 8))) (i32.add (i32.mul (i32.const 64) (global.get $__mm_min)) (i32.const 12)))))
-        (set_local $@temp_i32 (i32.add (global.get $__mm_report_histogram) (i32.mul (call $@min_32s (i32.add (get_local $n) (i32.const 6)) (i32.const 19)) (i32.const 4))))
+        (set_local $@temp_i32 (i32.add (global.get $__mm_report_histogram) (i32.mul (call $__min_32s (i32.add (get_local $n) (i32.const 6)) (i32.const 19)) (i32.const 4))))
         (i32.store (get_local $@temp_i32) (i32.add (i32.load (get_local $@temp_i32)) (i32.const 1)))
         (set_local $idx (i32.const 0))
         (block $@block_1_1_break
@@ -469,5 +469,5 @@
   (func $mm_histogram (param $p_count i32) (result i32)
     (i32.store (get_local $p_count) (i32.const 20))
     (global.get $__mm_report_histogram))
-  (func $@min_32s (param $a i32) (param $b i32) (result i32)
+  (func $__min_32s (param $a i32) (param $b i32) (result i32)
     (select (get_local $b) (get_local $a) (i32.gt_s (get_local $a) (get_local $b)))))

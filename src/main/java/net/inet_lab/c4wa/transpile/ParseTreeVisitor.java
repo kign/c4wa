@@ -542,6 +542,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             functionEnv.registerVar("__offset", null, CType.VOID.make_pointer_to(),
                     true, false, true, new SyntaxError.Position());
 
+        moduleEnv.registerLibraryFunc(funcDecl.name);
+
         return new OneFunction(functionEnv, ctx.composite_block());
     }
 
@@ -662,10 +664,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     res.add(((OneInstruction) parsedElem).instruction);
                 else if (parsedElem instanceof OneExpression) {
                     OneExpression exp = (OneExpression) parsedElem;
-                    if (exp.expression instanceof CallExp || exp.expression instanceof BlockExp)
+                    if (exp.expression instanceof CallExp || exp.expression instanceof BlockExp || exp.expression instanceof MemoryGrow)
                         res.add(new Drop(exp.expression));
                     else
-                        throw fail(blockElem, "block", "the only way to include expression as a statement is function call");
+                        throw fail(blockElem, "block", "the only way to include expression as a statement is function call; received "
+                                + exp.expression.getClass().getSimpleName());
                 } else if (parsedElem instanceof InstructionList)
                     res.addAll(Arrays.asList(((InstructionList) parsedElem).instructions));
                 else if (!(parsedElem instanceof NoOp))
@@ -855,6 +858,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return new NoOp();
     }
 
+    private String requestLibraryFunc(String fName) {
+        functionEnv.calls.add(fName);
+        return moduleEnv.requestLibraryFunc(fName);
+    }
+
     @Override
     public Partial visitFunction_call(c4waParser.Function_callContext ctx) {
         String fname = ctx.ID().getText();
@@ -873,7 +881,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
             CType type = arg1.type;
             Expression res = type.is_int()
-                            ? new CallExp(moduleEnv.library("@" + fname + (type.is_32()? "_32": "_64") + (type.is_signed()? "s": "u")), type.asNumType(),
+                            ? new CallExp(requestLibraryFunc("__" + fname + (type.is_32()? "_32": "_64") + (type.is_signed()? "s": "u")), type.asNumType(),
                                 new Expression[]{arg1.expression, arg2.expression})
                             : new MinMax(type.asNumType(), "min".equals(fname), arg1.expression, arg2.expression);
             return new OneExpression(res, type);
@@ -982,7 +990,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         else if ("memcpy".equals(fname))
             func_call_void = new MemoryCopy(call_args[0], call_args[1], call_args[2]);
         else if ("memgrow".equals(fname))
-            func_call_void = new Drop (new MemoryGrow(call_args[0]));
+            func_call_with_return = new MemoryGrow(call_args[0]);
         else if ("memsize".equals(fname))
             func_call_with_return = new MemorySize();
         else if (decl.returnType.is_void())

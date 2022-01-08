@@ -95,18 +95,15 @@ public class Main {
                 fileArgs.size() == 1 ? Paths.get(fileArgs.get(0)).getFileName().toString().replaceFirst("[.][^.]+$", "") + ".wasm" :
                 "bundle.wasm";
 
-        if (!_output.equals("-") && !_output.endsWith(".wasm") && !_output.endsWith(".wat")) {
-            System.err.println("Error: Output file must be either .wasm or .wat");
-            System.exit(1);
-        }
-        String wasm_output = _output.endsWith(".wasm")? _output: null;
-        String wat_output = _output.equals("-") || _output.endsWith(".wat") ? _output :
+        boolean is_wat_output = _output.equals("-") || _output.endsWith(".wat");
+        String wasm_output = is_wat_output? null: _output;
+        String wat_output = is_wat_output ? _output :
                 parsedArgs.containsKey("keep")? _output.substring(0, _output.length() - 5) + ".wat" : null;
 
         ModuleEnv moduleEnv = new ModuleEnv(prop);
         Module wat = null;
         Pattern ppp = Pattern.compile("^#\\s*(define|if|undef|include)");
-        final int n_units = fileArgs.size() + builtin_libs.size();
+        int n_units = fileArgs.size() + builtin_libs.size();
         final int[] errors = {0};
         final int[] warnings = {0};
         final ArrayList<List<String>> programLinesCache = new ArrayList<>();
@@ -139,11 +136,14 @@ public class Main {
                 String libName = builtin_libs.get(iarg - fileArgs.size());
                 fileName = "<builtin>:" + libName + ".c";
 
+                var libRes = loader.getResourceAsStream("lib/" + libName + ".c");
+                if (libRes == null) {
+                    System.err.println("Cannot find library '" + libName + "'");
+                    System.exit(1);
+                }
                 _programLines = new BufferedReader(
-                        new InputStreamReader(
-                                Objects.requireNonNull(
-                                        loader.getResourceAsStream("lib/" + libName + ".c"))))
-                        .lines().collect(Collectors.toUnmodifiableList());
+                        new InputStreamReader(libRes))
+                            .lines().collect(Collectors.toUnmodifiableList());
             }
 
             programLinesCache.add(_programLines);
@@ -167,10 +167,21 @@ public class Main {
                 ParseTree tree = buildParseTree(programText);
                 ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
                 v.visit(tree);
+                var requiredLibs = moduleEnv.requiredLibs();
+                for (String libName: requiredLibs)
+                    if (!builtin_libs.contains(libName)) {
+                        builtin_libs.add(libName);
+                        n_units++;
+                    }
                 if (errors[0] == 0 &&
                         (warnings[0] == 0 || warningTreatment[0] != WarningTreatment.TREAS_AS_ERRORS)
-                        && iarg == n_units - 1)
+                        && iarg == n_units - 1) {
+                    if (!requiredLibs.isEmpty()) {
+                        System.err.println("Library function(s) were not found: " + moduleEnv.missingLibraryFuncs());
+                        System.exit(1);
+                    }
                     wat = moduleEnv.wat();
+                }
             } catch (SyntaxError err) {
                 // This should only be used for parsing errors
                 reportError(fileName, programLinesCache.get(err.pos.arg_no < 0 ? arg_no : err.pos.arg_no), err);
@@ -259,8 +270,11 @@ public class Main {
         ParseTree tree = buildParseTree(programText);
         ParseTreeVisitor v = new ParseTreeVisitor(moduleEnv);
         v.visit(tree);
+        List<String> copyLibs = new ArrayList<>(libs);
+        copyLibs.addAll(moduleEnv.requiredLibs());
 
-        for (String libName: libs) {
+        for (int i = 0; i < copyLibs.size(); i ++) {
+            String libName = copyLibs.get(i);
             moduleEnv.setWarningHandler(-1,null);
             var programLines = new BufferedReader(
                     new InputStreamReader(
@@ -272,6 +286,9 @@ public class Main {
             tree = buildParseTree(programText);
             v = new ParseTreeVisitor(moduleEnv);
             v.visit(tree);
+            for (String l : moduleEnv.requiredLibs())
+                if (!copyLibs.contains(l))
+                    copyLibs.add(l);
         }
 
         if (watFileName != null) {

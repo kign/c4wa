@@ -72,7 +72,7 @@ public class RunAllTests {
                         libs,
                         Paths.get("tests", "wat", fname.replace(".c", ".wat")),
                         err -> warnCount[0] ++);
-                assertEquals(n_warnings, warnCount[0]);
+                assertEquals(n_warnings, warnCount[0], "warnings + errors");
             }));
         }
 
