@@ -190,15 +190,17 @@ python3 collatz.py 626331
 # Cycle length of 626331 is 508
 ```
 
-We also provide a customized `node`-based runtime for testing, which allows you to use inside your code
-function `printf` similarly to how you would in C; it also automatically calls function `main` (with no arguments).
-You can use it with any of the tests in [this directory](https://github.com/kign/c4wa/tree/master/src/test/resources/c). 
+We also provide two slightly customized wrappers to run WASM files: `node`-based and `python-wasmer`-based.
+Both will automatically call `main` function (must be exported) and both will support C-compatible `printf`. 
+You can use it with any of the tests in 
+[this directory](https://github.com/kign/c4wa/tree/master/src/test/resources/c). 
 For example
 
 ```bash
 c4wa-compile 170-life.c
-wat2wasm --enable-bulk-memory  170-life.wat
+# both wrappers should make same output 
 etc/run-wasm 170-life.wasm
+etc/run-wasm.py 170-life.wasm
 ```
 
 See [Language Spec](https://github.com/kign/c4wa/blob/master/etc/doc/language.md) 
