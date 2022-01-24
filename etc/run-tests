@@ -120,7 +120,7 @@ async function run_one_test(test, verbose) {
         spawn_options.stdio = 'inherit';
 
     if (results[0] === 2) {
-        res = spawnSync('wat2wasm', [wat, '--enable-bulk-memory', '-o', wasm], spawn_options);
+        res = spawnSync('wat2wasm', [wat, '-o', wasm], spawn_options);
 
         results[tid] = (res.status === 0) ? 2 : 1;
         if (verbose)
