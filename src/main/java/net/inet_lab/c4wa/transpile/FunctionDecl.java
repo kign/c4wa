@@ -92,7 +92,6 @@ public class FunctionDecl implements Partial {
     public Func wat() {
         // called for imported functions only
         List<Instruction> attributes = new ArrayList<>();
-        attributes.add(new Special(name));
 
         for (CType c : params)
             attributes.add(new Param(c.asNumType()));
@@ -102,6 +101,6 @@ public class FunctionDecl implements Partial {
         if (!returnType.is_void())
             attributes.add(new Result(returnType.asNumType()));
 
-        return new Func(attributes);
+        return new Func(name, attributes);
     }
 }

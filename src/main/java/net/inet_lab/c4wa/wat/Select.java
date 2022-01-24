@@ -19,4 +19,8 @@ public class Select extends Expression_3 {
             return this;
     }
 
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new Select(arg3.postprocess(ppctx), arg1.postprocess(ppctx), arg2.postprocess(ppctx));
+    }
 }

@@ -2,7 +2,7 @@ package net.inet_lab.c4wa.wat;
 
 import java.io.IOException;
 
-public class Expression_1ref extends Expression {
+abstract public class Expression_1ref extends Expression {
     final String ref;
     final Expression arg;
 

@@ -7,4 +7,12 @@ public class Return extends Instruction_1 {
     public Return() {
         this(null);
     }
+
+    @Override
+    public Instruction[] postprocess(PostprocessContext ppctx) {
+        if (arg == null)
+            return new Instruction[]{this};
+        else
+            return new Instruction[]{new Return(arg.postprocess(ppctx))};
+    }
 }

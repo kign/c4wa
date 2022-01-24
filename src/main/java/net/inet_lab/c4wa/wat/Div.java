@@ -6,4 +6,9 @@ public class Div extends Expression_2 {
                         (signed?InstructionName.DIV_S: InstructionName.DIV_U),
                 numType, arg1, arg2, (a,b) -> a / b, (a,b) -> a / b);
     }
+
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new Div(numType, name == InstructionName.DIV_S, arg1.postprocess(ppctx), arg2.postprocess(ppctx));
+    }
 }

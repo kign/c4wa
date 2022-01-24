@@ -5,6 +5,10 @@ public class GenericCast extends Expression_1 {
         super(from_to(srcType, dstType, signed), dstType, arg);
     }
 
+    private GenericCast(InstructionName name, NumType dstType, Expression arg) {
+        super(name, dstType, arg);
+    }
+
     static private InstructionName from_to(NumType srcType, NumType dstType, boolean signed) {
         InstructionName name;
 
@@ -38,5 +42,10 @@ public class GenericCast extends Expression_1 {
             return new Const(dstType, (Const)arg, signed);
         else
             return new GenericCast(srcType, dstType, signed, arg);
+    }
+
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new GenericCast(name, numType, arg.postprocess(ppctx));
     }
 }

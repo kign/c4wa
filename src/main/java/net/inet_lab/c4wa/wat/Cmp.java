@@ -13,6 +13,11 @@ public class Cmp extends Expression_2 {
         super(bEqual?InstructionName.EQ:InstructionName.NE, numType, lhs, rhs, (a, b) -> (a==b) == bEqual? 1 : 0, null);
     }
 
+    private Cmp(InstructionName name, NumType numType, Expression arg1, Expression arg2,
+                        Const.TwoArgIntOperator op_i, Const.TwoArgFloatOperator op_f) {
+        super(name, numType, arg1, arg2, op_i, op_f);
+    }
+
     public Cmp(Cmp o) {
         super((o.name == InstructionName.LE)? InstructionName.GT :
                 ((o.name == InstructionName.LT)? InstructionName.GE :
@@ -34,6 +39,11 @@ public class Cmp extends Expression_2 {
 
                 null
                 ))))))))))))), o.numType, o.arg1, o.arg2, null, null);
+    }
+
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new Cmp(name, numType, arg1.postprocess(ppctx), arg2.postprocess(ppctx), op_i, op_f);
     }
 
     private static class IConstCmp implements Const.TwoArgIntOperator {

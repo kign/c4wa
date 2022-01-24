@@ -1,18 +1,25 @@
 package net.inet_lab.c4wa.wat;
 
-public class Store extends Instruction_2 {
-    final public NumType numType;
+import java.io.IOException;
 
-    public Store(NumType numType, Expression offset, Expression value) {
-        super(new InstructionWithNumPrefix(numType, InstructionName.STORE), offset, value);
+public class Store extends Instruction {
+    final public NumType numType;
+    final public Expression address;
+    final public Expression value;
+
+    public Store(NumType numType, Expression address, Expression value) {
+        super(new InstructionWithNumPrefix(numType, InstructionName.STORE));
         this.numType = numType;
+        this.address = address.comptime_eval();
+        this.value = value.comptime_eval();
     }
 
-    public Store(NumType numType, int wrap, Expression offset, Expression value) {
+    public Store(NumType numType, int wrap, Expression address, Expression value) {
         super(new InstructionWithNumPrefix(numType,
-                (wrap == 8)? InstructionName.STORE8 : ((wrap == 16) ? InstructionName.STORE16 : InstructionName.STORE32)),
-                offset, value);
+                (wrap == 8)? InstructionName.STORE8 : ((wrap == 16) ? InstructionName.STORE16 : InstructionName.STORE32)));
         this.numType = numType;
+        this.address = address.comptime_eval();
+        this.value = value.comptime_eval();
     }
 
     byte getAlignment() {
@@ -27,12 +34,26 @@ public class Store extends Instruction_2 {
     }
 
     @Override
+    public String toString() {
+        return "(" + type.getName() + " " + address + " " + value + ")";
+    }
+
+    @Override
     public Instruction[] postprocess(PostprocessContext ppctx) {
-        Expression offset = arg1.postprocess(ppctx);
-        Expression value = arg2.postprocess(ppctx);
-        Store store = type.getMain() == InstructionName.STORE8 ? new Store(numType, 8, offset, value)
-                      : type.getMain() == InstructionName.STORE16 ? new Store(numType, 16, offset, value)
-                      : new Store(numType, offset, value);
+        Expression ppAddress = address.postprocess(ppctx);
+        Expression ppValue = value.postprocess(ppctx);
+        Store store = type.getMain() == InstructionName.STORE8 ? new Store(numType, 8, ppAddress, ppValue)
+                      : type.getMain() == InstructionName.STORE16 ? new Store(numType, 16, ppAddress, ppValue)
+                      : new Store(numType, ppAddress, ppValue);
         return new Instruction[]{store};
     }
+
+    @Override
+    void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
+        address.wasm(mCtx, fCtx, out);
+        value.wasm(mCtx, fCtx, out);
+        out.writeOpcode(type);
+        out.writeDirect(new byte[]{((Store) this).getAlignment(), 0x00});
+    }
+
 }

@@ -2,7 +2,7 @@ package net.inet_lab.c4wa.wat;
 
 import java.io.IOException;
 
-public class Instruction_1ref extends Instruction {
+abstract public class Instruction_1ref extends Instruction {
     public final String ref;
     final public Expression arg;
 
@@ -15,14 +15,6 @@ public class Instruction_1ref extends Instruction {
     @Override
     public String toString() {
         return "(" + type.getName() + " $" + ref + " " + arg +")";
-    }
-
-    @Override
-    public Instruction[] postprocess(PostprocessContext ppctx) {
-        if (arg == null)
-            return new Instruction[]{this};
-        else
-            return new Instruction[]{new Instruction_1ref(type, ref, arg.postprocess(ppctx))};
     }
 
     @Override

@@ -2,7 +2,7 @@ package net.inet_lab.c4wa.wat;
 
 import java.io.IOException;
 
-public class Expression_3 extends Expression {
+abstract public class Expression_3 extends Expression {
     final Expression arg1;
     final Expression arg2;
     final Expression arg3;
@@ -17,11 +17,6 @@ public class Expression_3 extends Expression {
     @Override
     public int complexity() {
         return 1 + Math.max(Math.max(arg1.complexity(), arg2.complexity()), arg3.complexity());
-    }
-
-    @Override
-    public Expression postprocess(PostprocessContext ppctx) {
-        return new Expression_3(name, numType, arg1.postprocess(ppctx), arg2.postprocess(ppctx), arg3.postprocess(ppctx));
     }
 
     @Override

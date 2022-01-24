@@ -2,7 +2,7 @@ package net.inet_lab.c4wa.wat;
 
 import java.io.IOException;
 
-public class Instruction_0 extends Instruction {
+abstract public class Instruction_0 extends Instruction {
     public Instruction_0(InstructionType type) {
         super(type);
     }

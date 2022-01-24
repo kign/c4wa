@@ -4,12 +4,12 @@ import java.io.IOException;
 import java.util.*;
 
 public class Func extends Instruction_list {
-    public Func(List<Instruction> attributes, List<Instruction> elements) {
-        super(InstructionName.FUNC, attributes.toArray(Instruction[]::new), elements.toArray(Instruction[]::new));
+    public Func(String name, List<Instruction> attributes, List<Instruction> elements) {
+        super(InstructionName.FUNC, name, attributes.toArray(Instruction[]::new), elements.toArray(Instruction[]::new));
     }
 
-    public Func(List<Instruction> attributes) {
-        super(InstructionName.FUNC, attributes.toArray(Instruction[]::new), false);
+    public Func(String name, List<Instruction> attributes) {
+        super(InstructionName.FUNC, name, attributes.toArray(Instruction[]::new), null);
     }
 
     public WasmType wasmSignature() {
@@ -21,13 +21,6 @@ public class Func extends Instruction_list {
                 wasmType.results.add((Result) i);
 
         return wasmType;
-    }
-
-    public String getName () {
-        for (Instruction i : attributes)
-            if (i.type == InstructionName.SPECIAL)
-                return ((Special)i).ref;
-        return null;
     }
 
     public Export getExport() {

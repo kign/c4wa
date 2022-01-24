@@ -4,4 +4,9 @@ public class Popcnt extends Expression_1 {
     public Popcnt(NumType numType, Expression arg) {
         super(InstructionName.POPCNT, numType, arg);
     }
+
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new Popcnt(numType, arg.postprocess(ppctx));
+    }
 }

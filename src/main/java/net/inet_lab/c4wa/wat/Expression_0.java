@@ -2,7 +2,7 @@ package net.inet_lab.c4wa.wat;
 
 import java.io.IOException;
 
-public class Expression_0 extends Expression {
+abstract public class Expression_0 extends Expression {
     Expression_0(InstructionName name) {
         super(name, null);
     }

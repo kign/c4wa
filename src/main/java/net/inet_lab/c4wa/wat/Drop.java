@@ -4,4 +4,9 @@ public class Drop extends Instruction_1 {
     public Drop(Expression arg) {
         super(InstructionName.DROP, arg);
     }
+
+    @Override
+    public Instruction[] postprocess(PostprocessContext ppctx) {
+        return new Instruction[]{new Drop(arg.postprocess(ppctx))};
+    }
 }

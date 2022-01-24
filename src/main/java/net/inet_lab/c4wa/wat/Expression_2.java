@@ -2,7 +2,7 @@ package net.inet_lab.c4wa.wat;
 
 import java.io.IOException;
 
-public class Expression_2 extends Expression {
+abstract public class Expression_2 extends Expression {
     final public Expression arg1;
     final public Expression arg2;
     final Const.TwoArgIntOperator op_i;
@@ -38,11 +38,6 @@ public class Expression_2 extends Expression {
     @Override
     public int complexity() {
         return 1 + Math.max(arg1.complexity(), arg2.complexity());
-    }
-
-    @Override
-    public Expression postprocess(PostprocessContext ppctx) {
-        return new Expression_2(name, numType, arg1.postprocess(ppctx), arg2.postprocess(ppctx), op_i, op_f);
     }
 
     @Override

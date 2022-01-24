@@ -11,4 +11,9 @@ public class Eqz extends Expression_1 {
             throw new RuntimeException("Invalid EQZ type " + expNumType + ", must always be I32");
         return GenericCast.cast(this.numType, NumType.I32, false, arg);
     }
+
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new Eqz(numType, arg.postprocess(ppctx));
+    }
 }

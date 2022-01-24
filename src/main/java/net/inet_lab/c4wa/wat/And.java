@@ -9,4 +9,9 @@ public class And extends Expression_2 {
     public Expression Not(NumType numType) {
         return new Or(numType, arg1.Not(numType), arg2.Not(numType));
     }
+
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new And(numType, arg1.postprocess(ppctx), arg2.postprocess(ppctx));
+    }
 }

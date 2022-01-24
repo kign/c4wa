@@ -11,4 +11,9 @@ public class Neg extends Expression_1 {
             return new Const(numType, -((Const)arg).doubleValue);
         return this;
     }
+
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new Neg(numType, arg.postprocess(ppctx));
+    }
 }

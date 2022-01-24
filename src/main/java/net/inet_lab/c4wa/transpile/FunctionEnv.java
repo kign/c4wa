@@ -187,8 +187,6 @@ public class FunctionEnv implements Partial, PostprocessContext {
         List<Instruction> attributes = new ArrayList<>();
         List<Instruction> elements = new ArrayList<>();
 
-        attributes.add(new Special(name));
-
         if (is_exported)
             attributes.add(new Export(name));
 
@@ -223,7 +221,7 @@ public class FunctionEnv implements Partial, PostprocessContext {
                 elements.add(new Unreachable());
         }
 
-        Func _watCode = new Func(attributes, elements);
+        Func _watCode = new Func(name, attributes, elements);
         watCode = _watCode.postprocessList(this).postprocessList(this).postprocessList(this);
     }
 

@@ -6,23 +6,27 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Instruction_list extends Instruction {
+    final String ref;
     final Instruction[] attributes;
     final Instruction[] elements;
 
-    public Instruction_list(InstructionType type, Instruction[] attributes, Instruction[] elements) {
+    public Instruction_list(InstructionType type, String ref, Instruction[] attributes, Instruction[] elements) {
         super(type);
+        this.ref = ref;
         this.attributes = attributes;
         this.elements = elements;
     }
 
     public Instruction_list(InstructionType type, String ref, Instruction[] elements) {
         super(type);
-        this.attributes = new Instruction[]{new Special(ref)};
+        this.ref = ref;
+        this.attributes = null; //new Instruction[]{new Special(ref)};
         this.elements = elements;
     }
 
     public Instruction_list(InstructionType type, Instruction[] elements_or_attributes, boolean pElements) {
         super(type);
+        this.ref = null;
         this.attributes = pElements? null: elements_or_attributes;
         this.elements = pElements? elements_or_attributes : null;
     }
@@ -62,15 +66,23 @@ public class Instruction_list extends Instruction {
         else if (type == InstructionName.MODULE)
             return new Module(res);
         else if (type == InstructionName.FUNC)
-            return new Func(Arrays.asList(attributes), res);
-        else
-            return new Instruction_list(type, attributes, res.toArray(Instruction[]::new));
+            return new Func(ref, attributes == null? new ArrayList<>() :Arrays.asList(attributes), res);
+        else if (type == InstructionName.LOOP)
+            return new Loop(ref, res.toArray(Instruction[]::new));
+        else if (type == InstructionName.BLOCK)
+            return new Block(ref, res.toArray(Instruction[]::new));
+        else {
+            assert type == InstructionName.THEN || type == InstructionName.ELSE;
+            return new Instruction_list(type, ref, attributes, res.toArray(Instruction[]::new));
+        }
     }
 
     @Override
     public String toStringPretty(int indent) {
         StringBuilder b = new StringBuilder();
         b.append('(').append(type.getName());
+        if (ref != null)
+            b.append(" $").append(ref);
         if (attributes != null) {
             for (Instruction attribute : attributes)
                 b.append(' ').append(attribute);
@@ -98,24 +110,8 @@ public class Instruction_list extends Instruction {
 
     @Override
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
-        String blockName = null;
-        NumType returnType = null;
-        if (attributes != null) {
-            for (Instruction a: attributes) {
-                if (a instanceof Special && ((Special)a).ref != null && blockName == null)
-                    blockName = ((Special) a).ref;
-                else if (a instanceof Result && returnType == null) {
-                    returnType = ((Result) a).numType;
-                    throw new RuntimeException("That's what BlockExp is for");
-                }
-                else
-                    throw new RuntimeException(type + " with unknown attribute " + a + "; class = " + getClass().getSimpleName());
-            }
-        }
-        if (returnType == null)
-            returnType = NumType.VOID;
-        if (blockName == null)
-            blockName = "<noname>";
+        String blockName = ref == null? "<noname>" : ref;
+        NumType returnType = NumType.VOID;
         fCtx.blockStack.addFirst(blockName);
         if (type != InstructionName.THEN)
             out.writeOpcode(type);

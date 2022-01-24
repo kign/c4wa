@@ -118,7 +118,7 @@ public class Module extends Instruction_list {
                     subImport.writeUnsignedInt(type_idx);
                     imports.add(subImport);
 
-                    mCtx.funcs.put(iFunc.getName(), func_idx);
+                    mCtx.funcs.put(iFunc.ref, func_idx);
                     func_idx++;
                 }
             }
@@ -142,12 +142,11 @@ public class Module extends Instruction_list {
                     exports.add(subExport);
                 }
 
-                mCtx.funcs.put(iFunc.getName(), func_idx);
+                mCtx.funcs.put(iFunc.ref, func_idx);
                 func_idx++;
             }
             else if (i.type == InstructionName.MEMORY) {
                 Memory iMemory = (Memory) i;
-
 
                 if (iMemory.anImport == null) {
                     WasmOutputStream subMemory = new WasmOutputStream();

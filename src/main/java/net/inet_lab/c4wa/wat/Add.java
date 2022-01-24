@@ -27,4 +27,8 @@ public class Add extends Expression_2 {
         return super.comptime_eval();
     }
 
+    @Override
+    public Expression postprocess(PostprocessContext ppctx) {
+        return new Add(numType, arg1.postprocess(ppctx), arg2.postprocess(ppctx));
+    }
 }
