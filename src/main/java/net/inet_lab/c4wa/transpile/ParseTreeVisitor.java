@@ -1935,7 +1935,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
     static private OneExpression prepareRHS(ParserRuleContext ctx, CType lhsType, OneExpression rhs, String desc) {
         if (rhs.expression instanceof Const && (lhsType.is_primitive() || (((Const) rhs.expression).isZero() && lhsType.is_ptr())))
-            return new OneExpression(new Const(lhsType.asNumType(), (Const) rhs.expression, rhs.type.is_signed()), lhsType);
+            return new OneExpression(GenericCast.cast(rhs.type.asNumType(), lhsType.asNumType(), rhs.type.is_signed(), rhs.expression), lhsType);
 
         if (!lhsType.isValidRHS(rhs.type))
             throw fail(ctx, desc, "Expression of type " + rhs.type + " cannot be assigned to type " + lhsType);

@@ -84,4 +84,13 @@ public class Global extends Instruction {
         assert anImport == null;
         return new Instruction[]{new Global(ref, numType, export, mutable, pp_ini)};
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        if (anImport != null)
+            throw new RuntimeException("imported globals not supported in the interpreter");
+        assert this.initialization != null;
+        assert this.initialization instanceof Const;
+        ectx.registerGlobal(ref, mutable, (Const) this.initialization);
+    }
 }

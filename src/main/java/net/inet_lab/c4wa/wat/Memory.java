@@ -40,4 +40,11 @@ public class Memory extends Instruction {
         b.append(')');
         return b.toString();
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        if (anImport != null)
+            throw new RuntimeException("Import memory is not supported by interpreter");
+        ectx.initMemory(pages);
+    }
 }

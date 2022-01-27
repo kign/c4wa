@@ -17,30 +17,52 @@ public class Load extends Expression {
         this.arg = arg.comptime_eval();
     }
 
-    byte getAlignment() {
-        if (name == InstructionName.LOAD8_S || name == InstructionName.LOAD8_U)
-            return 0x00;
-        else if (name == InstructionName.LOAD16_S || name == InstructionName.LOAD16_U)
-            return 0x01;
-        else if (name == InstructionName.LOAD32_S || name == InstructionName.LOAD32_U)
-            return 0x02;
-        else if (numType.is32())
-            return 0x02;
-        else
-            return 0x03;
+    private int getWrap () {
+        switch (name) {
+            case LOAD8_S:
+            case LOAD8_U:
+                return 8;
+            case LOAD16_S:
+            case LOAD16_U:
+                return 16;
+            case LOAD32_S:
+            case LOAD32_U:
+                return 32;
+            case LOAD:
+                return numType.is32() ? 32 : 64;
+            default:
+                throw new RuntimeException("Invalid name = " + name);
+        }
+    }
+
+    private boolean getSigned() {
+        switch (name) {
+            case LOAD8_U:
+            case LOAD16_U:
+            case LOAD32_U:
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    private byte getAlignment() {
+        int wrap = getWrap();
+        byte align = 0;
+        while (wrap > 8) {
+            wrap /= 2;
+            align ++;
+        }
+        return align;
     }
 
     @Override
     public Expression postprocess(PostprocessContext ppctx) {
         Expression a1 = arg.postprocess(ppctx);
-        return name == InstructionName.LOAD ? new Load(numType, a1)
-                : name == InstructionName.LOAD8_S ? new Load(numType, 8, true, a1)
-                : name == InstructionName.LOAD8_U ? new Load(numType, 8, false, a1)
-                : name == InstructionName.LOAD16_S ? new Load(numType, 16, true, a1)
-                : name == InstructionName.LOAD16_U ? new Load(numType, 16, false, a1)
-                : name == InstructionName.LOAD32_S ? new Load(numType, 32, true, a1)
-                : name == InstructionName.LOAD32_U ? new Load(numType, 32, false, a1)
-                : null;
+        if (name == InstructionName.LOAD)
+            return new Load(numType, a1);
+        else
+            return new Load(numType, getWrap(), getSigned(), a1);
     }
 
     @Override
@@ -60,4 +82,19 @@ public class Load extends Expression {
         out.writeDirect(new byte[]{getAlignment(), 0x00});
     }
 
+    @Override
+    public Const eval(ExecutionCtx ectx) {
+        int wrap = getWrap();
+        boolean signed = getSigned();
+        int address = arg.eval(ectx).asInt();
+
+        long res = ectx.memoryLoad(address, wrap, signed);
+
+        if (numType.is_int())
+            return new Const(numType, res);
+        else if (numType == NumType.F32)
+            return new Const(numType, Float.intBitsToFloat((int)res));
+        else
+            return new Const(numType, Double.longBitsToDouble(res));
+    }
 }

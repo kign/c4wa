@@ -32,7 +32,7 @@ def sprintf(p_fmt: int, mem : Uint8Array, offset : int) :
         pp_fmt.append(fmt[i])
         if fmt[i] == '%' :
             if fmt[i + 1] == '%' :
-                pp_fmt.append(fmt[i])
+                pp_fmt.append(fmt[i + 1])
                 i += 2
                 continue
             j = i + 1

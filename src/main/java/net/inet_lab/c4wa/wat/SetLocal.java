@@ -9,4 +9,10 @@ public class SetLocal extends Instruction_1ref {
     public Instruction[] postprocess(PostprocessContext ppctx) {
         return new Instruction[]{new SetLocal(ref, arg.postprocess(ppctx))};
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        ExecutionFunc f = ectx.getCurrentFunc();
+        f.assignLocal(ref, arg.eval(ectx));
+    }
 }

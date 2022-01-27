@@ -62,6 +62,7 @@ public class IfThenElse extends Instruction {
         }
     }
 
+    @Override
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         condition.wasm(mCtx, fCtx, out);
         out.writeOpcode(type);
@@ -70,5 +71,14 @@ public class IfThenElse extends Instruction {
         if (_else != null && _else.elements.length > 0)
             _else.wasm(mCtx, fCtx, out);
         out.writeOpcode(InstructionName.END);
+    }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        int cond = condition.eval(ectx).asInt();
+        if (cond != 0)
+            _then.execute(ectx);
+        else if (_else != null)
+            _else.execute(ectx);
     }
 }

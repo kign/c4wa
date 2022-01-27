@@ -23,4 +23,13 @@ public class Select extends Expression_3 {
     public Expression postprocess(PostprocessContext ppctx) {
         return new Select(arg3.postprocess(ppctx), arg1.postprocess(ppctx), arg2.postprocess(ppctx));
     }
+
+    @Override
+    public Const eval(ExecutionCtx ectx) {
+        int cond = arg3.eval(ectx).asInt();
+        if (cond != 0)
+            return arg1.eval(ectx);
+        else
+            return arg2.eval(ectx);
+    }
 }

@@ -33,4 +33,8 @@ public abstract class Instruction {
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         throw new RuntimeException("Not yet implemented for " + type);
     }
+
+    public void execute(ExecutionCtx ectx) {
+        throw new RuntimeException("Not yet implemented for " + type);
+    }
 }

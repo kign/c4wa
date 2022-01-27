@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import net.inet_lab.c4wa.transpile.SyntaxError;
+import net.inet_lab.c4wa.wat.ExecutionCtx;
 import net.inet_lab.c4wa.wat.Module;
 import net.inet_lab.c4wa.wat.WasmOutputStream;
 import org.antlr.v4.runtime.*;
@@ -67,6 +68,7 @@ public class Main {
                 List.of(new Option('o', "output", true),
                         new Option('h', "help"),
                         new Option('k', "keep"),
+                        new Option('e', "execute"),
                         new Option('v', null)),
                 parsedArgs, fileArgs, prop, ppOptions, builtin_libs, warningTreatment);
 
@@ -96,8 +98,10 @@ public class Main {
                 "bundle.wasm";
 
         boolean is_wat_output = _output.equals("-") || _output.endsWith(".wat");
-        String wasm_output = is_wat_output? null: _output;
-        String wat_output = is_wat_output ? _output :
+        boolean execute = parsedArgs.containsKey("execute");
+        boolean no_output = !parsedArgs.containsKey("output") && execute;
+        String wasm_output = no_output || is_wat_output? null: _output;
+        String wat_output = no_output ? null : is_wat_output ? _output :
                 parsedArgs.containsKey("keep")? _output.substring(0, _output.length() - 5) + ".wat" : null;
 
         ModuleEnv moduleEnv = new ModuleEnv(prop);
@@ -214,6 +218,10 @@ public class Main {
             }
             if (wasm_output != null)
                 wat.wasm(new WasmOutputStream(wasm_output));
+            if (execute) {
+                ExecutionCtx ectx = new ExecutionCtx();
+                wat.execute(ectx);
+            }
         }
     }
 
@@ -325,10 +333,10 @@ public class Main {
                 " -l<name>        include built-in library <name> (use -lh to list available libraries)\n" +
                 " -v              Print (on standard error output) the preprocessor commands\n" +
                 " -k              If output is WASM, retain intermediary WAT file\n" +
+                " -e, --execute   Execute generated code in built-in interpreter; main() will be called\n" +
                 " -w              Inhibit all warning messages\n" +
                 " -Werror         Make all warnings into errors\n" +
                 " -o, --output <FILE>  specify output WAT file (or - for stdout)\n" +
-//                " -k, --keep      when compiling to WASM, keep intermediate WAT file\n" +
                 " -h, --help      this help screen\n" +
                 "\n" +
                 "Compiler properties:\n" +

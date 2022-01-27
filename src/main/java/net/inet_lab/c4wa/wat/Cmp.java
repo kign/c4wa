@@ -6,11 +6,12 @@ public class Cmp extends Expression_2 {
                         bLess?(bEqual?InstructionName.LE:InstructionName.LT):(bEqual ? InstructionName.GE : InstructionName.GT)):
                         (bLess ? (bEqual ? (bSigned?InstructionName.LE_S: InstructionName.LE_U) : (bSigned?InstructionName.LT_S: InstructionName.LT_U)) :
                                         (bEqual ? (bSigned ?InstructionName.GE_S: InstructionName.GE_U) : (bSigned ?InstructionName.GT_S: InstructionName.GT_U))),
-                numType, lhs, rhs, new IConstCmp(bLess, bEqual, bSigned), null);
+                numType, lhs, rhs, new IConstCmp(bLess, bEqual, bSigned), (a,b) -> (a == b)?(bEqual?1:0):a < b == bLess?1:0);
     }
 
     public Cmp(NumType numType, boolean bEqual, Expression lhs, Expression rhs) {
-        super(bEqual?InstructionName.EQ:InstructionName.NE, numType, lhs, rhs, (a, b) -> (a==b) == bEqual? 1 : 0, null);
+        super(bEqual?InstructionName.EQ:InstructionName.NE, numType, lhs, rhs, (a, b) -> (a==b) == bEqual? 1 : 0,
+                (a, b) -> ((a == b) == bEqual)?1:0);
     }
 
     private Cmp(InstructionName name, NumType numType, Expression arg1, Expression arg2,
@@ -38,7 +39,9 @@ public class Cmp extends Expression_2 {
                 ((o.name == InstructionName.NE) ? InstructionName.EQ :
 
                 null
-                ))))))))))))), o.numType, o.arg1, o.arg2, null, null);
+                ))))))))))))), o.numType, o.arg1, o.arg2,
+                                (a, b) -> o.op_i.op(a,b) == 0 ? 1 : 0,
+                                (a, b) -> o.op_f.op(a, b) == 0 ? 1 : 0);
     }
 
     @Override
@@ -57,8 +60,8 @@ public class Cmp extends Expression_2 {
         }
         @Override
         public long op(long a, long b) {
-            if (bEqual && a == b)
-                return 1;
+            if (a == b)
+                return bEqual? 1 : 0;
 
             long res = bSigned? Long.compare(a, b) : Long.compareUnsigned(a, b);
             return (res > 0) == !bLess ? 1 : 0;

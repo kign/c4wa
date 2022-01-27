@@ -40,4 +40,12 @@ public class CallExp extends Expression {
         out.writeOpcode(this);
         out.writeUnsignedInt(mCtx.funcs.get(funcName));
     }
+
+    @Override
+    public Const eval(ExecutionCtx ectx) {
+        Const[] evaluated_args = new Const[args.length];
+        for (int i = 0; i < args.length; i ++)
+            evaluated_args[i] = args[i].eval(ectx);
+        return ectx.evalFunctionCall(funcName, evaluated_args);
+    }
 }

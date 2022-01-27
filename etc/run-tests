@@ -8,14 +8,18 @@ const { spawnSync } = require("child_process");
 const colors = require('colors'); // unsafe, modifies String prototype
 const { wasm_printf } = require('./wasm-printf');
 
-const def_arr = ["WAT file exists (created by gradlew :test) and has been modified after C file",
+const def_arr = [
+    "WAT file exists (created by gradlew :test) and has been modified after C file",
     "WAT file compiled to WASM file",
     "Extracted expected output from C file",
     "WASM file generated expected output",
     "C file compiled to an executable",
     "Native executable compiled from C source generated expected output",
     "Compiler created WASM file",
-    "Creates WASM file is identical to one made by wat2wasm"];
+    "Creates WASM file is identical to one made by wat2wasm",
+    "Interpreter generated output",
+    "Output from interpreter is identical to earlier one"
+];
 
 const c_prefix = `void * memset();
 void * memcpy();
@@ -61,12 +65,24 @@ async function run_all_tests() {
     console.log("\n⦿ Legend of stages used\n".cyan);
 
     def_arr.forEach((msg, idx) => console.log(idx + 1, msg));
-    console.log("\n" + def_arr.map((_, idx) => ` ${1 + idx} `).join(''));
+    // console.log("\n" + def_arr.map((_, idx) => ` ${1 + idx} `).join(''));
+    console.log("\n 1  2  3  4  5  6  7  8  9 10");
 
+    const totals = {succ: 0, fail: 0, skip: 0};
     for (const test of files) {
         const results = await run_one_test(test, false);
         console.log(results.map(x => (x === 3)?'⚠️  '.green:((x === 2)? '✅ ' : ((x === 1)? '❌ ' : ' ∅ '.grey))).join(''), test);
+        results.forEach(x => {
+            if (x === 0) totals.skip ++;
+            else if (x === 1) totals.fail ++;
+            else if (x === 2) totals.succ ++;
+        });
     }
+
+    console.log("\n", totals.succ > 0 ? ("✅ " + totals.succ):'',
+        totals.skip > 0 ? ("∅ " + totals.skip) : '',
+        totals.fail > 0 ? ("❌ " + totals.fail) : '');
+
 }
 
 async function run_one_test(test, verbose) {
@@ -256,6 +272,53 @@ async function run_one_test(test, verbose) {
     else if (verbose)
         console.log("Skipping...");
 
+    // Test 9: Interpreter generated output
+    tid++;
+    if (verbose)
+        console.log(("\n⦿ " + (tid + 1) + ". " + def_arr[tid]).cyan);
+
+    let i_output = '';
+    if (test === '107-smoke') {
+        if (verbose)
+            console.log("Skipping...");
+    }
+    else {
+        res = spawnSync(compile, [cfile, '-e'].concat(libs_for_cfile(cfile)));
+        i_output = (res.stdout === null) ? '' : res.stdout.toString();
+        results[tid] = res.status === 0 ? 2 : 1;
+        if (verbose) {
+            process.stdout.write(res.stderr);
+            console.log("\n" + ((results[tid] === 2) ? "OK".bold.green : "FAILED".bold.red));
+        }
+    }
+
+    // Test 10: Output from interpreter is identical to earlier one
+    tid++;
+    if (verbose)
+        console.log(("\n⦿ " + (tid + 1) + ". " + def_arr[tid]).cyan);
+    if (results[5] === 2 && results[8] === 2) {
+        if (i_output === expected)
+            results[tid] = 2;
+        else {
+            results[tid] = 1;
+            if (verbose) {
+                process.stdout.write("------------------  expected output  ------------------\n");
+                process.stdout.write(expected);
+                process.stdout.write("-----------------  interpreted output  -----------------\n");
+                process.stdout.write(i_output);
+                process.stdout.write("-----------------------  The End  ----------------------\n");
+
+                console.error("❌ Output different, saved as /tmp/expected /tmp/interpreter");
+
+                fs.writeFileSync('/tmp/expected', expected);
+                fs.writeFileSync('/tmp/interpreter', i_output);
+            }
+        }
+        if (verbose)
+            console.log("\n" + ((results[tid] === 2) ? "OK".bold.green : "FAILED".bold.red));
+    } else if (verbose)
+        console.log("Skipping...");
+
     return results;
 }
 
@@ -338,7 +401,7 @@ async function run_c_file(cfile) {
     }
     console.log('✅ Transpiled into WAT file');
 
-    res = spawnSync('wat2wasm', [wat, '--enable-bulk-memory', '-o', wasm], {stdio: 'inherit'});
+    res = spawnSync('wat2wasm', [wat, '-o', wasm], {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ wat2wasm compilation", wat, "to", wasm, "failed with status", res.status, ";", "not proceeding");
@@ -362,7 +425,7 @@ async function run_c_file(cfile) {
         process.stdout.write(wasm_output);
         process.stdout.write("-----------------  The End ----------------\n");
 
-        console.error("❌ Output different, saved as /tmp/c  /tmp/wasm");
+        console.error("❌ Output different, saved as /tmp/c /tmp/wasm");
 
         fs.writeFileSync('/tmp/c', c_output);
         fs.writeFileSync('/tmp/wasm', wasm_output);

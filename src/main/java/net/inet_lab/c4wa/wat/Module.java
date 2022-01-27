@@ -246,4 +246,13 @@ public class Module extends Instruction_list {
             this.funcs = new HashMap<>();
         }
     }
+
+    public void execute(ExecutionCtx ectx) {
+        super.execute(ectx);
+
+        CallExp main = new CallExp("main", NumType.I32, new Expression[]{});
+        Const status = main.eval(ectx);
+        if (!status.isZero())
+            System.err.println("main() returned error status " + status.asInt());
+    }
 }

@@ -25,4 +25,9 @@ public class WrapExp extends Instruction_1 {
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         arg.wasm(mCtx, fCtx, out);
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        throw new ExecutionFunc.ExeReturn(arg.eval(ectx));
+    }
 }

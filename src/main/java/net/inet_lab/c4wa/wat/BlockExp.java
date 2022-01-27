@@ -52,4 +52,19 @@ public class BlockExp extends Expression {
         out.writeOpcode(InstructionName.END);
         fCtx.blockStack.removeFirst();
     }
+
+    @Override
+    public Const eval(ExecutionCtx ectx) {
+        try {
+            for (var i: body)
+                i.execute(ectx);
+        } catch (ExecutionFunc.ExeBreak exeBreak) {
+            assert ref != null;
+            if (ref.equals(exeBreak.label))
+                return exeBreak.returnValue;
+            else
+                throw exeBreak;
+        }
+        return returnExp.eval(ectx);
+    }
 }

@@ -4,6 +4,7 @@ public class Return extends Instruction_1 {
     public Return(Expression arg) {
         super(InstructionName.RETURN, arg);
     }
+
     public Return() {
         this(null);
     }
@@ -14,5 +15,13 @@ public class Return extends Instruction_1 {
             return new Instruction[]{this};
         else
             return new Instruction[]{new Return(arg.postprocess(ppctx))};
+    }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        if (arg == null)
+            throw new ExecutionFunc.ExeReturn();
+        else
+            throw new ExecutionFunc.ExeReturn(arg.eval(ectx));
     }
 }

@@ -53,7 +53,14 @@ public class Store extends Instruction {
         address.wasm(mCtx, fCtx, out);
         value.wasm(mCtx, fCtx, out);
         out.writeOpcode(type);
-        out.writeDirect(new byte[]{((Store) this).getAlignment(), 0x00});
+        out.writeDirect(new byte[]{getAlignment(), 0x00});
     }
 
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        int wrap = type.getMain() == InstructionName.STORE8 ? 8 :
+                   type.getMain() == InstructionName.STORE16 ? 16 :
+                   numType.is32() ? 32 : 64;
+        ectx.memoryStore(address.eval(ectx).asInt(), value.eval(ectx), wrap);
+    }
 }

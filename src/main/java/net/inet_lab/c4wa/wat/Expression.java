@@ -57,4 +57,8 @@ abstract public class Expression implements WasmOutputStream.Opcode {
         else
             return name.opcode(numType);
     }
+
+    public Const eval(ExecutionCtx ectx) {
+        throw new RuntimeException("Not yet implemented for " + name);
+    }
 }

@@ -9,4 +9,9 @@ public class Drop extends Instruction_1 {
     public Instruction[] postprocess(PostprocessContext ppctx) {
         return new Instruction[]{new Drop(arg.postprocess(ppctx))};
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        arg.eval(ectx);
+    }
 }

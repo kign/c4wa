@@ -9,4 +9,9 @@ public class MemoryFill extends Instruction_3 {
     public Instruction[] postprocess(PostprocessContext ppctx) {
         return new Instruction[]{new MemoryFill(arg1.postprocess(ppctx), arg2.postprocess(ppctx), arg3.postprocess(ppctx))};
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        ectx.memoryFill(arg1.eval(ectx).asInt(), arg2.eval(ectx).asInt(), arg3.eval(ectx).asInt());
+    }
 }

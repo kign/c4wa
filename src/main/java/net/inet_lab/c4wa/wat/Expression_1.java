@@ -26,4 +26,26 @@ public abstract class Expression_1 extends Expression {
         if (name == InstructionName.MEMORY_GROW)
             out.writeDirect((byte) 0x00); // "memory.size reserved value must be 0"
     }
+
+    Const evalConst(Const val) {
+        return null;
+    }
+
+    @Override
+    public Expression comptime_eval() {
+        if (arg instanceof Const) {
+            Const res = evalConst((Const) arg);
+            if (res != null)
+                return res;
+        }
+        return this;
+    }
+
+    @Override
+    public Const eval(ExecutionCtx ectx) {
+        Const res = evalConst(arg.eval(ectx));
+        if (res == null)
+            throw new RuntimeException("evalConst not defined for " + fullName());
+        return res;
+    }
 }

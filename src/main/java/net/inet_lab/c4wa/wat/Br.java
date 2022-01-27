@@ -7,6 +7,7 @@ public class Br extends Instruction_ref {
         super(InstructionName.BR, ref);
     }
 
+    @Override
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         int idx = 0;
         for (String blockId : fCtx.blockStack) {
@@ -18,5 +19,10 @@ public class Br extends Instruction_ref {
             throw new RuntimeException("Cannot find block label " + ref);
         out.writeOpcode(type);
         out.writeUnsignedInt(idx);
+    }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        throw new ExecutionFunc.ExeBreak(ref);
     }
 }

@@ -26,8 +26,8 @@ public class Const extends Expression {
 
     public Const(NumType numType1, long value) {
         super(InstructionName.CONST, numType1);
-        longValue = (numType1 == NumType.I32 || numType1 == NumType.I64) ? value : 0;
-        doubleValue = (numType1 == NumType.I32 || numType1 == NumType.I64)? 0 : value;
+        longValue = numType1 == NumType.I32?(int)value: numType1 == NumType.I64 ? value : 0;
+        doubleValue = numType1 == NumType.I32 || numType1 == NumType.I64? 0 : value;
     }
 
     public Const(NumType numType, double value) {
@@ -38,14 +38,6 @@ public class Const extends Expression {
         }
         else
             throw new RuntimeException("You can't do it");
-    }
-
-    public Const(NumType numType, Const orig, boolean signed) {
-        super(InstructionName.CONST, numType);
-        boolean s_int = orig.numType == NumType.I32 || orig.numType == NumType.I64;
-        boolean d_int = numType == NumType.I32 || numType == NumType.I64;
-        longValue =  d_int? (s_int? orig.longValue : (long) orig.doubleValue) : 0;
-        doubleValue = d_int? 0 : (s_int? (signed||orig.longValue>=0? (double)orig.longValue : (double) orig.longValue + Math.pow(2,64)) : orig.doubleValue);
     }
 
     public boolean isTrue() {
@@ -96,5 +88,15 @@ public class Const extends Expression {
             out.writeDouble(doubleValue);
         else
             throw new RuntimeException("invalid numType =" + numType);
+    }
+
+    int asInt() {
+        assert numType == NumType.I32;
+        return (int)longValue;
+    }
+
+    @Override
+    public Const eval(ExecutionCtx ectx) {
+        return this;
     }
 }

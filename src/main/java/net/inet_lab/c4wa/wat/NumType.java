@@ -25,6 +25,14 @@ public enum NumType implements WasmOutputStream.Opcode {
         return this == I32 || this == F32;
     }
 
+    boolean is_int() {
+        return this == I32 || this == I64;
+    }
+
+    boolean is_float() {
+        return this == F32 || this == F64;
+    }
+
     boolean is64() {
         return this == I64 || this == F64;
     }

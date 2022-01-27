@@ -12,4 +12,9 @@ public class GetGlobal extends Expression_ref {
         out.writeOpcode(this);
         out.writeUnsignedInt(mCtx.globals.get(ref));
     }
+
+    @Override
+    public Const eval(ExecutionCtx ectx) {
+        return ectx.getGlobal(ref);
+    }
 }

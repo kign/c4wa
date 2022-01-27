@@ -16,4 +16,12 @@ public class Neg extends Expression_1 {
     public Expression postprocess(PostprocessContext ppctx) {
         return new Neg(numType, arg.postprocess(ppctx));
     }
+
+    @Override
+    public Const eval(ExecutionCtx ectx) {
+        Const a = arg.eval(ectx);
+        assert numType.is_float();
+        assert a.numType == numType;
+        return new Const(numType, -a.doubleValue);
+    }
 }

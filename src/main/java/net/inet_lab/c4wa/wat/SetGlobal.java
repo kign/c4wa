@@ -9,4 +9,9 @@ public class SetGlobal extends Instruction_1ref {
     public Instruction[] postprocess(PostprocessContext ppctx) {
         return new Instruction[]{new SetGlobal(ref, arg.postprocess(ppctx))};
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        ectx.assignGlobal(ref, arg.eval(ectx));
+    }
 }

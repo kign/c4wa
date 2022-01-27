@@ -18,16 +18,6 @@ abstract public class Instruction_1 extends Instruction {
             return "(" + type.getName() + " " + arg + ")";
     }
 
-/*
-    @Override
-    public Instruction[] postprocess(PostprocessContext ppctx) {
-        if (arg == null)
-            return new Instruction[]{this};
-        else
-            return new Instruction[]{new Instruction_1(type, arg.postprocess(ppctx))};
-    }
-*/
-
     @Override
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         if (arg != null)

@@ -37,4 +37,11 @@ public class Import extends Instruction {
         b.append(')');
         return b.toString();
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        assert decl != null;
+        assert decl instanceof Func;
+        ectx.registerImportFunction(new String(importName, StandardCharsets.UTF_8));
+    }
 }

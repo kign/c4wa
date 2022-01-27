@@ -123,4 +123,10 @@ public class Instruction_list extends Instruction {
             out.writeOpcode(InstructionName.END);
         fCtx.blockStack.removeFirst();
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        for (Instruction elm : elements)
+            elm.execute(ectx);
+    }
 }

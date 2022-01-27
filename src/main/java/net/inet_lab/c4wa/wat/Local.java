@@ -14,4 +14,10 @@ public class Local extends Instruction {
     public String toString() {
         return "(" + type.getName() + " $" + ref + " " + numType + ")";
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        ExecutionFunc f = ectx.getCurrentFunc();
+        f.registerLocal(ref, numType);
+    }
 }

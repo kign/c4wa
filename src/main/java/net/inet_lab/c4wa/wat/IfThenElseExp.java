@@ -45,4 +45,13 @@ public class IfThenElseExp extends Expression {
         _else.wasm(mCtx, fCtx, out);
         out.writeOpcode(InstructionName.END);
     }
+
+    @Override
+    public Const eval(ExecutionCtx ectx) {
+        int cond = condition.eval(ectx).asInt();
+        if (cond != 0)
+            return _then.eval(ectx);
+        else
+            return _else.eval(ectx);
+    }
 }

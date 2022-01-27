@@ -146,6 +146,11 @@ public class Func extends Instruction_list {
         }
     }
 
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        ectx.registerInternalFunction(ref, this);
+    }
+
     static class WasmContext {
         final Map<String,Integer> locals;
         final Deque<String> blockStack;
@@ -154,5 +159,25 @@ public class Func extends Instruction_list {
             this.locals = new HashMap<>();
             this.blockStack = new ArrayDeque<>();
         }
+    }
+
+    Const executeCall(ExecutionCtx ectx, Const[] args) {
+        ExecutionFunc f = ectx.getCurrentFunc();
+        int idx = 0;
+        for(Instruction a: attributes) {
+            if (a instanceof Param) {
+                Param p = (Param) a;
+                f.registerLocal(p.ref, p.numType);
+                f.assignLocal(p.ref, args[idx]);
+                idx ++;
+            }
+        }
+        try {
+            super.execute(ectx);
+        }
+        catch (ExecutionFunc.ExeReturn returnException) {
+            return returnException.returnValue;
+        }
+        return null;
     }
 }

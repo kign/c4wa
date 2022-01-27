@@ -9,4 +9,13 @@ public class TeeLocal extends Expression_1ref {
     public Expression postprocess(PostprocessContext ppctx) {
         return new TeeLocal(numType, ref, arg.postprocess(ppctx));
     }
+
+    @Override
+    public Const eval(ExecutionCtx ectx) {
+        ExecutionFunc f = ectx.getCurrentFunc();
+        Const res = arg.eval(ectx);
+        f.assignLocal(ref, res);
+
+        return res;
+    }
 }

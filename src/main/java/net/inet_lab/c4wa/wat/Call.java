@@ -36,4 +36,12 @@ public class Call extends Instruction {
         out.writeOpcode(type);
         out.writeUnsignedInt(mCtx.funcs.get(name));
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        Const[] evaluated_args = new Const[args.length];
+        for (int i = 0; i < args.length; i++)
+            evaluated_args[i] = args[i].eval(ectx);
+        ectx.evalFunctionCall(name, evaluated_args);
+    }
 }

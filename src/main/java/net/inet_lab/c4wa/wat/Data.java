@@ -20,4 +20,10 @@ public class Data extends Instruction {
         b.append(')');
         return b.toString();
     }
+
+    @Override
+    public void execute(ExecutionCtx ectx) {
+        assert offset instanceof Const;
+        ectx.memoryWriteData(data, ((Const)offset).asInt());
+    }
 }
