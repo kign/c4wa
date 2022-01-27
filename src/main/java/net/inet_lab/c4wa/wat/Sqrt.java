@@ -11,8 +11,9 @@ public class Sqrt extends Expression_1 {
     }
 
     @Override
-    public Const eval(ExecutionCtx ectx) {
+    Const evalConst(Const val) {
         assert numType.is_float();
-        return new Const(numType, Math.sqrt(arg.eval(ectx).doubleValue));
+        assert val.numType.is_float();
+        return new Const(numType, Math.sqrt(val.doubleValue));
     }
 }

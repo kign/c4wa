@@ -2,7 +2,7 @@
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $@stack (mut i32) (i32.const 1))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "Result is %.6f\0A\00fltVal > 1 = %d\0A\00[Testing compile-time <<]\0A\002^63 = %.15e [unsigned]\0A\002^31 = %.2f [signed]\0A\002^31 = %.2f [unsigned]\0A\00[Testing run-time <<]\0A\00")
+  (data (i32.const 1024) "Result is %.4f\0A\00fltVal > 1 = %d\0A\00[Testing compile-time <<]\0A\002^63 = %.15e [unsigned]\0A\002^31 = %.2f [signed]\0A\002^31 = %.2f [unsigned]\0A\00[Testing run-time <<]\0A\00")
   (func $no_argument_float (result f32)
     (f32.const -141.18))
   (func $no_argument_short (result i32)

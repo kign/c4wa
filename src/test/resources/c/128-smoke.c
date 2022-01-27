@@ -28,7 +28,7 @@ extern int main() {
 
     longVal = no_argument_short();
 
-    printf("Result is %.6f\n", dblVal + longVal + add_11(-4) + add_11(3.2) + fltVal/2 + add_19(fltVal));
+    printf("Result is %.4f\n", dblVal + longVal + add_11(-4) + add_11(3.2) + fltVal/2 + add_19(fltVal));
 
     printf("fltVal > 1 = %d\n", fltVal > 1.0);
 
@@ -52,7 +52,7 @@ extern int main() {
 
     return 0;
 }
-// Result is -70.979993
+// Result is -70.9800
 // fltVal > 1 = 0
 // [Testing compile-time <<]
 // 2^63 = 9.223372036854776e+18 [unsigned]

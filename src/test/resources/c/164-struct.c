@@ -65,7 +65,7 @@ void law_of_sines(struct Triangle * tri_1) {
     shift(tri_1, &tri_2);
     shift(&tri_2, &tri_3);
 
-    printf("Verifying: %.6f, %.6f, %.6f\n", C(tri_1), C(&tri_2), C(&tri_3));
+    printf("Verifying: %.5f, %.6f, %.6f\n", C(tri_1), C(&tri_2), C(&tri_3));
 }
 
 extern int main () {
@@ -90,4 +90,4 @@ extern int main () {
 }
 // (0.500000,0.750000)/(-1.300000,1.100000) = (0.060345,-0.525862)
 // (-1.300000,1.100000)*(0.060345,-0.525862) = (0.500000,0.750000)
-// Verifying: 10.151491, 10.151492, 10.151492
+// Verifying: 10.15149, 10.151492, 10.151492

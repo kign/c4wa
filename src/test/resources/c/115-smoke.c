@@ -15,9 +15,9 @@ char * long_to_string(unsigned long a) {
         buf[n] = (char)(48 + (int)d);
     } while(a > 0);
 
-    char * ret = malloc(N - n + 2);
-    memcpy(ret, buf + n, N - n + 1);
-    ret[N - n + 1] = '\0';
+    char * ret = malloc(N - n + 1);
+    memcpy(ret, buf + n, N - n);
+    ret[N - n] = '\0';
     return ret;
 }
 

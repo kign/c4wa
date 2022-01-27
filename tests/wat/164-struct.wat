@@ -2,7 +2,7 @@
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
   (global $@stack (mut i32) (i32.const 1))
   (memory (export "memory") 1)
-  (data (i32.const 1024) "Verifying: %.6f, %.6f, %.6f\0A\00(%.6f,%.6f)%c(%.6f,%.6f) = (%.6f,%.6f)\0A\00")
+  (data (i32.const 1024) "Verifying: %.5f, %.6f, %.6f\0A\00(%.6f,%.6f)%c(%.6f,%.6f) = (%.6f,%.6f)\0A\00")
   (func $init (param $a i32) (param $x f64) (param $y f64)
     (f32.store (get_local $a) (f32.demote_f64 (get_local $x)))
     (f32.store (i32.add (get_local $a) (i32.const 4)) (f32.demote_f64 (get_local $y))))

@@ -278,7 +278,7 @@ async function run_one_test(test, verbose) {
         console.log(("\n⦿ " + (tid + 1) + ". " + def_arr[tid]).cyan);
 
     let i_output = '';
-    if (test === '107-smoke') {
+    if (['107-smoke', '172-life'].includes(test)) {
         if (verbose)
             console.log("Skipping...");
     }
