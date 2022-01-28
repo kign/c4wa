@@ -31,4 +31,9 @@ public class InstructionWithNumPrefix implements InstructionType {
         else
             return main.opcode(numType);
     }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

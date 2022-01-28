@@ -333,3 +333,11 @@ Since release 0.4 of the compiler, there are separate _error tests_
 consisting of parsable but invalid C code.
 `./gradlew test` will verify that each of them will generate expected number of errors and warnings.
 
+### Built-in interpreter
+
+Since release 0.5, compiler includes a built-in Web Assembly interpreter (invoked with `-e`).
+Similarly to `run-wasm` and `run-wasm.py` wrappers, it calls `main()` with no arguments and
+supports `printf` import. Unlike these wrappers however, it's not a complete implementation,
+and also very inefficient relative to any WASM runtime
+(which makes it necessary to disable it for some tests in the test suite which would otherwise take too long).
+It is however helpful for some run-time verification (such as alignment hints).

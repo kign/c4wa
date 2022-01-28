@@ -4,17 +4,20 @@ import java.io.IOException;
 
 public class Load extends Expression {
     final Expression arg;
-    public Load(NumType numType, Expression arg) {
+    final int alignment;
+    public Load(NumType numType, Expression arg, int alignment) {
         super(InstructionName.LOAD, numType);
         this.arg = arg.comptime_eval();
+        this.alignment = alignment;
     }
 
-    public Load(NumType numType, int wrap, boolean signed, Expression arg) {
+    public Load(NumType numType, int wrap, boolean signed, Expression arg, int alignment) {
         super((wrap == 8) ?   (signed? InstructionName.LOAD8_S : InstructionName.LOAD8_U) :
             ((wrap == 16) ? (signed ? InstructionName.LOAD16_S : InstructionName.LOAD16_U) :
                             (signed ? InstructionName.LOAD32_S : InstructionName.LOAD32_U)),
         numType);
         this.arg = arg.comptime_eval();
+        this.alignment = alignment;
     }
 
     private int getWrap () {
@@ -46,23 +49,17 @@ public class Load extends Expression {
         }
     }
 
-    private byte getAlignment() {
-        int wrap = getWrap();
-        byte align = 0;
-        while (wrap > 8) {
-            wrap /= 2;
-            align ++;
-        }
-        return align;
+    private int getAlignment() {
+        return Math.min(alignment, getWrap()/8);
     }
 
     @Override
     public Expression postprocess(PostprocessContext ppctx) {
         Expression a1 = arg.postprocess(ppctx);
         if (name == InstructionName.LOAD)
-            return new Load(numType, a1);
+            return new Load(numType, a1, alignment);
         else
-            return new Load(numType, getWrap(), getSigned(), a1);
+            return new Load(numType, getWrap(), getSigned(), a1, alignment);
     }
 
     @Override
@@ -72,14 +69,18 @@ public class Load extends Expression {
 
     @Override
     public String toString() {
-        return "(" + fullName() + " " + arg + ")";
+        return "(" + fullName() + " align=" + getAlignment() + " " + arg + ")";
     }
 
+    @SuppressWarnings("StatementWithEmptyBody")
     @Override
     void wasm(Module.WasmContext mCtx, Func.WasmContext fCtx, WasmOutputStream out) throws IOException {
         arg.wasm(mCtx, fCtx, out);
         out.writeOpcode(this);
-        out.writeDirect(new byte[]{getAlignment(), 0x00});
+        byte logA = 0;
+        int align = getAlignment();
+        for (; align > 1; align /= 2, logA ++);
+        out.writeDirect(new byte[]{logA, 0x00});
     }
 
     @Override
@@ -87,6 +88,10 @@ public class Load extends Expression {
         int wrap = getWrap();
         boolean signed = getSigned();
         int address = arg.eval(ectx).asInt();
+
+        if (address % getAlignment() != 0)
+            throw new RuntimeException("Alignment hint violation for " + fullName() + ", address = " + address +
+                    ", alignment = " + this.alignment);
 
         long res = ectx.memoryLoad(address, wrap, signed);
 

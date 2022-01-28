@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class RunAllTests {
+    private static final int ALIGNMENT = 2;
 
     @TestFactory
     List<DynamicTest> generateWatFiles() throws IOException {
@@ -71,7 +72,7 @@ public class RunAllTests {
                         needs_pp.contains(fname),
                         libs,
                         Paths.get("tests", "wat", fname.replace(".c", ".wat")),
-                        err -> warnCount[0] ++);
+                        err -> warnCount[0] ++, ALIGNMENT);
                 assertEquals(n_warnings, warnCount[0], "warnings + errors");
             }));
         }
@@ -113,7 +114,7 @@ public class RunAllTests {
                         false,
                         List.of(),
                         null,
-                        err -> {if (err.is_error) errCount[0] ++; else warnCount[0] ++; });
+                        err -> {if (err.is_error) errCount[0] ++; else warnCount[0] ++; }, ALIGNMENT);
                 assertTrue(file_found, "'" + fname + "': " + errCount[0] +  " errors, " + warnCount[0] +  " warnings; add to `expected'\n");
                 assertEquals(n_errors, errCount[0]);
                 assertEquals(n_warnings, warnCount[0]);

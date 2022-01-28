@@ -320,7 +320,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
 
             Instruction ires = tFirst == LOCAL ? new SetLocal(watNames[iFirst], res) :
                                (tFirst == GLOBAL ? new SetGlobal(watNames[iFirst], res) :
-                                       memory_store(type, new GetLocal(NumType.I32, watNames[iFirst]), res));
+                                       memory_store(type, new GetLocal(NumType.I32, watNames[iFirst]), res,
+                                               moduleEnv.alignment));
 
             return new Instruction[]{ires};
         }
@@ -354,7 +355,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             if (address)
                 return new GetLocal(NumType.I32, watName);
             else if (decl.inStack && !decl.isArray && !decl.type.is_struct())
-                return memory_load(decl.type, new GetLocal(decl.type.asNumType(), watName));
+                return memory_load(decl.type, new GetLocal(decl.type.asNumType(), watName),
+                            functionEnv.moduleEnv.alignment);
             else
                 return new GetLocal(decl.type.is_struct()? NumType.I32 : decl.type.asNumType(), watName);
         }
@@ -963,11 +965,11 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 if (arg.type.is_32() || arg.type.is_ptr()) {
                     NumType t64 = arg.type.is_int() || arg.type.is_ptr() ? NumType.I64 : NumType.F64;
                     func_call_elms.add(new Store(t64, getStack,
-                            GenericCast.cast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.expression)));
+                            GenericCast.cast(arg.type.asNumType(), t64, arg.type.is_signed(), arg.expression), moduleEnv.alignment));
                 } else if (arg.type.is_struct())
-                    func_call_elms.add(new Store(NumType.I32, getStack, arg.expression));
+                    func_call_elms.add(new Store(NumType.I32, getStack, arg.expression, moduleEnv.alignment));
                 else
-                    func_call_elms.add(new Store(arg.type.asNumType(), getStack, arg.expression));
+                    func_call_elms.add(new Store(arg.type.asNumType(), getStack, arg.expression, moduleEnv.alignment));
                 if (idx < args.expressions.length - 1) {
                     func_call_elms.add(new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Add(NumType.I32, getStack, new Const(8))));
                     stack_increment += 8;
@@ -1143,17 +1145,17 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         }
 
         if (lhs.expression.complexity() <= 3) {
-            OneExpression binaryOp = binary_op(ctx, new OneExpression(memory_load(type,lhs.expression), type), rhs, op);
-            return new OneInstruction(memory_store(lhs, binaryOp));
+            OneExpression binaryOp = binary_op(ctx, new OneExpression(memory_load(type,lhs.expression, moduleEnv.alignment), type), rhs, op);
+            return new OneInstruction(memory_store(lhs, binaryOp, moduleEnv.alignment));
 
         }
         else {
             String tempVar = functionEnv.temporaryVar(NumType.I32);
 
             OneExpression new_lhs = new OneExpression(new GetLocal(type.asNumType(), tempVar), type);
-            OneExpression binaryOp = binary_op(ctx, new OneExpression(memory_load(type, new_lhs.expression), type), rhs, op);
+            OneExpression binaryOp = binary_op(ctx, new OneExpression(memory_load(type, new_lhs.expression, moduleEnv.alignment), type), rhs, op);
 
-            return new OneInstruction(new DelayedList(List.of(new SetLocal(tempVar, lhs.expression), memory_store(new_lhs, binaryOp))));
+            return new OneInstruction(new DelayedList(List.of(new SetLocal(tempVar, lhs.expression), memory_store(new_lhs, binaryOp, moduleEnv.alignment))));
         }
     }
 
@@ -1162,7 +1164,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         OneExpression lhs = (OneExpression) visit(ctx.lhs());
         OneExpression rhs = prepareRHS(ctx, lhs.type, (OneExpression) visit(ctx.expression()), "assignment");
 
-        return new OneInstruction(memory_store(lhs, rhs));
+        return new OneInstruction(memory_store(lhs, rhs, moduleEnv.alignment));
     }
 
     @Override
@@ -1173,28 +1175,27 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         return new OneExpression(new BlockExp(null,right.type.asNumType(), new Instruction[]{left.instruction}, right.expression), right.type);
     }
 
-    static private Store memory_store(OneExpression lhs, OneExpression rhs) {
-        return memory_store(lhs.type, lhs.expression, rhs.expression);
+    static private Store memory_store(OneExpression lhs, OneExpression rhs, int alignment) {
+        return memory_store(lhs.type, lhs.expression, rhs.expression, alignment);
     }
 
-    static private Store memory_store(CType type, Expression lhs, Expression rhs) {
+    static private Store memory_store(CType type, Expression lhs, Expression rhs, int alignment) {
         if (type.same(CType.CHAR))
-            return new Store(type.asNumType(), 8, lhs, rhs);
+            return new Store(type.asNumType(), 8, lhs, rhs, alignment);
         else if (type.same(CType.SHORT))
-            return new Store(type.asNumType(), 16, lhs, rhs);
+            return new Store(type.asNumType(), 16, lhs, rhs, alignment);
         else
-            return new Store(type.asNumType(), lhs, rhs);
+            return new Store(type.asNumType(), lhs, rhs, alignment);
     }
 
-    static private Load memory_load(CType type, Expression i) {
+    static private Load memory_load(CType type, Expression i, int alignment) {
         if (type.size() == 1)
-            return new Load(type.asNumType(), 8, type.is_signed(), i);
+            return new Load(type.asNumType(), 8, type.is_signed(), i, alignment);
         else if (type.size() == 2)
-            return new Load(type.asNumType(), 16, type.is_signed(), i);
+            return new Load(type.asNumType(), 16, type.is_signed(), i, alignment);
         else
-            return new Load(type.asNumType(), i);
+            return new Load(type.asNumType(), i, alignment);
     }
-
 
     @Override
     public OneInstruction visitMult_variable_decl(c4waParser.Mult_variable_declContext ctx) {
@@ -1419,7 +1420,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (mInfo.size != null || type.is_struct())
             return new OneExpression(memAddress, type);
 
-        return new OneExpression(memory_load(type, memAddress), type);
+        return new OneExpression(memory_load(type, memAddress, moduleEnv.alignment), type);
     }
 
     @Override
@@ -1468,7 +1469,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
         if (type.is_struct())
             return new OneExpression(memAddress, type);
         else
-            return new OneExpression(memory_load(type, memAddress), type);
+            return new OneExpression(memory_load(type, memAddress, moduleEnv.alignment), type);
     }
 
     @Override
@@ -1740,7 +1741,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             if (type.is_void())
                 throw fail(ctx, "unary_op", "Trying to dereference 'void *'");
 
-            return new OneExpression(memory_load(type, exp.expression), type);
+            return new OneExpression(memory_load(type, exp.expression, moduleEnv.alignment), type);
         }
         else if (op.equals("~")) {
             return new OneExpression(new Xor(exp.type.asNumType(), exp.expression, new Const(exp.type.asNumType(), -1)), exp.type);

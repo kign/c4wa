@@ -246,6 +246,7 @@ async function run_one_test(test, verbose) {
         console.log("Skipping...");
 
     fs.rmSync(tmp_exe, {force: true});
+    const alignment = get_alignment();
 
     // Test 7: direct WASM generation
     tid++;
@@ -253,7 +254,7 @@ async function run_one_test(test, verbose) {
         console.log(("\n⦿ " + (tid + 1) + ". " + def_arr[tid]).cyan);
 
     const wasm_direct = path.resolve(tmp_dir, path.basename(cfile).replace('.c', '.wasm'));
-    res = spawnSync(compile, [cfile, '-o', wasm_direct].concat(libs_for_cfile(cfile)), {stdio: verbose ? 'inherit' : 'ignore'});
+    res = spawnSync(compile, [cfile, '-a', alignment, '-o', wasm_direct].concat(libs_for_cfile(cfile)), {stdio: verbose ? 'inherit' : 'ignore'});
     results[tid] = (res.status === 0) ? 2 : 1;
     if (verbose)
         console.log("\n" + ((results[tid] === 2) ? "OK".bold.green : "FAILED".bold.red));
@@ -283,7 +284,7 @@ async function run_one_test(test, verbose) {
             console.log("Skipping...");
     }
     else {
-        res = spawnSync(compile, [cfile, '-e'].concat(libs_for_cfile(cfile)));
+        res = spawnSync(compile, [cfile, '-a', alignment, '-e'].concat(libs_for_cfile(cfile)));
         i_output = (res.stdout === null) ? '' : res.stdout.toString();
         results[tid] = res.status === 0 ? 2 : 1;
         if (verbose) {
@@ -337,8 +338,11 @@ async function build() {
 
 function libs_for_cfile (cfile) {
     const run_tests_java = fs.readFileSync('src/test/java/net/inet_lab/c4wa/transpile/RunAllTests.java', 'utf8');
-    const m = /libraries\s*=\s*List.of\((.+?)\)/s.exec(run_tests_java);
+    let m = /libraries\s*=\s*List.of\((.+?)\)/s.exec(run_tests_java);
     const libraries = JSON.parse('[' + m[1] + ']');
+
+    m = /ALIGNMENT\s*=\s*([1248])/s.exec(run_tests_java)
+    const alignment = m[1];
 
     const libs = [];
     let f = false;
@@ -352,6 +356,12 @@ function libs_for_cfile (cfile) {
             libs.push("-l" + x);
     }
     return libs;
+}
+
+function get_alignment() {
+    const run_tests_java = fs.readFileSync('src/test/java/net/inet_lab/c4wa/transpile/RunAllTests.java', 'utf8');
+    const m = /ALIGNMENT\s*=\s*([1248])/s.exec(run_tests_java)
+    return m[1];
 }
 
 async function run_c_file(cfile) {

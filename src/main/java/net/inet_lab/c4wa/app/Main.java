@@ -69,6 +69,7 @@ public class Main {
                         new Option('h', "help"),
                         new Option('k', "keep"),
                         new Option('e', "execute"),
+                        new Option ('a', "alignment", true),
                         new Option('v', null)),
                 parsedArgs, fileArgs, prop, ppOptions, builtin_libs, warningTreatment);
 
@@ -104,7 +105,13 @@ public class Main {
         String wat_output = no_output ? null : is_wat_output ? _output :
                 parsedArgs.containsKey("keep")? _output.substring(0, _output.length() - 5) + ".wat" : null;
 
-        ModuleEnv moduleEnv = new ModuleEnv(prop);
+        int alignment = parsedArgs.containsKey("alignment")? Integer.parseInt(parsedArgs.get("alignment")) : 1;
+        if (!List.of(1,2,4,8).contains(alignment)) {
+            System.err.println("Invalid alignment " + alignment + "; should be one of: 1, 2, 4, 8");
+            System.exit(1);
+        }
+
+        ModuleEnv moduleEnv = new ModuleEnv(prop, alignment);
         Module wat = null;
         Pattern ppp = Pattern.compile("^#\\s*(define|if|undef|include)");
         int n_units = fileArgs.size() + builtin_libs.size();
@@ -262,7 +269,7 @@ public class Main {
 
     // to be used from tests
     public static void runAndSave(String programText, boolean usePreprocessor, List<String> libs,
-                                  @Nullable Path watFileName, SyntaxError.WarningInterface warnHandler) throws IOException {
+                                  @Nullable Path watFileName, SyntaxError.WarningInterface warnHandler, int alignment) throws IOException {
         Properties prop = defaultProperties();
 
         List<String> ppOptions = new ArrayList<>();
@@ -272,7 +279,7 @@ public class Main {
         if (usePreprocessor)
             programText = String.join("\n", runTextThroughCPreprocessor(programText, ppOptions));
 
-        ModuleEnv moduleEnv = new ModuleEnv(prop);
+        ModuleEnv moduleEnv = new ModuleEnv(prop, alignment);
         moduleEnv.setWarningHandler(-1, warnHandler);
 
         ParseTree tree = buildParseTree(programText);
@@ -331,6 +338,7 @@ public class Main {
                 " -D<name>=value  pass definition to C preprocessor\n" +
                 " -X<name>=value  override compiler property (see below)\n" +
                 " -l<name>        include built-in library <name> (use -lh to list available libraries)\n" +
+                " -a [0|2|4|8]    Memory alignment level (default is 1, no alignment)\n" +
                 " -v              Print (on standard error output) the preprocessor commands\n" +
                 " -k              If output is WASM, retain intermediary WAT file\n" +
                 " -e, --execute   Execute generated code in built-in interpreter; main() will be called\n" +

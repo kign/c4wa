@@ -22,6 +22,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
     final String MEMORY_NAME;
 
     final boolean support_bulk_mem;
+    final int alignment;
 
     final static String STACK_VAR_NAME = "@stack";
     // `A? B: C` translates to (if A (then B) (else C)) if other B or C has complexity greater or equal than this value;
@@ -31,7 +32,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
     SyntaxError.WarningInterface warningHandler;
     int arg_no;
 
-    public ModuleEnv(Properties prop) {
+    public ModuleEnv(Properties prop, int alignment) {
         funcDecl = new HashMap<>();
         varDecl = new HashMap<>();
         functions = new ArrayList<>();
@@ -58,6 +59,8 @@ public class ModuleEnv implements Partial, PostprocessContext {
         STACK_SIZE = memoryState == MemoryState.NONE ? 0 : Integer.parseInt(prop.getProperty("module.stackSize"));
 
         this.support_bulk_mem = List.of("y", "yes", "t", "true").contains(prop.getProperty("wasm.bulk-memory").toLowerCase());
+        assert alignment == 1 || alignment == 2 || alignment == 4 || alignment == 8;
+        this.alignment = alignment;
 
         data = new ArrayList<>();
         this.libraryRequests = new HashMap<>();
