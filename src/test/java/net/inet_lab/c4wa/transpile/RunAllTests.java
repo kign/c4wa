@@ -19,7 +19,9 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class RunAllTests {
-    private static final int ALIGNMENT = 2;
+    // You can change it to 1, 2 or 4, and all tests should still pass,
+    // but ALL of *.wat and *.wasm files will be updated
+    private static final int ALIGNMENT = 8;
 
     @TestFactory
     List<DynamicTest> generateWatFiles() throws IOException {

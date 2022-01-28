@@ -198,7 +198,9 @@ async function run_one_test(test, verbose) {
     const c_program = fs.readFileSync(cfile, 'utf8');
     fs.writeFileSync(tmp_c, (/^#/m.test(c_program)? "" : c_prefix) + c_program);
 
-    res = spawnSync('clang', ['-g', '-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c].concat(test === '124-smoke' ? ['-Wno-literal-conversion'] : []), spawn_options);
+    const alignment = get_alignment();
+
+    res = spawnSync('clang', ['-g', '-DC4WA_ALIGNMENT='+alignment, '-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c].concat(test === '124-smoke' ? ['-Wno-literal-conversion'] : []), spawn_options);
     if (verbose)
         results[tid] = (res.status === 0) ? 2 : 1;
     else
@@ -235,6 +237,12 @@ async function run_one_test(test, verbose) {
                     console.log("Expected output ended after", i, "chars, actual output has", output.length, "chars, next char", output.charCodeAt(i));
                 else if (i === output.length)
                     console.log("Actual output ended after", i, "chars, expected output has", expected.length, "chars, next char", expected.charCodeAt(i));
+
+                console.error("❌ Output different, saved as /tmp/expected /tmp/actual");
+
+                fs.writeFileSync('/tmp/expected', expected);
+                fs.writeFileSync('/tmp/actual', output);
+
             }
             if (res.status !== 0)
                 console.log("Process returned status", res.status);
@@ -246,7 +254,6 @@ async function run_one_test(test, verbose) {
         console.log("Skipping...");
 
     fs.rmSync(tmp_exe, {force: true});
-    const alignment = get_alignment();
 
     // Test 7: direct WASM generation
     tid++;
@@ -379,7 +386,9 @@ async function run_c_file(cfile) {
 
     await build ();
 
-    let res = spawnSync('clang', ['-g', '-O0', '-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c], {stdio: 'inherit'});
+    const alignment = get_alignment();
+
+    let res = spawnSync('clang', ['-g', '-DC4WA_ALIGNMENT='+alignment, '-O0', '-Wno-incompatible-library-redeclaration', '-o', tmp_exe, tmp_c], {stdio: 'inherit'});
 
     if (res.status !== 0) {
         console.error("❌ GCC compilation failed, not proceeding");

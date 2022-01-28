@@ -1,6 +1,6 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
-  (global $@stack (mut i32) (i32.const 1))
+  (global $@stack (mut i32) (i32.const 8))
   (memory (export "memory") 1)
   (data (i32.const 1024) "%ld | %lx\0A\00")
   (func $main (export "main") (result i32)
@@ -10,9 +10,9 @@
     (block $@block_1_break
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $i) (i32.const 64)))
-        (i64.store (global.get $@stack) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $i))))
+        (i64.store align=8 (global.get $@stack) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $i))))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $i))))
+        (i64.store align=8 (global.get $@stack) (i64.shl (i64.const 1) (i64.extend_i32_s (get_local $i))))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (i32.const 1024) (global.get $@stack))
         (set_local $i (i32.add (get_local $i) (i32.const 1)))

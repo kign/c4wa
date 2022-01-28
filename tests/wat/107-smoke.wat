@@ -1,6 +1,6 @@
 (module
   (import "c4wa" "printf" (func $printf (param i32) (param i32)))
-  (global $@stack (mut i32) (i32.const 1))
+  (global $@stack (mut i32) (i32.const 8))
   (global $N i32 (i32.const 50))
   (global $sep i32 (i32.const 1024))
   (memory (export "memory") 1)
@@ -39,11 +39,11 @@
           (then
             (set_local $i (i32.add (get_local $i) (i32.const 1)))
             (br $@block_1_continue)))
-        (i64.store (global.get $@stack) (i64.extend_i32_s (select (i32.const 1036) (global.get $sep) (get_local $start))))
+        (i64.store align=8 (global.get $@stack) (i64.extend_i32_s (select (i32.const 1036) (global.get $sep) (get_local $start))))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $i)))
+        (i64.store align=8 (global.get $@stack) (i64.extend_i32_s (get_local $i)))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $v)))
+        (i64.store align=8 (global.get $@stack) (i64.extend_i32_s (get_local $v)))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 16)))
         (call $printf (i32.const 1027) (global.get $@stack))
         (set_local $max (get_local $v))

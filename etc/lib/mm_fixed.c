@@ -40,11 +40,14 @@ void mm_init(int extra_offset, int size) {
         abort ();
 
     __mm_extra_offset = extra_offset;
-    __mm_size = size;
+    __mm_size = (size - 1) / __builtin_alignment * __builtin_alignment + __builtin_alignment;
 
 #if !defined(C4WA) && EMULATE_LINEAR_MEMORY
     __builtin_memory = malloc(64000 * EMULATE_LINEAR_MEMORY);
 #endif
+
+    if (__builtin_alignment > 1 && (__builtin_offset + __mm_extra_offset) % __builtin_alignment > 0)
+        __mm_extra_offset += __builtin_alignment - (__builtin_offset + __mm_extra_offset) % __builtin_alignment;
 
     __mm_start = (unsigned long *)(__builtin_memory + __builtin_offset + __mm_extra_offset);
 }

@@ -8,7 +8,7 @@ public class Struct extends StructDecl {
     final Map<String,Var> m;
     final int size;
 
-    public Struct(String name, VarInput[] members) {
+    public Struct(String name, VarInput[] members, int alignment) {
         super(name);
         m = new HashMap<>();
 
@@ -16,6 +16,9 @@ public class Struct extends StructDecl {
         for(VarInput mem: members) {
             if (m.containsKey(mem.name))
                 throw new RuntimeException("Member '" + mem.name + "' already exists");
+            int align = Math.min(mem.type.size(), alignment);
+            if (align > 1 && offset % align > 0)
+                offset += align - offset % align;
             m.put(mem.name, new Var(mem, offset));
             offset += mem.type.size() * (mem.size == null? 1 : mem.size);
         }

@@ -6,6 +6,7 @@ void * malloc(int size) {
     if (__available_size < 0)
         __available_size = 64000 * memsize();
 
+    __last_offset = (__last_offset - 1) / __builtin_alignment * __builtin_alignment + __builtin_alignment;
     char * res = __builtin_memory + __last_offset;
 
     __last_offset += size;

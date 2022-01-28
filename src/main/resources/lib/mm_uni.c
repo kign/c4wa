@@ -6,7 +6,7 @@
 # 1 "<built-in>" 2
 # 1 "etc/lib/mm_uni.c" 2
 // universal memory manager
-# 28 "etc/lib/mm_uni.c"
+# 29 "etc/lib/mm_uni.c"
 static void * __mm_memory = 0;
 
 
@@ -19,16 +19,18 @@ static int * __mm_avail = 0;
 // Minimal memory unit, 2^7
 static int __mm_min = 0;
 
-/* Memory block is a unit of size 64 * MEM_MIN + 12
- * <header: 4 bytes>  <map: 8 bytes>  <1=MEM_MIN> .... <64>
+
+
+/* Memory block is a unit of size 64 * MEM_MIN + 16
+ * <header: 8 bytes>  <map: 8 bytes>  <1=MEM_MIN> .... <64>
  * header = 0: block is free
- * header < 0: this is start of "big block", up to (64 * MEM_MIN + 8 + (-header - 1) * (64 * MEM_MIN + 12)) bytes
+ * header < 0: this is start of "big block", up to (64 * MEM_MIN + 8 + (-header - 1) * (64 * MEM_MIN + 16)) bytes
  * header > 0: is is collection of "small blocks" of size MEM_MIN * 2^(header - 1)
  *
  * malloc(size < MEM_MIN) : using size = MEM_MIN
  * malloc(MEM_MIN <= size <= 64 * MEM_MIN) : using "small collection" of {min 2^n | 2^n >= size}
  * malloc(size > 64 * MEM_MIN) : using N big blocks,
- *     N = (int) Math.ceil(size - (64 * MEM_MIN + 8))/(64 * MEM_MIN + 12)
+ *     N = (int) Math.ceil(size - (64 * MEM_MIN + 8))/(64 * MEM_MIN + 16)
  */
 
 static int __mm_inuse = 0;
@@ -49,15 +51,18 @@ void mm_init(int mm_min) {
 
 
 
-    __mm_extra_offset = 10*sizeof(int) + 20*sizeof(int *);
+    int adj = 0;
+    if (__builtin_offset % __builtin_alignment > 0)
+        adj = __builtin_alignment - __builtin_offset % __builtin_alignment;
+    __mm_extra_offset = 10*sizeof(int) + 20*sizeof(int *) + adj;
     __mm_memory = __builtin_memory + __builtin_offset + __mm_extra_offset;
-    __mm_avail = (int *)(__builtin_memory + __builtin_offset);
+    __mm_avail = (int *)(__builtin_memory + __builtin_offset + adj);
 
     int i;
     for (i = 0; i <= 6; i ++)
         __mm_avail[i] = -1;
 
-    __mm_report_histogram = (int *)(__builtin_memory + __builtin_offset + 10*sizeof(int));
+    __mm_report_histogram = (int *)(__builtin_memory + __builtin_offset + 10*sizeof(int) + adj);
     for (i = 0; i <= 6; i ++)
         __mm_report_histogram[i] = 0;
 }
@@ -71,7 +76,7 @@ void * malloc (int size) {
     if (!__mm_min)
         mm_init (128);
 
-    const int unit = 64 * __mm_min + 12;
+    const int unit = 64 * __mm_min + (8 + 8);
 
 
 
@@ -80,7 +85,7 @@ void * malloc (int size) {
 
     if (size > 64 * __mm_min) {
         // big block
-        int n = 2 + (size - (64 * __mm_min + 8))/(64 * __mm_min + 12);
+        int n = 2 + (size - (64 * __mm_min + 8))/(64 * __mm_min + (8 + 8));
 
 
 
@@ -100,7 +105,7 @@ void * malloc (int size) {
 
 
                     *(int *)(__mm_memory + idx * unit) = -n;
-                    return __mm_memory + idx * unit + 4;
+                    return __mm_memory + idx * unit + 8;
                 }
                 if (j == __mm_inuse)
                     break;
@@ -141,7 +146,7 @@ void * malloc (int size) {
 
 
         *(int *)(__mm_memory + idx * unit) = -n;
-        return __mm_memory + idx * unit + 4;
+        return __mm_memory + idx * unit + 8;
     }
     else {
         // small block
@@ -160,7 +165,7 @@ void * malloc (int size) {
             do {
                 if (idx >= __mm_inuse) break;
                 int state = *(int *)(__mm_memory + idx * unit);
-                if (state == 0 || (state == n + 1 && *(long *)(__mm_memory + idx * unit + 4) != 0) ) {
+                if (state == 0 || (state == n + 1 && *(long *)(__mm_memory + idx * unit + 8) != 0) ) {
                     break;
                 }
                 else if (state > 0)
@@ -203,13 +208,13 @@ void * malloc (int size) {
             *(int *)(__mm_memory + idx * unit) = n + 1;
             // Setting last ("trailing") 2^(6-n) bits to 1 (= "available", rest to 0)
             int bits = 1 << (6-n);
-            *(unsigned long *)(__mm_memory + idx * unit + 4) = (bits == 64? (unsigned long)0 : ((unsigned long)1 << (unsigned long)bits)) - 1;
+            *(unsigned long *)(__mm_memory + idx * unit + 8) = (bits == 64? (unsigned long)0 : ((unsigned long)1 << (unsigned long)bits)) - 1;
 
 
 
 
         }
-        unsigned long * cur = (unsigned long *)(__mm_memory + idx * unit + 4);
+        unsigned long * cur = (unsigned long *)(__mm_memory + idx * unit + 8);
         if(!(*cur != 0)) abort ();
         int j = __builtin_ctzl(*cur);
 
@@ -235,7 +240,7 @@ void free(void * address) {
 
     __mm_stat_freed ++;
 
-    const int unit = 64 * __mm_min + 12;
+    const int unit = 64 * __mm_min + (8 + 8);
 
     int i;
     int idx = (address - __mm_memory) / unit;
@@ -248,19 +253,19 @@ void free(void * address) {
 
 
 
-        if(!(address == __mm_memory + idx * unit + 4)) abort ();
+        if(!(address == __mm_memory + idx * unit + 8)) abort ();
         for (i = 0; i < -state; i ++)
             *(int *)(__mm_memory + (idx + i) * unit) = 0;
     }
     else {
-        unsigned long * cur = (unsigned long *)(__mm_memory + idx * unit + 4);
+        unsigned long * cur = (unsigned long *)(__mm_memory + idx * unit + 8);
         int n = state - 1;
         if(!(n <= 6)) abort ();
         int a_size = __mm_min;
         for (i = 0; i < n; i ++)
             a_size *= 2;
         int bits = 1 << (6-n);
-        int j = (address - (void *)cur - 8)/a_size;
+        int j = (address - (void*)cur - 8)/a_size;
 
 
 
@@ -328,7 +333,7 @@ void __mm_append_number(char * dst, int num) {
 }
 
 char * mm_print_units() {
-    const int unit = 64 * __mm_min + 12;
+    const int unit = 64 * __mm_min + (8 + 8);
     char * buf = malloc(1000);
     buf[0] = '\0';
 
@@ -346,7 +351,7 @@ char * mm_print_units() {
             __mm_append_string(buf, "S<");
             __mm_append_number(buf, state - 1);
             __mm_append_string(buf, "|free=");
-            __mm_append_number(buf, __builtin_popcountl(*(unsigned long *)(__mm_memory + idx * unit + 4)));
+            __mm_append_number(buf, __builtin_popcountl(*(unsigned long *)(__mm_memory + idx * unit + 8)));
             __mm_append_string(buf, ">");
         }
     }

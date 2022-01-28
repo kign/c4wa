@@ -50,7 +50,8 @@ void verify(struct Unit * unit) {
 
 extern int main () {
 #ifdef C4WA
-    storage = (struct Unit **) (__builtin_memory + __builtin_offset);
+    int actual_offset =  (__builtin_offset - 1) / __builtin_alignment * __builtin_alignment + __builtin_alignment;
+    storage = (struct Unit **) (__builtin_memory + actual_offset);
     mm_init(N_UNITS * sizeof(struct Unit *), sizeof(struct Unit));
 #else
     storage = malloc(N_UNITS * sizeof(struct Unit *));

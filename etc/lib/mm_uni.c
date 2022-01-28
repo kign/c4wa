@@ -13,6 +13,7 @@
 #ifndef C4WA
 static void * __builtin_memory;
 static int __builtin_offset = 0;
+static int __builtin_alignment = C4WA_ALIGNMENT;
 
 static int __memsize = 1;
 int memsize() {
@@ -37,16 +38,18 @@ static int * __mm_avail = 0;
 // Minimal memory unit, 2^7
 static int __mm_min = 0;
 
-/* Memory block is a unit of size 64 * MEM_MIN + 12
- * <header: 4 bytes>  <map: 8 bytes>  <1=MEM_MIN> .... <64>
+#define HDR_SIZE 8
+
+/* Memory block is a unit of size 64 * MEM_MIN + 16
+ * <header: 8 bytes>  <map: 8 bytes>  <1=MEM_MIN> .... <64>
  * header = 0: block is free
- * header < 0: this is start of "big block", up to (64 * MEM_MIN + 8 + (-header - 1) * (64 * MEM_MIN + 12)) bytes
+ * header < 0: this is start of "big block", up to (64 * MEM_MIN + 8 + (-header - 1) * (64 * MEM_MIN + 16)) bytes
  * header > 0: is is collection of "small blocks" of size MEM_MIN * 2^(header - 1)
  *
  * malloc(size < MEM_MIN) : using size = MEM_MIN
  * malloc(MEM_MIN <= size <= 64 * MEM_MIN) : using "small collection" of {min 2^n | 2^n >= size}
  * malloc(size > 64 * MEM_MIN) : using N big blocks,
- *     N = (int) Math.ceil(size - (64 * MEM_MIN + 8))/(64 * MEM_MIN + 12)
+ *     N = (int) Math.ceil(size - (64 * MEM_MIN + 8))/(64 * MEM_MIN + 16)
  */
 
 static int __mm_inuse = 0;
@@ -67,15 +70,18 @@ void mm_init(int mm_min) {
     __builtin_memory = malloc(LM_PAGE * __memsize * EMULATE_LINEAR_MEMORY);
 #endif
 
-    __mm_extra_offset = 10*sizeof(int) + MM_HIST_SIZE*sizeof(int *);
-    __mm_memory =  __builtin_memory + __builtin_offset + __mm_extra_offset;
-    __mm_avail = (int *)(__builtin_memory + __builtin_offset);
+    int adj = 0;
+    if (__builtin_offset % __builtin_alignment > 0)
+        adj = __builtin_alignment - __builtin_offset % __builtin_alignment;
+    __mm_extra_offset = 10*sizeof(int) + MM_HIST_SIZE*sizeof(int *) + adj;
+    __mm_memory = __builtin_memory + __builtin_offset + __mm_extra_offset;
+    __mm_avail = (int *)(__builtin_memory + __builtin_offset + adj);
 
     int i;
     for (i = 0; i <= 6; i ++)
         __mm_avail[i] = -1;
 
-    __mm_report_histogram = (int *)(__builtin_memory + __builtin_offset + 10*sizeof(int));
+    __mm_report_histogram = (int *)(__builtin_memory + __builtin_offset + 10*sizeof(int) + adj);
     for (i = 0; i <= 6; i ++)
         __mm_report_histogram[i] = 0;
 }
@@ -89,7 +95,7 @@ void * mm_malloc (int size) {
     if (!__mm_min)
         mm_init (128);
 
-    const int unit = 64 * __mm_min + 12;
+    const int unit = 64 * __mm_min + (HDR_SIZE + 8);
 
 #ifdef USE_PRINTF
     if (verbose)
@@ -98,7 +104,7 @@ void * mm_malloc (int size) {
 
     if (size > 64 * __mm_min) {
         // big block
-        int n = 2 + (size - (64 * __mm_min + 8))/(64 * __mm_min + 12);
+        int n = 2 + (size - (64 * __mm_min + 8))/(64 * __mm_min + (HDR_SIZE + 8));
 #ifdef USE_PRINTF
         if (verbose)
             printf("Allocating %d big blocks\n", n);
@@ -118,7 +124,7 @@ void * mm_malloc (int size) {
                         printf("Found free stretch from %d to %d\n", idx, j - 1);
 #endif
                     *(int *)(__mm_memory + idx * unit) = -n;
-                    return __mm_memory + idx * unit + 4;
+                    return __mm_memory + idx * unit + HDR_SIZE;
                 }
                 if (j == __mm_inuse)
                     break;
@@ -159,7 +165,7 @@ void * mm_malloc (int size) {
             printf("Following expansion, returning stretch from %d to %d\n", idx, idx + n - 1);
 #endif
         *(int *)(__mm_memory + idx * unit) = -n;
-        return __mm_memory + idx * unit + 4;
+        return __mm_memory + idx * unit + HDR_SIZE;
     }
     else {
         // small block
@@ -178,7 +184,7 @@ void * mm_malloc (int size) {
             do {
                 if (idx >= __mm_inuse) break;
                 int state = *(int *)(__mm_memory + idx * unit);
-                if (state == 0 || (state == n + 1 && *(long *)(__mm_memory + idx * unit + 4) != 0) ) {
+                if (state == 0 || (state == n + 1 && *(long *)(__mm_memory + idx * unit + HDR_SIZE) != 0) ) {
                     break;
                 }
                 else if (state > 0)
@@ -221,13 +227,13 @@ void * mm_malloc (int size) {
             *(int *)(__mm_memory + idx * unit) = n + 1;
             // Setting last ("trailing") 2^(6-n) bits to 1 (= "available", rest to 0)
             int bits = 1 << (6-n);
-            *(unsigned long *)(__mm_memory + idx * unit + 4) = (bits == 64? (unsigned long)0 : ((unsigned long)1 << (unsigned long)bits)) - 1;
+            *(unsigned long *)(__mm_memory + idx * unit + HDR_SIZE) = (bits == 64? (unsigned long)0 : ((unsigned long)1 << (unsigned long)bits)) - 1;
 #ifdef USE_PRINTF
             if (verbose)
-                printf("Initializing unit %d to n = %d (actual size = %d) | %lx\n", idx, n, a_size, *(unsigned long *)(__mm_memory + idx * unit + 4));
+                printf("Initializing unit %d to n = %d (actual size = %d) | %lx\n", idx, n, a_size, *(unsigned long *)(__mm_memory + idx * unit + HDR_SIZE));
 #endif
         }
-        unsigned long * cur = (unsigned long *)(__mm_memory + idx * unit + 4);
+        unsigned long * cur = (unsigned long *)(__mm_memory + idx * unit + HDR_SIZE);
         assert(*cur != 0);
         int j = __builtin_ctzl(*cur);
 
@@ -253,7 +259,7 @@ void mm_free(void * address) {
 #endif
     __mm_stat_freed ++;
 
-    const int unit = 64 * __mm_min + 12;
+    const int unit = 64 * __mm_min + (HDR_SIZE + 8);
 
     int i;
     int idx = (address - __mm_memory) / unit;
@@ -266,19 +272,19 @@ void mm_free(void * address) {
         if (verbose)
             printf("free::large[%d]<%d units>\n", idx, -state);
 #endif
-        assert(address == __mm_memory + idx * unit + 4);
+        assert(address == __mm_memory + idx * unit + HDR_SIZE);
         for (i = 0; i < -state; i ++)
             *(int *)(__mm_memory + (idx + i) * unit) = 0;
     }
     else {
-        unsigned long * cur = (unsigned long *)(__mm_memory + idx * unit + 4);
+        unsigned long * cur = (unsigned long *)(__mm_memory + idx * unit + HDR_SIZE);
         int n = state - 1;
         assert(n <= 6);
         int a_size = __mm_min;
         for (i = 0; i < n; i ++)
             a_size *= 2;
         int bits = 1 << (6-n);
-        int j = (address - (void *)cur - 8)/a_size;
+        int j = (address - (void*)cur - 8)/a_size;
 
 #ifdef USE_PRINTF
         if (verbose)
@@ -346,7 +352,7 @@ void __mm_append_number(char * dst, int num) {
 }
 
 char * mm_print_units() {
-    const int unit = 64 * __mm_min + 12;
+    const int unit = 64 * __mm_min + (HDR_SIZE + 8);
     char * buf = mm_malloc(1000);
     buf[0] = '\0';
 
@@ -364,7 +370,7 @@ char * mm_print_units() {
             __mm_append_string(buf, "S<");
             __mm_append_number(buf, state - 1);
             __mm_append_string(buf, "|free=");
-            __mm_append_number(buf, __builtin_popcountl(*(unsigned long *)(__mm_memory + idx * unit + 4)));
+            __mm_append_number(buf, __builtin_popcountl(*(unsigned long *)(__mm_memory + idx * unit + HDR_SIZE)));
             __mm_append_string(buf, ">");
         }
     }

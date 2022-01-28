@@ -236,7 +236,7 @@ public class ModuleEnv implements Partial, PostprocessContext {
             VariableDecl stackDecl = new VariableDecl(CType.INT, STACK_VAR_NAME, true, new SyntaxError.Position());
             stackDecl.imported = false;
             stackDecl.exported = false;
-            stackDecl.initialValue = new Const(1); // this is to avoid possible of zero value of &var
+            stackDecl.initialValue = new Const(alignment); // this is to avoid possible zero value of &var
             addDeclaration(stackDecl);
         }
 

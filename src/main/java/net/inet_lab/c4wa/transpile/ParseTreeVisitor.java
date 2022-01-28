@@ -202,18 +202,22 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 GetGlobal stack = new GetGlobal(NumType.I32, ModuleEnv.STACK_VAR_NAME);
                 String watName = functionEnv.getVariableWAT(varId);
 
-                if (type.is_struct() || decl.isArray)
-                    return new Instruction[] {
-                            new SetLocal(watName, stack),
-                            new SetGlobal(ModuleEnv.STACK_VAR_NAME, new Add(NumType.I32, stack,
-                                    decl.isArray
-                                            ? new Mul(NumType.I32, sizeExp, new Const(type.deref().size()))
-                                            : new Const(type.size())))};
-                else
-                    return new Instruction[]{
-                            new SetLocal(watName, stack),
-                            new SetGlobal(ModuleEnv.STACK_VAR_NAME,
-                                    new Add(NumType.I32, stack, new Const(type.size())))};
+                int alignment = functionEnv.moduleEnv.alignment;
+                Expression increment = decl.isArray ?
+                        new Mul(NumType.I32, sizeExp, new Const(type.deref().size())) :
+                        new Const(type.size());
+                Expression new_stack = new Add(NumType.I32, stack, increment);
+                // (x - 1) / 8 * 8 + 8
+                Expression new_stack_aligned = alignment == 1 ? new_stack :
+                        new Add(NumType.I32, new Const(8),
+                                new Mul(NumType.I32, new Const(8),
+                                        new Div(NumType.I32, true,
+                                                new Sub(NumType.I32, new_stack, new Const(1)),
+                                                new Const(8))));
+                return new Instruction[]{
+                        new SetLocal(watName, stack),
+                        new SetGlobal(ModuleEnv.STACK_VAR_NAME, new_stack_aligned)
+                };
             }
             else
                 return new Instruction[0];
@@ -437,7 +441,7 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                     moduleEnv.addDeclaration((VariableDecl) parseGlobalDecl);
                 } else if (parseGlobalDecl instanceof StructDefinition) {
                     StructDefinition def = (StructDefinition) parseGlobalDecl;
-                    Struct s = new Struct(def.name, def.members);
+                    Struct s = new Struct(def.name, def.members, moduleEnv.alignment);
                     Struct existing_s = moduleEnv.structs.get(def.name);
                     if (existing_s == null)
                         moduleEnv.addStruct(def.name, s);
@@ -1781,6 +1785,8 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
             return new OneExpression(new DelayedMemoryOffset(), CType.INT);
         else if (name.equals("__builtin_memory"))
             return new OneExpression(new Const(0), CType.VOID.make_pointer_to());
+        else if (name.equals("__builtin_alignment"))
+            return new OneExpression(new Const(moduleEnv.alignment), CType.INT);
 
         if (functionEnv == null)
             throw fail(ctx, "variable", "Cannot access variable '" + name + "' outside of function definition");

@@ -28,6 +28,7 @@ import net.inet_lab.c4wa.transpile.ParseTreeVisitor;
 import net.inet_lab.c4wa.transpile.ModuleEnv;
 import org.jetbrains.annotations.Nullable;
 
+@SuppressWarnings("IfCanBeSwitch")
 public class Main {
     static final ClassLoader loader = Main.class.getClassLoader();
 
@@ -75,7 +76,8 @@ public class Main {
 
         final boolean forcePP = !ppOptions.isEmpty();
 
-        addPreprocessorSymbolsFromProperties(ppOptions, prop);
+        int alignment = parsedArgs.containsKey("alignment") ? Integer.parseInt(parsedArgs.get("alignment")) : 1;
+        addPreprocessorSymbolsFromProperties(ppOptions, prop, alignment);
 
         if (error != null) {
             System.err.println("Error parsing command line: " + error);
@@ -105,7 +107,6 @@ public class Main {
         String wat_output = no_output ? null : is_wat_output ? _output :
                 parsedArgs.containsKey("keep")? _output.substring(0, _output.length() - 5) + ".wat" : null;
 
-        int alignment = parsedArgs.containsKey("alignment")? Integer.parseInt(parsedArgs.get("alignment")) : 1;
         if (!List.of(1,2,4,8).contains(alignment)) {
             System.err.println("Invalid alignment " + alignment + "; should be one of: 1, 2, 4, 8");
             System.exit(1);
@@ -274,7 +275,7 @@ public class Main {
 
         List<String> ppOptions = new ArrayList<>();
 
-        addPreprocessorSymbolsFromProperties(ppOptions, prop);
+        addPreprocessorSymbolsFromProperties(ppOptions, prop, alignment);
 
         if (usePreprocessor)
             programText = String.join("\n", runTextThroughCPreprocessor(programText, ppOptions));
@@ -319,10 +320,11 @@ public class Main {
         return prop;
     }
 
-    private static void addPreprocessorSymbolsFromProperties(List<String> ppOptions, Properties prop) {
+    private static void addPreprocessorSymbolsFromProperties(List<String> ppOptions, Properties prop, int alignment) {
         ppOptions.add("-DC4WA");
         ppOptions.add("-DC4WA_VERSION=" + prop.getProperty("appVersion"));
         ppOptions.add("-DC4WA_STACK_SIZE=" + prop.getProperty("module.stackSize"));
+        ppOptions.add("-DC4WA_ALIGNMENT=" + alignment);
     }
 
     private static void printUsage(Properties prop, String usage) {
@@ -403,7 +405,8 @@ public class Main {
                     warningTreatment[0] = WarningTreatment.IGNORE;
                 else if (o.equals("-Werror"))
                     warningTreatment[0] = WarningTreatment.TREAS_AS_ERRORS;
-                else if (o.equals("-Wall"))
+                else //noinspection StatementWithEmptyBody
+                    if (o.equals("-Wall"))
                     ;
                 else {
                     System.err.println("Invalid warning option '" + o + "'");
@@ -544,6 +547,7 @@ public class Main {
             throw new RuntimeException("Unknown protocol " + protocol);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static String[] getResourceListing(Class<?> clazz, String path) throws IOException, URISyntaxException {
         // Adopted & modernized from: http://www.uofr.net/~greg/java/get-resource-listing.html
         // Basically, Java has no built-in capability to list resource directory from JAR file;

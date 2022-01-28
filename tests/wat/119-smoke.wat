@@ -3,7 +3,7 @@
   (global $seed (mut i32) (i32.const 57))
   (global $__last_offset (mut i32) (i32.const 1061))
   (global $__available_size (mut i32) (i32.const -1))
-  (global $@stack (mut i32) (i32.const 1))
+  (global $@stack (mut i32) (i32.const 8))
   (memory (export "memory") 1)
   (data (i32.const 1024) "%s%.6f\00\00\0A\00, \00min(%d) * \E2\88\9A%d = %.6f\0A\00")
   (func $mulberry32 (result f64)
@@ -17,11 +17,11 @@
     (local $c i32)
     (if (i32.eq (get_local $b) (get_local $a))
       (then
-        (return (f64.load (i32.add (get_local $arr) (i32.mul (get_local $a) (i32.const 8))))))
+        (return (f64.load align=8 (i32.add (get_local $arr) (i32.mul (get_local $a) (i32.const 8))))))
       (else
         (if (i32.eq (get_local $b) (i32.add (get_local $a) (i32.const 1)))
           (then
-            (return (f64.min (f64.load (i32.add (get_local $arr) (i32.mul (get_local $a) (i32.const 8)))) (f64.load (i32.add (get_local $arr) (i32.mul (get_local $b) (i32.const 8)))))))
+            (return (f64.min (f64.load align=8 (i32.add (get_local $arr) (i32.mul (get_local $a) (i32.const 8)))) (f64.load align=8 (i32.add (get_local $arr) (i32.mul (get_local $b) (i32.const 8)))))))
           (else
             (set_local $c (i32.div_s (i32.add (get_local $a) (get_local $b)) (i32.const 2)))
             (return (f64.min (call $array_min_ (get_local $arr) (get_local $a) (get_local $c)) (call $array_min_ (get_local $arr) (i32.add (get_local $c) (i32.const 1)) (get_local $b))))))))
@@ -35,7 +35,7 @@
     (block $@block_1_break
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $i) (get_local $N)))
-        (f64.store (i32.add (get_local $arr) (i32.mul (get_local $i) (i32.const 8))) (call $mulberry32))
+        (f64.store align=8 (i32.add (get_local $arr) (i32.mul (get_local $i) (i32.const 8))) (call $mulberry32))
         (set_local $i (i32.add (get_local $i) (i32.const 1)))
         (br $@block_1_continue)))
     (get_local $arr))
@@ -48,9 +48,9 @@
       (set_local $i (i32.const 0))
       (loop $@block_1_continue
         (br_if $@block_1_break (i32.ge_s (get_local $i) (i32.const 100)))
-        (i64.store (global.get $@stack) (i64.extend_i32_s (select (i32.const 1031) (select (i32.const 1032) (i32.const 1034) (i32.eqz (i32.rem_s (get_local $i) (i32.const 10)))) (i32.eqz (get_local $i)))))
+        (i64.store align=8 (global.get $@stack) (i64.extend_i32_s (select (i32.const 1031) (select (i32.const 1032) (i32.const 1034) (i32.eqz (i32.rem_s (get_local $i) (i32.const 10)))) (i32.eqz (get_local $i)))))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (f64.store (global.get $@stack) (call $mulberry32))
+        (f64.store align=8 (global.get $@stack) (call $mulberry32))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 8)))
         (call $printf (i32.const 1024) (global.get $@stack))
         (set_local $i (i32.add (get_local $i) (i32.const 1)))
@@ -62,11 +62,11 @@
       (set_local $i (i32.const 1000))
       (loop $@block_2_continue
         (br_if $@block_2_break (i32.gt_s (get_local $i) (i32.const 10000)))
-        (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $i)))
+        (i64.store align=8 (global.get $@stack) (i64.extend_i32_s (get_local $i)))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $i)))
+        (i64.store align=8 (global.get $@stack) (i64.extend_i32_s (get_local $i)))
         (global.set $@stack (i32.add (global.get $@stack) (i32.const 8)))
-        (f64.store (global.get $@stack) (f64.mul (f64.sqrt (f64.convert_i32_s (get_local $i))) (call $array_min (get_local $arr) (get_local $i))))
+        (f64.store align=8 (global.get $@stack) (f64.mul (f64.sqrt (f64.convert_i32_s (get_local $i))) (call $array_min (get_local $arr) (get_local $i))))
         (global.set $@stack (i32.sub (global.get $@stack) (i32.const 16)))
         (call $printf (i32.const 1037) (global.get $@stack))
         (set_local $i (i32.add (get_local $i) (i32.const 1000)))
@@ -79,6 +79,7 @@
     (if (i32.lt_s (global.get $__available_size) (i32.const 0))
       (then
         (global.set $__available_size (i32.mul (i32.const 64000) (memory.size)))))
+    (global.set $__last_offset (i32.add (i32.mul (i32.div_s (i32.sub (global.get $__last_offset) (i32.const 1)) (i32.const 8)) (i32.const 8)) (i32.const 8)))
     (set_local $res (global.get $__last_offset))
     (global.set $__last_offset (i32.add (global.get $__last_offset) (get_local $size)))
     (if (i32.gt_s (global.get $__last_offset) (global.get $__available_size))
