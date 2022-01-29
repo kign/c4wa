@@ -505,13 +505,13 @@ but `c4wa` internally replaces them with Web Assembly memory operators:
 Note that `memset` and `memcpy` are known as _bulk-memory operations_ and as of now are still
 considered experimental; they may not be supported by all runtimes. If you compile WAT file
 which includes these operators with `wat2wasm`, you must include option `--enable-bulk-memory`.
-There is also a [compiler option](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md) 
-`Xwasm.bulk-memory=no` to replace bulk memory operations with emulations.
 
 (P.S. 2022-01: latest version of `wat2wasm` no longer needs or recognizes `--enable-bulk-memory`)
 
 `c4wa` supports these operations by default. However, for better compatibility, it provides a
-transparent emulation, which can enabled with compiler option `-Xwasm.bulk-memory=false` .
+transparent emulation, which can enabled with 
+[compiler option](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md)  
+`-Xwasm.bulk-memory=false` .
 
 Since `memgrow` and `memsize` are WASM-specific, when cross-compiling with a native C compiler
 you should provide a suitable replacement, e.g.
@@ -530,7 +530,10 @@ In addition to memory functions `memset`, `memcpy`, `memgrow`, `memsize` discuss
 there are a few other built-in functions:
 
   * `min` and `max` work with any numerical arguments (of the same type), and will return result of the same type as arguments;
-  * `floor`, `ceil`, `sqrt`, `fabs`. These functions work for `float` or `double` arguments, and will return same type as passed;
+  * `floor`, `ceil`, `sqrt`, `fabs`. These functions work for `float` or `double` arguments, and will return same type as passed. 
+    Note that this is different from Standard C library which has special `float` versions of these functions,
+    such as `sqrtf`; however these `float` functions are so rarely used, it hardly seems practical to add
+    these names to `c4wa`, and in any case, any incompatibility could be easily addressed with a macro;
   * `abort` triggers "_RuntimeError: unreachable_" exception;
   * `__builtin_clz`, `__builtin_ctz`, `__builtin_clzl`, `__builtin_ctzl`, `__builtin_popcount`, `__builtin_popcountl` 
     (see gcc [documentation](https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html)). 

@@ -308,7 +308,10 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
                 }
 
                 if (!decl.type.isValidRHS(type))
-                    throw fail(ctx, "init", "Expression of type " + type + " cannot be assigned to variable '" + varId_a[i] + "' of type " + decl.type);
+                    throw fail(ctx, "assignment", "Expression of type " + type + " cannot be assigned to variable '" + varId_a[i] + "' of type " + decl.type);
+
+                if (decl.type.asNumType() != type.asNumType())
+                    throw fail(ctx, "assignment", "Expression of type " + type + " cannot be assigned to variable '" + varId_a[i] + "' of type " + decl.type);
             }
 
             Expression res = rhs;
@@ -1115,16 +1118,23 @@ public class ParseTreeVisitor extends c4waBaseVisitor<Partial> {
     @Override
     public OneInstruction visitSimple_assignment(c4waParser.Simple_assignmentContext ctx) {
         String[] names = ctx.ID().stream().map(ParseTree::getText).toArray(String[]::new);
-        String lastName = names[names.length - 1];
 
-        VariableDecl decl = variableDeclByName(lastName);
-        if (decl == null)
-            decl = moduleEnv.varDecl.get(lastName);
+        CType lhs_type = null;
 
-        if (decl == null)
-            throw fail(ctx, "assignment", "Variable '" + lastName + "' is not defined");
+        for (String varName: names) {
+            VariableDecl decl = variableDeclByName(varName);
+            if (decl == null)
+                decl = moduleEnv.varDecl.get(varName);
+            if (decl == null)
+                throw fail(ctx, "assignment", "Variable '" + varName + "' is not defined");
+            if (lhs_type == null)
+                lhs_type = decl.type;
+            else if (!lhs_type.same(decl.type))
+                throw fail(ctx, "assignment",
+                        "Variables '" + names[0] + "' and '" + varName + "' have different types");
+        }
 
-        OneExpression rhs = prepareRHS(ctx, decl.type, (OneExpression) visit(ctx.expression()), "assignment");
+        OneExpression rhs = prepareRHS(ctx, lhs_type, (OneExpression) visit(ctx.expression()), "assignment");
 
         return new OneInstruction(new DelayedAssignment(ctx, false, false, Arrays.stream(names).map(this::variableIdByName).toArray(String[]::new), rhs.expression, rhs.type));
     }
