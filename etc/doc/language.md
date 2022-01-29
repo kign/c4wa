@@ -117,7 +117,8 @@ directives and only runs them through preprocessor when necessary, _or_ if there
 `-D<name>[=<value>]` command line option.
 
 When preprocessor is used by `c4wa`, symbol `C4WA` is always defined. You can use it to create separate branches
-for `c4wa` and standard C compiler.
+for `c4wa` and standard C compiler. Compiler option `-xh` will print all defined symbols,
+while option `-v` will print full preprocessor command.
 
 `c4wa` also comes with a few include files of its own; they are installed as part of ZIP distribution and path is
 automatically added to the preprocessor.
@@ -471,7 +472,8 @@ JavaScript function `read_i32` could be imported from
 [here](https://github.com/kign/c4wa/blob/master/etc/wasm-printf.js).
 
 If you are verifying your code in standard C compiler (which is recommended), it will probably complain 
-about returning stack value from a function `find_boundary_box`. You can restructure your code slightly to
+about returning stack value from a function `find_boundary_box`. 
+You can safely ignore it, or if it bothers you, restructure your code slightly to
 avoid this warning:
 
 ```c
@@ -503,6 +505,10 @@ but `c4wa` internally replaces them with Web Assembly memory operators:
 Note that `memset` and `memcpy` are known as _bulk-memory operations_ and as of now are still
 considered experimental; they may not be supported by all runtimes. If you compile WAT file
 which includes these operators with `wat2wasm`, you must include option `--enable-bulk-memory`.
+There is also a [compiler option](https://github.com/kign/c4wa/blob/master/etc/doc/properties.md) 
+`Xwasm.bulk-memory=no` to replace bulk memory operations with emulations.
+
+(P.S. 2022-01: latest version of `wat2wasm` no longer needs or recognizes `--enable-bulk-memory`)
 
 `c4wa` supports these operations by default. However, for better compatibility, it provides a
 transparent emulation, which can enabled with compiler option `-Xwasm.bulk-memory=false` .
@@ -545,7 +551,7 @@ All string literals in C code are placed in DATA section with terminating `\0`;
 identical strings are assigned same memory address.
 Just like in standard C, when assigned to a variable or passed as an argument to a function, string literals have type `char *`.
 
-Again, like in newer C compilers, consecutive string literals are joined together, so the following code is legal:
+Again, like in newer C compilers, consecutive string literals are joined together, so the following code is valid:
 
 ```c
 char * file = 
@@ -626,7 +632,7 @@ extern int main() {
 
 You can also have imported functions with variable arguments; when adding them to your runtime,
 actual implementation will have one additional argument after required ones, which is a memory
-address where all subsequent arguments shall be read (it'll be passed even there are no
+address where all subsequent arguments shall be read (it'll be passed even if there are no
 additional arguments in the function call). Each optional argument, regardless of type,
 will occupy exactly 8 bytes (64 bits) in linear memory.
 

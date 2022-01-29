@@ -1,10 +1,12 @@
 # C compiler for Web Assembly (`c4wa`)
 
-This is a compiler from a subset of C language to Web Assembly.
+This is a compiler from a _subset_ of C language to Web Assembly.
 
 If you're not familiar with Web Assembly, check out [Wikipedia article](https://en.wikipedia.org/wiki/WebAssembly).
 Web Assembly is a new universal executable format for the Web; it complements more traditional JavaScript
 for computationally intensive tasks or if there is a need to port to Web existing code written in other languages.
+Binary Web Assembly files have extension `.wasm`; throughout this document, _WASM_ is used both as the name
+for binary Web Assembly format and as a shortcut for _Web Assembly_.
 
 There are many compilers targeting Web Assembly; see for example a comprehensive list 
 [here](https://github.com/appcypher/awesome-wasm-langs). Why do we need another one?
@@ -69,7 +71,7 @@ universal runtimes such as [wasmtime](https://wasmtime.dev/) and [wasmer](https:
 for many languages. Any modern browser will also have a Web Assembly runtime built-in, though it is
 a bit more complicated since you'd also need a local server to run your code. 
 
-`cw4a` is entirely runtime-agnostic, though its testing framework is built on the top of `node`. 
+`cw4a` is entirely runtime-agnostic, though its testing framework is built on top of `node`. 
 
 Finally, if you are working with Web Assembly, you probably should have 
 [WebAssembly Binary Toolkit](https://github.com/WebAssembly/wabt) handy;
@@ -79,7 +81,7 @@ However, `c4wa` doesn't have a dependency on any of the WABT tools.
 ## Installation
 
 Download the latest release from [here](https://github.com/kign/c4wa/releases/); unzip to any directory
-and use shell wrapper `c4wa-compile`. For example,
+and use shell wrapper `c4wa-compile` (`c4wa-compile.bat` on Windows). For example,
 
 ```bash
 mkdir -p ~/Apps
@@ -163,7 +165,7 @@ If you run compiler with option `-k`, it'll also save a WAT file, which looks li
 ```
 
 If you can read Web Assembly instructions, you can see how this corresponds to the
-original C code, and it would seem reasonably close to how one would solve this problem directly in WAT.
+original C code, and it would seem reasonably close to how one might solve this problem directly in WAT.
 
 There is nothing whatsoever that forces you to use `node` or JavaScript to execute WASM files.
 There are many universal runtimes with bindings available for many languages. For example, 
