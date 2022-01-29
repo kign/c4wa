@@ -6,7 +6,7 @@
   (func $foo (param $level i32)
     (local $@stack_entry i32)
     (set_local $@stack_entry (global.get $@stack))
-    (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $level)))
+    (i64.store align=1 (global.get $@stack) (i64.extend_i32_s (get_local $level)))
     (call $printf (i32.const 1024) (global.get $@stack))
     (if (i32.gt_s (get_local $level) (i32.const 0))
       (then
@@ -18,7 +18,7 @@
   (func $bar (param $level i32)
     (local $@stack_entry i32)
     (set_local $@stack_entry (global.get $@stack))
-    (i64.store (global.get $@stack) (i64.extend_i32_s (get_local $level)))
+    (i64.store align=1 (global.get $@stack) (i64.extend_i32_s (get_local $level)))
     (call $printf (i32.const 1033) (global.get $@stack))
     (if (i32.gt_s (get_local $level) (i32.const 0))
       (then

@@ -68,6 +68,8 @@ public class Main {
         String error = parseCommandLineArgs(args,
                 List.of(new Option('o', "output", true),
                         new Option('h', "help"),
+                        new Option('x', "extended"),
+                        new Option('\0', "xh"),
                         new Option('k', "keep"),
                         new Option('e', "execute"),
                         new Option ('a', "alignment", true),
@@ -85,8 +87,10 @@ public class Main {
         }
 
         String usage = "Usage: " + appName + " [OPTIONS] <FILE.c> [<FILE_2.c> .... <FILE_N.c>]";
-        if (parsedArgs.containsKey("help")) {
-            printUsage(prop, usage);
+        if (parsedArgs.containsKey("help") || parsedArgs.containsKey("xh")) {
+            printUsage(prop, usage,
+                    parsedArgs.containsKey("xh") || parsedArgs.containsKey("extended"),
+                    ppOptions);
             System.exit(0);
         }
 
@@ -327,7 +331,7 @@ public class Main {
         ppOptions.add("-DC4WA_ALIGNMENT=" + alignment);
     }
 
-    private static void printUsage(Properties prop, String usage) {
+    private static void printUsage(Properties prop, String usage, boolean extended, List<String> ppOptions) {
         String appVersion = prop.getProperty("appVersion");
         String appDate = prop.getProperty("appDate");
         System.out.print(
@@ -347,21 +351,30 @@ public class Main {
                 " -w              Inhibit all warning messages\n" +
                 " -Werror         Make all warnings into errors\n" +
                 " -o, --output <FILE>  specify output WAT file (or - for stdout)\n" +
-                " -h, --help      this help screen\n" +
-                "\n" +
-                "Compiler properties:\n" +
-                "\n" +
-                "Name                             Default value\n" +
-                "----------------------------------------------\n"
-        );
-        @SuppressWarnings("unchecked")
-        Enumeration<String> enums = (Enumeration<String>) prop.propertyNames();
-        while (enums.hasMoreElements()) {
-            String key = enums.nextElement();
-            if (key.indexOf('.') > 0) {
-                String value = prop.getProperty(key);
-                System.out.printf("%-30s : %s\n", key, value);
+                " -h, --help      Help screen\n" +
+                " -xh, --xh       Extended help screen\n");
+
+        if (extended) {
+            System.out.print(
+                    "\n" +
+                    "Compiler properties:\n" +
+                    "\n" +
+                    "Name                             Value\n" +
+                    "----------------------------------------------\n"
+            );
+            @SuppressWarnings("unchecked")
+            Enumeration<String> enums = (Enumeration<String>) prop.propertyNames();
+            while (enums.hasMoreElements()) {
+                String key = enums.nextElement();
+                if (key.indexOf('.') > 0) {
+                    String value = prop.getProperty(key);
+                    System.out.printf("%-30s : %s\n", key, value);
+                }
             }
+
+            System.out.println("\nPreprocessor symbols:\n");
+            for (String o: ppOptions)
+                System.out.println(o);
         }
     }
 
@@ -386,7 +399,7 @@ public class Main {
                 System.out.println("Library name   Description\n----------------------------------------------------------");
                 try {
                     for (String libName: getResourceListing(Main.class, "lib"))
-                        if (libName.endsWith(".c")) {
+                        if (libName.endsWith(".c") && !libName.startsWith("sys")) {
                             String line = new BufferedReader(
                                     new InputStreamReader(
                                             Objects.requireNonNull(

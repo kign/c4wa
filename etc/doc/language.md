@@ -263,6 +263,39 @@ Incorporating universal memory manager with command line option `-lmm_uni` prett
 `malloc` and `free` as one normally would. In many ways, this is not the most optimized solution though,
 and it could be an overkill for simpler tasks. 
 
+### Memory alignment
+
+From version 0.5, `c4wa` supports different alignment options, with command line argument `-a`;
+valid values are 1, 2, 4, 8. Value 1 (default) means "no alignment", whereas with `-a 8`
+all 64-bit memory access would be aligned to 8 bytes, 32-bit to 4 bytes, etc.
+
+In the current WASM spec, memory alignment is merely a "hint", which allows runtime to optimize memory access.
+You are free to use unaligned memory (alignment = 1), _or_ even provide incorrect hints (which essentially
+was the case up to version 0.4). Perhaps for this reason, in my testing using aligned memory access brings
+little, if any, performance benefit.
+
+Generally, alignment=1 results in a slightly simpler WASM code using slightly less memory; that's the reason
+it is the default. For performance-critical applications, you may want to do a comparison with other
+alignment options for your target runtime, and select whatever works best for you. I suspect that
+for now there will be very little difference, but situation might change with newer runtimes.
+
+In the meantime, the other side of the complete indifference of available runtimes to 
+alignment hints is that it's impossible to verify them; to address this, `c4wa` now has a built-in
+interpreter (invoked with `-e`). With this option, `c4wa` will attempt, after compilation, to 
+actually execute the program (function `main` will be called with no arguments and import function
+`printf` will be made available). It'll throw an exception on any memory access inconsistent with 
+alignment hint. Unfortunately, because this simple interpreter is _a lot_ slower than a typical runtime,
+non-trivial applications need to be scaled down to make it practical to test.
+
+Note also that when `-e` is active, generated WAT and/or WASM files will only be saved with 
+explicit `-o` option. Simply running `c4wa-compile -e file.c` will invoke the interpreter, 
+but will save nothing regardless of the results.
+
+Finally, if you're using low-level memory access (see above), 
+_you are_ then responsible for following the alignment rules.
+(which are, of course, only relevant if alignment > 1). To facilitate this, there is a built-in global
+`__builtin_alignment` and preprocessor symbol `C4WA_ALIGNMENT` both set according to option `-a`.
+
 ### stack variables
 
 Web Assembly supports unlimited number of local variables, so when you have a local variable in C,

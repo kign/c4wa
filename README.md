@@ -24,7 +24,8 @@ Here are some unique features of `c4wa` :
    Web Assembly and WAT format
 
 `c4wa` is not a full C implementation and isn't trying to be one. Still, most of the typical day-to-day coding
-targeting `c4wa` isn't much more complicated than coding in standard C. It supports loops, conditionals, block scope of variables, intermingled declarations, all of C operators and primitive types, `struct`s, 
+targeting `c4wa` isn't much more complicated than coding in standard C. 
+It supports loops, conditionals, block scope of variables, intermingled declarations, all of C operators and primitive types, `struct`s, 
 arrays, pointers, variable arguments and dynamic memory
 allocation. It can also apply external C preprocessor to your code before parsing.
 
@@ -59,21 +60,21 @@ which will be similar to what a human programmer would have written when solving
 
 `c4wa` needs Java 11 or above. Using preprocessor requires external C compiler (`gcc` is recommended).
 
-While most of the testing tools and examples given below assume POSIX-based environment, compiler itself
+While testing tools and examples described below assume POSIX-based environment, compiler itself
 should work on any platform with Java installed. Generated WASM files are, of course, platform-independent.
 (WAT files will be created in a default text format for your platform).
 
-In order to run Web Assembly, you need a runtime. Easiest runtime to use is `node`; there are also 
+In order to run Web Assembly, you need a _runtime_. Easiest runtime to use is `node`; there are also 
 universal runtimes such as [wasmtime](https://wasmtime.dev/) and [wasmer](https://wasmer.io/) with bindings
 for many languages. Any modern browser will also have a Web Assembly runtime built-in, though it is
-a bit more complicated since you'd also need a local server. 
+a bit more complicated since you'd also need a local server to run your code. 
 
 `cw4a` is entirely runtime-agnostic, though its testing framework is built on the top of `node`. 
 
 Finally, if you are working with Web Assembly, you probably should have 
 [WebAssembly Binary Toolkit](https://github.com/WebAssembly/wabt) handy;
 it allows you to compile WAT files, verify a WASM file, dump its content by sections, and a lot more. 
-However, it's not required.    
+However, `c4wa` doesn't have a dependency on any of the WABT tools.    
 
 ## Installation
 
@@ -83,10 +84,10 @@ and use shell wrapper `c4wa-compile`. For example,
 ```bash
 mkdir -p ~/Apps
 cd ~/Apps
-wget https://github.com/kign/c4wa/releases/download/v0.4/c4wa-compile-0.4.zip
-unzip c4wa-compile-0.4.zip
+wget https://github.com/kign/c4wa/releases/download/v0.5/c4wa-compile-0.5.zip
+unzip c4wa-compile-0.5.zip
 cd
-PATH=~/Apps/c4wa-compile-0.4/bin:$PATH
+PATH=~/Apps/c4wa-compile-0.5/bin:$PATH
 c4wa-compile --help
 ```
 
